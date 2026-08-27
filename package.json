@@ -1,0 +1,19 @@
+{
+  "name": "apc-web-portal",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.22.0",
+  "engines": { "node": ">=22.0.0" },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @apc/web --filter @apc/api dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "infra:up": "node scripts/compose.mjs up -d",
+    "infra:down": "node scripts/compose.mjs down",
+    "infra:logs": "node scripts/compose.mjs logs -f",
+    "homepage:import": "node scripts/import-homepage.mjs"
+  }
+}

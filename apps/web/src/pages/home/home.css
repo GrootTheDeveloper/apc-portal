@@ -1,0 +1,35 @@
+/* Mỗi section chiếm trọn chiều cao viewport và căn giữa nội dung theo chiều dọc,
+   giống section "Cùng học...". Dùng min-height nên section nào cao hơn màn hình
+   vẫn nở ra bình thường, không bị cắt nội dung. */
+main > section {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* Mặc định nội dung hiện. Chỉ ẩn-để-animate khi hook đã gắn .reveal-on
+   (tức có JS và người dùng không bật giảm chuyển động). */
+.reveal-on .fade-up { opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease-out, transform 0.6s ease-out; }
+        .reveal-on .fade-up.visible { opacity: 1; transform: translateY(0); }
+        .nav-scrolled { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+
+        @keyframes bgFade {
+            0% { opacity: 1; transform: scale(1); }
+            28% { opacity: 1; transform: scale(1.02); }
+            33% { opacity: 0; transform: scale(1.03); }
+            95% { opacity: 0; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .hero-slider-img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            animation: bgFade 15s infinite;
+        }
+        .hero-slider-img:nth-child(1) { animation-delay: 0s; }
+        .hero-slider-img:nth-child(2) { animation-delay: 5s; }
+        .hero-slider-img:nth-child(3) { animation-delay: 10s; }
