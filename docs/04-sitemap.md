@@ -2,11 +2,11 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.0 |
-| Trạng thái | Chưa thống nhất |
-| Ngày cập nhật | 23/07/2026 |
+| Phiên bản | 1.1 |
+| Trạng thái | Bản thảo để APC rà soát |
+| Ngày cập nhật | 27/08/2026 |
 | Sản phẩm | APC Portal |
-| Đơn vị sở hữu | Ban Chuyên môn Câu lạc bộ Lập trình ứng dụng (APC) |
+| Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC) |
 | Tài liệu đầu vào | [PRD](./01-prd.md), [Roles and Permissions](./02-roles-permissions.md), [User Flows](./03-user-flows.md) |
 
 ### Lịch sử phiên bản
@@ -14,6 +14,9 @@
 | Phiên bản | Nội dung chính |
 | --- | --- |
 | 1.0 | Baseline hoàn chỉnh về kiến trúc thông tin, 101 route tiếng Anh, điều hướng, route guard và truy vết `FLOW-01` đến `FLOW-29` |
+| 1.1 | Ánh xạ bản thiết kế trang chủ vào `/`; các route còn lại chưa được khởi tạo |
+
+> Chỉ route `/` có giao diện baseline trong mã nguồn tại thời điểm 27/08/2026. Danh mục route còn lại là kiến trúc thông tin dự kiến và cần được ưu tiên theo Feature Catalog.
 
 ## 1. Mục đích
 

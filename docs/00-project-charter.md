@@ -2,10 +2,10 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.0 |
-| Trạng thái | Chưa thống nhất |
-| Ngày cập nhật | 23/07/2026 |
-| Đơn vị sở hữu | Ban Chuyên môn Câu lạc bộ Lập trình ứng dụng (APC) |
+| Phiên bản | 1.1 |
+| Trạng thái | Bản thảo để APC rà soát |
+| Ngày cập nhật | 27/08/2026 |
+| Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC) |
 | Đơn vị | Câu lạc bộ Lập trình ứng dụng (APC), Khoa Công Nghệ, UMT |
 | Tên sản phẩm | APC Portal |
 
@@ -14,8 +14,11 @@
 | Phiên bản | Nội dung chính |
 | --- | --- |
 | 1.0 | Baseline hoàn chỉnh về bối cảnh, mục tiêu, phạm vi MVP, nguyên tắc vận hành và ràng buộc triển khai |
+| 1.1 | Ghi nhận giai đoạn local-first; hạ tầng production chưa được chọn và cần quyết định riêng |
 
 Tài liệu này xác lập định hướng sản phẩm, phạm vi MVP và các nguyên tắc triển khai của APC Portal.
+
+> Trạng thái triển khai ngày 27/08/2026: dự án chỉ chạy local. Các mô tả VPS, staging và production bên dưới là mục tiêu dự kiến, không phải hạ tầng đã mua hoặc quyết định đã phê duyệt.
 
 ## 1. Bối cảnh
 

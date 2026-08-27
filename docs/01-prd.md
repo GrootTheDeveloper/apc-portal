@@ -2,11 +2,11 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.0 |
-| Trạng thái | Chưa thống nhất |
-| Ngày cập nhật | 23/07/2026 |
+| Phiên bản | 1.1 |
+| Trạng thái | Bản thảo để APC rà soát |
+| Ngày cập nhật | 27/08/2026 |
 | Sản phẩm | APC Portal |
-| Đơn vị sở hữu | Ban Chuyên môn Câu lạc bộ Lập trình ứng dụng (APC) |
+| Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC) |
 | Tài liệu nền tảng | [APC Portal - Project Charter](./00-project-charter.md) |
 
 ### Lịch sử phiên bản
@@ -14,6 +14,9 @@
 | Phiên bản | Nội dung chính |
 | --- | --- |
 | 1.0 | Baseline PRD hoàn chỉnh gồm mục tiêu, 29 luồng, yêu cầu, dữ liệu, bảo mật, vận hành và tiêu chí nghiệm thu MVP |
+| 1.1 | Liên kết baseline với giai đoạn local-first và tách cam kết production chưa được phê duyệt |
+
+> Trạng thái triển khai ngày 27/08/2026: nền tảng local và trang chủ đang được xây dựng. Mọi yêu cầu VPS/staging/production là release gate tương lai và chỉ có hiệu lực sau khi APC chọn hạ tầng.
 
 ## 1. Mục đích tài liệu
 
