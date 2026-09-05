@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.1 |
+| Phiên bản | 1.2 |
 | Trạng thái | Bản thảo để APC rà soát |
-| Ngày cập nhật | 27/08/2026 |
+| Ngày cập nhật | 05/09/2026 |
 | Sản phẩm | APC Portal |
 | Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC) |
 | Tài liệu đầu vào | [PRD](./01-prd.md), [Roles and Permissions](./02-roles-permissions.md), [User Flows](./03-user-flows.md) |
@@ -15,6 +15,7 @@
 | --- | --- |
 | 1.0 | Baseline hoàn chỉnh về kiến trúc thông tin, 101 route tiếng Anh, điều hướng, route guard và truy vết `FLOW-01` đến `FLOW-29` |
 | 1.1 | Ánh xạ bản thiết kế trang chủ vào `/`; các route còn lại chưa được khởi tạo |
+| 1.2 | Bỏ trang Thành tích (PAGE-PUB-11/12, PAGE-MGT-PRT-05..08); nhãn header dùng "Gia nhập APC"; giữ segment URL cố định tiếng Anh |
 
 > Chỉ route `/` có giao diện baseline trong mã nguồn tại thời điểm 27/08/2026. Danh mục route còn lại là kiến trúc thông tin dự kiến và cần được ưu tiên theo Feature Catalog.
 
@@ -163,8 +164,8 @@ flowchart TB
 2. Giới thiệu.
 3. Tin tức.
 4. Sự kiện.
-5. Dự án và Thành tích.
-6. Tuyển thành viên.
+5. Dự án.
+6. Gia nhập APC (nghiệp vụ nội bộ gọi là tuyển thành viên).
 7. UMTOJ, được đánh dấu là liên kết ngoài.
 8. Tìm kiếm bằng nút biểu tượng.
 9. Đăng nhập.
@@ -178,7 +179,7 @@ flowchart TB
 **Footer**
 
 - Giới thiệu APC, Ban chuyên môn và liên hệ.
-- Tin tức, sự kiện, dự án, thành tích và tuyển thành viên.
+- Tin tức, sự kiện, dự án và tuyển thành viên.
 - Tra cứu hồ sơ ứng tuyển và tra cứu đăng ký sự kiện.
 - Chính sách quyền riêng tư.
 - UMTOJ và các liên kết chính thức đã được Ban Chủ nhiệm cấu hình.
@@ -197,8 +198,6 @@ flowchart TB
 | `PAGE-PUB-08` | Tra cứu hoặc hủy đăng ký sự kiện | `/events/registration-lookup` | Footer, email xác nhận, chi tiết sự kiện | `FLOW-14`, `EVT-11`, `SEC-05`, `SEC-08` |
 | `PAGE-PUB-09` | Danh sách dự án và sản phẩm | `/projects` | Header, trang chủ, tìm kiếm | `FLOW-01`, `FLOW-02`, `PUB-05`, `PUB-07` |
 | `PAGE-PUB-10` | Chi tiết dự án hoặc sản phẩm | `/projects/[slug]` | Danh sách, trang chủ, tìm kiếm | `FLOW-02`, `FLOW-18`, `PRT-01`, `PRT-03`, `PRT-04` |
-| `PAGE-PUB-11` | Danh sách thành tích | `/achievements` | Header, trang chủ, tìm kiếm | `FLOW-01`, `FLOW-02`, `PUB-05`, `PUB-07` |
-| `PAGE-PUB-12` | Chi tiết thành tích | `/achievements/[slug]` | Danh sách, trang chủ, tìm kiếm | `FLOW-02`, `FLOW-18`, `PRT-02` đến `PRT-04` |
 | `PAGE-PUB-13` | Tuyển thành viên | `/recruitment` | Header, trang chủ, footer | `FLOW-03`, `PUB-06`, `REC-01`, `REC-02` |
 | `PAGE-PUB-14` | Chi tiết đợt tuyển | `/recruitment/[slug]` | Trang tuyển thành viên | `FLOW-03`, `REC-02`, `REC-16` |
 | `PAGE-PUB-15` | Biểu mẫu ứng tuyển | `/recruitment/[slug]/apply` | Chi tiết đợt tuyển | `FLOW-04`, `REC-03` đến `REC-06`, `REC-14`, `DATA-01`, `DATA-07` |
@@ -220,8 +219,6 @@ flowchart TB
     EventLookup["PAGE-PUB-08<br/>/events/registration-lookup"]
     Projects["PAGE-PUB-09<br/>/projects"]
     ProjectDetail["PAGE-PUB-10<br/>/projects/[slug]"]
-    Awards["PAGE-PUB-11<br/>/achievements"]
-    AwardDetail["PAGE-PUB-12<br/>/achievements/[slug]"]
     Recruitment["PAGE-PUB-13<br/>/recruitment"]
     RecruitmentDetail["PAGE-PUB-14<br/>/recruitment/[slug]"]
     RecruitmentForm["PAGE-PUB-15<br/>/recruitment/[slug]/apply"]
@@ -235,7 +232,6 @@ flowchart TB
     EventDetail --> EventApply
     Events --> EventLookup
     Home --> Projects --> ProjectDetail
-    Home --> Awards --> AwardDetail
     Home --> Recruitment --> RecruitmentDetail --> RecruitmentForm
     Recruitment --> RecruitmentLookup
     Home --> Search
@@ -435,7 +431,7 @@ Các hành động Mở, Đóng, Lưu trữ đợt tuyển; chuyển trạng th�
 
 Phạm vi công bố quyết định bề mặt hiển thị: thông báo trong ban xuất hiện ở `PAGE-MEM-02`; nội dung công khai xuất hiện ở `PAGE-PUB-03`.
 
-### 8.6. Dự án, sản phẩm và thành tích
+### 8.6. Dự án và sản phẩm
 
 | Mã trang | Tên trang | Route chuẩn | `DEPARTMENT_MANAGER` | `BOARD` | Truy vết |
 | --- | --- | --- | --- | --- | --- |
@@ -443,10 +439,6 @@ Phạm vi công bố quyết định bề mặt hiển thị: thông báo trong 
 | `PAGE-MGT-PRT-02` | Tạo dự án hoặc sản phẩm | `/admin/content/projects/new` | `SCOPE` | `ALL` | `FLOW-18`, `PRT-01`, `PRT-04` |
 | `PAGE-MGT-PRT-03` | Chỉnh sửa dự án hoặc sản phẩm | `/admin/content/projects/[id]` | `SCOPE` | `ALL` | `FLOW-18`, `PRT-01`, `PRT-03`, `PRT-04` |
 | `PAGE-MGT-PRT-04` | Xem trước dự án hoặc sản phẩm | `/admin/content/projects/[id]/preview` | `SCOPE` | `ALL` | `FLOW-18`, `PRT-01`, `PRT-04` |
-| `PAGE-MGT-PRT-05` | Danh sách thành tích | `/admin/content/achievements` | `SCOPE` | `ALL` | `FLOW-18`, `PRT-02`, `PRT-03` |
-| `PAGE-MGT-PRT-06` | Tạo thành tích | `/admin/content/achievements/new` | `SCOPE` | `ALL` | `FLOW-18`, `PRT-02`, `PRT-04` |
-| `PAGE-MGT-PRT-07` | Chỉnh sửa thành tích | `/admin/content/achievements/[id]` | `SCOPE` | `ALL` | `FLOW-18`, `PRT-02` đến `PRT-04` |
-| `PAGE-MGT-PRT-08` | Xem trước thành tích | `/admin/content/achievements/[id]/preview` | `SCOPE` | `ALL` | `FLOW-18`, `PRT-02`, `PRT-04` |
 
 `DEPARTMENT_MANAGER` tạo và chỉnh sửa hồ sơ Ẩn trong phạm vi Ban chuyên môn; chỉ `BOARD` có hành động công bố.
 
@@ -532,7 +524,7 @@ flowchart TB
 
     Admin --> Content
     Content --> Posts["Bài viết và thông báo<br/>PAGE-MGT-CMS-01 đến 04"]
-    Content --> Portfolio["Dự án và thành tích<br/>PAGE-MGT-PRT-01 đến 08"]
+    Content --> Portfolio["Dự án và sản phẩm<br/>PAGE-MGT-PRT-01 đến 04"]
 
     Admin --> Documents
     Documents --> DocumentRecords["PAGE-MGT-DOC-01 đến 04"]
@@ -594,7 +586,7 @@ Liên kết ngoài chỉ xuất hiện khi người dùng có quyền và phải
 | Phân quyền | - | Quyết định nghiệp vụ | Thực hiện phần `DUAL` kỹ thuật |
 | Sự kiện | `SCOPE` | `ALL` | - |
 | Bài viết và thông báo | `SCOPE` | `ALL` | - |
-| Dự án và thành tích | `SCOPE` | `ALL` | - |
+| Dự án và sản phẩm | `SCOPE` | `ALL` | - |
 | Tài liệu | `SCOPE` | `ALL` | Metadata `INCIDENT` |
 | Tổ chức | - | `ALL` | - |
 | Email giao dịch | `SCOPE` | `ALL` | Lỗi giao nhận `INCIDENT` |
@@ -698,8 +690,8 @@ Mỗi modal có thể đóng bằng bàn phím, giữ focus hợp lý, nêu hàn
 | Mẫu | Áp dụng | Thành phần nghiệp vụ bắt buộc |
 | --- | --- | --- |
 | Public landing | Trang chủ, giới thiệu, tuyển thành viên | Điều hướng, nội dung nổi bật, CTA đúng trạng thái, footer |
-| Public list/search | Tin tức, sự kiện, dự án, thành tích, tìm kiếm | Từ khóa/bộ lọc, phân trang, rỗng, lỗi, liên kết chi tiết |
-| Public detail | Tin tức, sự kiện, dự án, thành tích, đợt tuyển | Breadcrumb, metadata, nội dung, CTA theo trạng thái |
+| Public list/search | Tin tức, sự kiện, dự án, tìm kiếm | Từ khóa/bộ lọc, phân trang, rỗng, lỗi, liên kết chi tiết |
+| Public detail | Tin tức, sự kiện, dự án, đợt tuyển | Breadcrumb, metadata, nội dung, CTA theo trạng thái |
 | Public form/lookup | Ứng tuyển, đăng ký sự kiện, tra cứu | Đồng ý dữ liệu, validation, rate limit, đang gửi, thành công và lỗi chung |
 | Authentication | Đăng nhập, kích hoạt, TOTP | Một nhiệm vụ chính, hỗ trợ tài khoản, không có điều hướng gây xao nhãng |
 | Member dashboard | `/portal` | Thông báo, sự kiện, đăng ký và tài liệu đúng quyền; lỗi từng khối |
@@ -759,7 +751,7 @@ Mỗi wireframe phải thể hiện khi áp dụng:
 | Nhóm | Chính sách |
 | --- | --- |
 | Trang chủ, giới thiệu, danh sách công khai | `index, follow`, canonical tự tham chiếu |
-| Chi tiết tin tức, sự kiện, dự án, thành tích công khai | `index, follow` khi đang công khai; có title, description và Open Graph |
+| Chi tiết tin tức, sự kiện, dự án công khai | `index, follow` khi đang công khai; có title, description và Open Graph |
 | Đợt tuyển công khai | `index, follow` khi được Ban Chủ nhiệm công bố; trạng thái đóng được thể hiện rõ |
 | Tìm kiếm công khai | `noindex, follow`; canonical không chứa từ khóa |
 | Biểu mẫu ứng tuyển/đăng ký và trang tra cứu | `noindex, nofollow` |
@@ -785,8 +777,8 @@ Mỗi wireframe phải thể hiện khi áp dụng:
 
 | User Flow | Trang/bề mặt chính | Kết quả điều hướng |
 | --- | --- | --- |
-| `FLOW-01` | `PAGE-PUB-01` đến `PAGE-PUB-03`, `PAGE-PUB-05`, `PAGE-PUB-09`, `PAGE-PUB-11`, `PAGE-PUB-13`, `LINK-EXT-01` | Đến đúng nhóm nội dung hoặc UMTOJ |
-| `FLOW-02` | `PAGE-PUB-03` đến `PAGE-PUB-12`, `PAGE-PUB-17` | Danh sách, kết quả và chi tiết công khai |
+| `FLOW-01` | `PAGE-PUB-01` đến `PAGE-PUB-03`, `PAGE-PUB-05`, `PAGE-PUB-09`, `PAGE-PUB-13`, `LINK-EXT-01` | Đến đúng nhóm nội dung hoặc UMTOJ |
+| `FLOW-02` | `PAGE-PUB-03` đến `PAGE-PUB-10`, `PAGE-PUB-17` | Danh sách, kết quả và chi tiết công khai |
 | `FLOW-03` | `PAGE-PUB-13`, `PAGE-PUB-14`, `PAGE-PUB-15` | Hiểu đợt tuyển và bắt đầu ứng tuyển |
 | `FLOW-04` | `PAGE-PUB-15`, `STATE-01` | Hồ sơ được tạo và mã hiển thị một lần |
 | `FLOW-05` | `PAGE-PUB-16`, `STATE-07` | Xem trạng thái hoặc rút hồ sơ |
@@ -802,7 +794,7 @@ Mỗi wireframe phải thể hiện khi áp dụng:
 | `FLOW-15` | `PAGE-MGT-EVT-01` đến `PAGE-MGT-EVT-04`, `STATE-07`, `STATE-09` | Tạo, chỉnh sửa, công bố, hủy hoặc lưu trữ sự kiện |
 | `FLOW-16` | `PAGE-MGT-EVT-05`, `PAGE-MGT-EVT-06`, `PAGE-MEM-06`, `STATE-06` | Xuất danh sách và ghi lịch sử điểm danh |
 | `FLOW-17` | `PAGE-MGT-CMS-01` đến `PAGE-MGT-CMS-04`, `PAGE-PUB-03`, `PAGE-PUB-04`, `PAGE-MEM-02`, `PAGE-MEM-03` | Nội dung xuất hiện đúng phạm vi |
-| `FLOW-18` | `PAGE-MGT-PRT-01` đến `PAGE-MGT-PRT-08`, `PAGE-PUB-09` đến `PAGE-PUB-12` | Hồ sơ giới thiệu được lưu hoặc công bố |
+| `FLOW-18` | `PAGE-MGT-PRT-01` đến `PAGE-MGT-PRT-04`, `PAGE-PUB-09`, `PAGE-PUB-10` | Hồ sơ giới thiệu được lưu hoặc công bố |
 | `FLOW-19` | `PAGE-MEM-07`, `PAGE-MEM-08`, `PAGE-MGT-DOC-01` đến `PAGE-MGT-DOC-04`, `STATE-05`, `STATE-07` | Tài liệu được quản lý và tải đúng quyền |
 | `FLOW-20` | `PAGE-MEM-17`, `PAGE-MGT-MEM-06`, `PAGE-MGT-MEM-07`, `STATE-07`, `STATE-14` | Vai trò/phạm vi được xem, gán hoặc thu hồi |
 | `FLOW-21` | `PAGE-MGT-AUD-01`, `PAGE-MGT-AUD-02` | Audit log được tra cứu ở chế độ chỉ đọc |
@@ -828,7 +820,7 @@ Mỗi mã từ `FLOW-01` đến `FLOW-29` xuất hiện đúng một dòng trong
 | `MEM-01` đến `MEM-12` | `PAGE-MEM-01`, `PAGE-MEM-06`, `PAGE-MEM-09` đến `PAGE-MEM-12`, `PAGE-MEM-17`, `PAGE-MGT-MEM-01` đến `PAGE-MGT-MEM-03` |
 | `EVT-01` đến `EVT-14` | `PAGE-PUB-05` đến `PAGE-PUB-08`, `PAGE-MEM-04` đến `PAGE-MEM-06`, `PAGE-MGT-EVT-01` đến `PAGE-MGT-EVT-06`, `STATE-02` |
 | `CMS-01` đến `CMS-06` | `PAGE-PUB-03`, `PAGE-PUB-04`, `PAGE-MEM-02`, `PAGE-MEM-03`, `PAGE-MGT-CMS-01` đến `PAGE-MGT-CMS-04` |
-| `PRT-01` đến `PRT-04` | `PAGE-PUB-09` đến `PAGE-PUB-12`, `PAGE-MGT-PRT-01` đến `PAGE-MGT-PRT-08` |
+| `PRT-01`, `PRT-03`, `PRT-04` | `PAGE-PUB-09`, `PAGE-PUB-10`, `PAGE-MGT-PRT-01` đến `PAGE-MGT-PRT-04` |
 | `DOC-01` đến `DOC-09` | `PAGE-MEM-07`, `PAGE-MEM-08`, `PAGE-MGT-DOC-01` đến `PAGE-MGT-DOC-04`, `STATE-05` |
 | `ADM-01` đến `ADM-08` | Toàn bộ `PAGE-MGT-*`, `PAGE-MGT-AUD-01`, `PAGE-MGT-AUD-02`, route guard mục 11 |
 | `ORG-01` đến `ORG-06` | `PAGE-PUB-01`, `PAGE-PUB-02`, `PAGE-MGT-ORG-01` đến `PAGE-MGT-ORG-05` |

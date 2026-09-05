@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.1 |
+| Phiên bản | 1.2 |
 | Trạng thái | Bản thảo để APC rà soát |
-| Ngày cập nhật | 27/08/2026 |
+| Ngày cập nhật | 05/09/2026 |
 | Sản phẩm | APC Portal |
 | Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC) |
 | Tài liệu liên quan | [Project Charter](./00-project-charter.md), [Product Requirements Document](./01-prd.md) |
@@ -15,6 +15,7 @@
 | --- | --- |
 | 1.0 | Baseline hoàn chỉnh về vai trò, phạm vi, ma trận quyền, TOTP, audit và vận hành |
 | 1.1 | Làm rõ các quyền production chưa áp dụng trong giai đoạn local |
+| 1.2 | Bỏ hạng mục Thành tích khỏi ma trận nội dung (mục 8.4) và danh mục hành động nhạy cảm |
 
 > Các vai trò và ngưỡng tài khoản đặc quyền là đề xuất cần APC phê duyệt trước khi triển khai xác thực. Giai đoạn local hiện chưa tạo tài khoản thật hay cấp quyền production.
 
@@ -196,7 +197,7 @@ Mỗi cột vai trò thể hiện quyền mà chính vai trò đó đóng góp. 
 | Điểm danh | - | - | - | SCOPE | ALL | - |
 | Sửa kết quả điểm danh đã chốt | - | - | - | - | ALL | - |
 
-### 8.4. Tin tức, thông báo, dự án và thành tích
+### 8.4. Tin tức, thông báo và dự án
 
 | Hành động | PUBLIC | APPLICANT | MEMBER | DEPARTMENT_MANAGER | BOARD | TECH_ADMIN |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -207,10 +208,10 @@ Mỗi cột vai trò thể hiện quyền mà chính vai trò đó đóng góp. 
 | Công bố thông báo nội bộ trong ban | - | - | - | SCOPE | ALL | - |
 | Công bố nội dung công khai | - | - | - | - | ALL | - |
 | Gỡ hoặc lưu trữ nội dung công khai | - | - | - | - | ALL | - |
-| Tạo và sửa thông tin dự án/thành tích | - | - | - | SCOPE | ALL | - |
-| Công bố dự án/thành tích | - | - | - | - | ALL | - |
+| Tạo và sửa thông tin dự án/sản phẩm | - | - | - | SCOPE | ALL | - |
+| Công bố dự án/sản phẩm | - | - | - | - | ALL | - |
 
-Thông tin dự án và thành tích chỉ phục vụ giới thiệu, không bao gồm quản lý công việc hoặc tiến độ dự án.
+Thông tin dự án và sản phẩm chỉ phục vụ giới thiệu, không bao gồm quản lý công việc hoặc tiến độ dự án.
 
 ### 8.5. Tài liệu nội bộ
 
@@ -340,7 +341,7 @@ sequenceDiagram
 | Tuyển thành viên | Tạo đợt, thay đổi trạng thái hồ sơ, chốt kết quả, chuyển thành thành viên, xuất dữ liệu |
 | Thành viên | Import/export, thay đổi ban, vai trò, trạng thái và dữ liệu quản lý |
 | Sự kiện | Công bố, hủy, xuất danh sách, điểm danh và sửa điểm danh đã chốt |
-| Nội dung | Công bố, gỡ, lưu trữ bài viết, dự án và thành tích |
+| Nội dung | Công bố, gỡ, lưu trữ bài viết và dự án |
 | Tài liệu | Tải lên, thay thế, phân quyền, lưu trữ và xóa vật lý |
 | Tổ chức | Thay đổi thông tin APC, cơ cấu Ban chuyên môn và nội dung nổi bật |
 | Email | Gửi lại email, đổi cấu hình nhà cung cấp và thay đổi trạng thái giao nhận thủ công |

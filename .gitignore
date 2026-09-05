@@ -11,4 +11,5 @@ coverage/
 .claude/
 .pnpm-store/
 apps/api/data/
+apps/api/src/db/generated/
 apps/web/.vite/

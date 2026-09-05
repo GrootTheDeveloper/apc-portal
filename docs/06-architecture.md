@@ -14,6 +14,8 @@ APC Portal dùng một monorepo TypeScript. Giao diện là React/Vite; backend 
 
 Đây là modular monolith ở giai đoạn đầu. Chưa có bằng chứng cần microservice, Redis, queue hoặc Kubernetes.
 
+ORM và công cụ migration: **Prisma** (chốt 05/09/2026 cho BE1). Schema + migration nằm trong `apps/api` (xem PR BE1); migration bằng `prisma migrate`.
+
 ```mermaid
 flowchart LR
     Browser[Trình duyệt] --> Web[React + Vite]
@@ -71,7 +73,6 @@ Nguồn thiết kế gốc `design-reference/homepage/index.html` chỉ được
 
 ## 5. Quyết định còn mở
 
-- ORM và công cụ migration sau khi chốt mô hình dữ liệu đầu tiên.
 - Cơ chế session/token sau khi hoàn tất threat model đăng nhập.
 - Nhà cung cấp email và object storage thật.
 - Topology, VPS/cloud, reverse proxy, TLS, backup và monitoring production.
