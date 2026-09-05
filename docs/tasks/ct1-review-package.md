@@ -1,5 +1,7 @@
 # CT1 — Gói trình APC duyệt trang chủ
 
+> ✅ **Đã duyệt 05/09/2026** (trưởng dự án). Trang chủ redesign được phép công bố. Việc cấp số liệu CLB thật + danh sách đối tác chuyển sang **CT2**.
+
 Chuẩn bị sẵn để trình BCN/APC. Người chủ trì: CLB/APC.
 
 ## Cách demo
