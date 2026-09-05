@@ -1,0 +1,32 @@
+APC Portal Team Kickoff deck source notes
+
+Primary project sources
+- APC-Portal-Ke-hoach-cong-viec.xlsx: Bảng nhiệm vụ, Chi tiết Sprint 1, Thành viên, Quy ước & Điều phối.
+- docs/00-project-charter.md: project problem, vision, MVP scope, governance.
+- docs/01-prd.md: product areas, user groups, business flows and acceptance direction.
+- docs/05-feature-catalog.md: current P0/P1/P2 implementation framing.
+- docs/06-architecture.md: monorepo TypeScript architecture and open decisions.
+- docs/07-local-development.md: local commands and service ports.
+- README.md and CONTRIBUTING.md: current repository state and contribution workflow.
+- DESIGN.md: APC brand palette, typography and visual principles.
+- package.json, apps/web/package.json, apps/api/package.json: installed runtime and library stack.
+- compose.yaml and scripts/compose.mjs: local Docker Compose services and commands.
+- .github/workflows/ci.yml: CI quality gate.
+- apps/web/src/pages/home/HomePage.tsx: React component example.
+- apps/api/src/app.ts: Fastify route example.
+- apps/api/src/config.ts: Zod validation example.
+
+User-provided sources
+- Team member names and role codes supplied in conversation on 2026-09-02.
+
+Visual assets
+- imgs/hero-isometric-concept.png: repository-provided APC team illustration.
+- design-reference/homepage/preview-full.png: repository-provided full homepage reference screenshot.
+- apps/web/public/assets/home/02-apc-students-working.png: repository-provided team photo.
+- apps/web/public/assets/home/00-apc-logo.png: repository-provided logo.
+- outputs/apc-portal-kickoff/assets/apc-portal-tech-illustration.png: generated with built-in image_gen for this deck. Prompt: isometric 3D Vietnamese university programming team, browser to API server to database, file storage, email and Docker-like containers; warm ivory, orange-red, blue and gold; no text or logo.
+
+Scope notes
+- Code snippets labeled as current are shortened from repository source without changing their meaning.
+- The news end-to-end code is explicitly labeled as a future illustration, not current implementation.
+- Docker rationale is an inference from current project configuration: web/api run through pnpm, while compose.yaml contains only PostgreSQL, Mailpit and MinIO.

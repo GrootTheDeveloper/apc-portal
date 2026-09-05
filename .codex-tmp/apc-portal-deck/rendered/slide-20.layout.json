@@ -1,0 +1,843 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/ycab5o",
+    "id": "ycab5o",
+    "slide": 20,
+    "layoutId": "c957ccc8-9004-460f-ae56-0809d499dcf4",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "4fad3e5d-b205-4c79-acc9-12a306e6b78b",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FAF8F5",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "c957ccc8-9004-460f-ae56-0809d499dcf4",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "4fad3e5d-b205-4c79-acc9-12a306e6b78b",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "4fad3e5d-b205-4c79-acc9-12a306e6b78b",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3qtgn6lc",
+      "id": "1",
+      "bbox": [
+        72,
+        36,
+        650,
+        22
+      ],
+      "geometry": "rect",
+      "text": "APC PORTAL • TEAM KICKOFF",
+      "textPreview": "APC PORTAL • TEAM KICKOFF",
+      "resolvedFontSize": 12,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 12,
+        "typeface": "+mn-lt",
+        "color": "#C23B22",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "APC PORTAL • TEAM KICKOFF"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "APC PORTAL • TEAM KICKOFF",
+          "resolvedTextStyle": {
+            "fontSize": 12,
+            "color": "#C23B22",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "APC PORTAL • TEAM KICKOFF",
+              "fontSize": 12,
+              "color": "#C23B22",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4r2xgbmx",
+      "id": "2",
+      "name": "slide-title",
+      "bbox": [
+        72,
+        68,
+        1136,
+        56
+      ],
+      "geometry": "rect",
+      "text": "Vì sao local chỉ đưa hạ tầng vào Docker?",
+      "textPreview": "Vì sao local chỉ đưa hạ tầng vào Docker?",
+      "resolvedFontSize": 36,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 36,
+        "typeface": "+mn-lt",
+        "color": "#201A16",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Vì sao local chỉ đưa hạ tầng vào Docker?"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Vì sao local chỉ đưa hạ tầng vào Docker?",
+          "resolvedTextStyle": {
+            "fontSize": 36,
+            "color": "#201A16",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Vì sao local chỉ đưa hạ tầng vào Docker?",
+              "fontSize": 36,
+              "color": "#201A16",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/psbypg32",
+      "id": "3",
+      "bbox": [
+        72,
+        132,
+        1136,
+        0
+      ],
+      "geometry": "line",
+      "lineColor": "#E7DFD5",
+      "lineWidth": 1
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qtkfil4n",
+      "id": "4",
+      "bbox": [
+        72,
+        684,
+        200,
+        18
+      ],
+      "geometry": "rect",
+      "text": "APC PORTAL",
+      "textPreview": "APC PORTAL",
+      "resolvedFontSize": 11,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 11,
+        "typeface": "+mn-lt",
+        "color": "#6B5F55",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "APC PORTAL"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "APC PORTAL",
+          "resolvedTextStyle": {
+            "fontSize": 11,
+            "color": "#6B5F55",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "APC PORTAL",
+              "fontSize": 11,
+              "color": "#6B5F55",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rutgrql8",
+      "id": "5",
+      "bbox": [
+        1168,
+        684,
+        40,
+        18
+      ],
+      "geometry": "rect",
+      "text": "20",
+      "textPreview": "20",
+      "resolvedFontSize": 11,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 11,
+        "typeface": "+mn-lt",
+        "color": "#6B5F55",
+        "bold": true,
+        "alignment": "right",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "20"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "20",
+          "resolvedTextStyle": {
+            "fontSize": 11,
+            "color": "#6B5F55",
+            "bold": true,
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "20",
+              "fontSize": 11,
+              "color": "#6B5F55",
+              "bold": true,
+              "alignment": "right"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cfmxkvmt",
+      "id": "6",
+      "bbox": [
+        72,
+        178,
+        520,
+        398
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#DCEAFB",
+      "lineColor": "#DCEAFB",
+      "lineWidth": 1
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dgvyt03e",
+      "id": "7",
+      "bbox": [
+        104,
+        206,
+        430,
+        26
+      ],
+      "geometry": "rect",
+      "text": "ĐƯA VÀO DOCKER",
+      "textPreview": "ĐƯA VÀO DOCKER",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#1568C9",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "ĐƯA VÀO DOCKER"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "ĐƯA VÀO DOCKER",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#1568C9",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "ĐƯA VÀO DOCKER",
+              "fontSize": 14,
+              "color": "#1568C9",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/eh4fml4z",
+      "id": "8",
+      "bbox": [
+        104,
+        264,
+        420,
+        156
+      ],
+      "geometry": "rect",
+      "text": "PostgreSQL\nMailpit\nMinIO",
+      "textPreview": "PostgreSQL | Mailpit | MinIO",
+      "resolvedFontSize": 34,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 34,
+        "typeface": "+mn-lt",
+        "color": "#0B3E7A",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "PostgreSQL"
+          },
+          {
+            "index": 2,
+            "text": "Mailpit"
+          },
+          {
+            "index": 3,
+            "text": "MinIO"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "PostgreSQL",
+          "resolvedTextStyle": {
+            "fontSize": 34,
+            "color": "#0B3E7A",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "PostgreSQL",
+              "fontSize": 34,
+              "color": "#0B3E7A",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Mailpit",
+          "resolvedTextStyle": {
+            "fontSize": 34,
+            "color": "#0B3E7A",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Mailpit",
+              "fontSize": 34,
+              "color": "#0B3E7A",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "MinIO",
+          "resolvedTextStyle": {
+            "fontSize": 34,
+            "color": "#0B3E7A",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "MinIO",
+              "fontSize": 34,
+              "color": "#0B3E7A",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zidgvqlk",
+      "id": "9",
+      "bbox": [
+        104,
+        456,
+        420,
+        82
+      ],
+      "geometry": "rect",
+      "text": "Cần đúng phiên bản, port, volume và health check trên mọi máy.",
+      "textPreview": "Cần đúng phiên bản, port, volume và health check trên mọi máy.",
+      "resolvedFontSize": 21,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 21,
+        "typeface": "+mn-lt",
+        "color": "#6B5F55",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Cần đúng phiên bản, port, volume và health"
+          },
+          {
+            "index": 2,
+            "text": "check trên mọi máy."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Cần đúng phiên bản, port, volume và health check trên mọi máy.",
+          "resolvedTextStyle": {
+            "fontSize": 21,
+            "color": "#6B5F55",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Cần đúng phiên bản, port, volume và health check trên mọi máy.",
+              "fontSize": 21,
+              "color": "#6B5F55",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jutg7m1c",
+      "id": "10",
+      "bbox": [
+        632,
+        178,
+        576,
+        398
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#F6DED6",
+      "lineColor": "#F6DED6",
+      "lineWidth": 1
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/itkfehkr",
+      "id": "11",
+      "bbox": [
+        664,
+        206,
+        450,
+        26
+      ],
+      "geometry": "rect",
+      "text": "CHẠY TRỰC TIẾP",
+      "textPreview": "CHẠY TRỰC TIẾP",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#C23B22",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "CHẠY TRỰC TIẾP"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "CHẠY TRỰC TIẾP",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#C23B22",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "CHẠY TRỰC TIẾP",
+              "fontSize": 14,
+              "color": "#C23B22",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5wvy9cji",
+      "id": "12",
+      "bbox": [
+        664,
+        264,
+        470,
+        112
+      ],
+      "geometry": "rect",
+      "text": "React/Vite\nFastify",
+      "textPreview": "React/Vite | Fastify",
+      "resolvedFontSize": 34,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 34,
+        "typeface": "+mn-lt",
+        "color": "#841F11",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "React/Vite"
+          },
+          {
+            "index": 2,
+            "text": "Fastify"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "React/Vite",
+          "resolvedTextStyle": {
+            "fontSize": 34,
+            "color": "#841F11",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "React/Vite",
+              "fontSize": 34,
+              "color": "#841F11",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Fastify",
+          "resolvedTextStyle": {
+            "fontSize": 34,
+            "color": "#841F11",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Fastify",
+              "fontSize": 34,
+              "color": "#841F11",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4v2xg72x",
+      "id": "13",
+      "bbox": [
+        664,
+        414,
+        480,
+        124
+      ],
+      "geometry": "rect",
+      "text": "Thay đổi liên tục; chạy ngoài container giúp hot reload, debug và đọc log đơn giản hơn.",
+      "textPreview": "Thay đổi liên tục; chạy ngoài container giúp hot reload, debug và đọc log đơn giản hơn.",
+      "resolvedFontSize": 21,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 21,
+        "typeface": "+mn-lt",
+        "color": "#6B5F55",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Thay đổi liên tục; chạy ngoài container giúp hot"
+          },
+          {
+            "index": 2,
+            "text": "reload, debug và đọc log đơn giản hơn."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Thay đổi liên tục; chạy ngoài container giúp hot reload, debug và đọc log đơn giản hơn.",
+          "resolvedTextStyle": {
+            "fontSize": 21,
+            "color": "#6B5F55",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Thay đổi liên tục; chạy ngoài container giúp hot reload, debug và đọc log đơn giản hơn.",
+              "fontSize": 21,
+              "color": "#6B5F55",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

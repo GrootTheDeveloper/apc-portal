@@ -1,0 +1,296 @@
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ENUMS
+
+enum Role {
+  MEMBER
+  DEPARTMENT_MANAGER
+  BOARD
+  TECH_ADMIN
+}
+
+enum AccountStatus {
+  PENDING_ACTIVATION
+  ACTIVE
+  LOCKED
+  INACTIVE
+}
+
+// Trạng thái thành viên CLB — độc lập với AccountStatus (MEM-11)
+enum MemberStatus {
+  ACTIVE
+  PAUSED
+  LEFT
+}
+
+enum DepartmentStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+// Dùng chung cho News/Event/Project — chưa cần tách riêng vì
+// chưa có task nào yêu cầu vòng đời trạng thái khác nhau giữa 3 loại này.
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// Phạm vi bài viết / thông báo (CMS-05)
+enum ContentScope {
+  PUBLIC
+  INTERNAL
+}
+
+enum ApplicationStatus {
+  NEW
+  REVIEWING
+  INTERVIEW
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum RecruitmentRoundStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+// MODELS — TỔ CHỨC
+
+model Department {
+  id          String           @id @default(cuid())
+  name        String
+  code        String           @unique
+  description String?
+  status      DepartmentStatus @default(ACTIVE)
+  order       Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  users        User[]
+  posts        Post[]
+  events       Event[]
+  projects     Project[]
+  applications MembershipApplication[]
+
+  @@map("departments")
+}
+
+// MODELS — NGƯỜI DÙNG
+// Gộp thẳng thông tin hồ sơ (MEM-02) vào User thay vì tách MemberProfile riêng,
+// vì chưa có task nào (BE1–BE10, FE1–FE9) sửa các field này qua UI ngoài BE2 seed
+// và BE10 (tạo user khi convert từ application). Tách bảng khi có task
+// "trang hồ sơ cá nhân" / "quản lý thành viên" thật sự.
+model User {
+  id           String        @id @default(cuid())
+  username     String        @unique // Tên đăng nhập (AUTH-02, BR-02)
+  email        String        @unique
+  passwordHash String                // Băm Argon2id (SEC-02)
+  role         Role          @default(MEMBER)
+  status       AccountStatus @default(PENDING_ACTIVATION)
+
+  mustChangePassword         Boolean   @default(true)
+  isTemporaryPassword        Boolean   @default(false)
+  temporaryPasswordExpiresAt DateTime? // BR-04: hết hạn sau 72h
+  passwordChangedAt          DateTime?
+
+  failedLoginAttempts Int       @default(0) // SEC-05
+  lockoutUntil        DateTime?
+
+  // Hồ sơ (MEM-02) — gộp trực tiếp
+  fullName      String
+  studentId     String? @unique // Optional: tài khoản bootstrap đầu tiên có thể chưa gắn MSSV
+  faculty       String?
+  major         String?
+  cohort        String?
+  avatarUrl     String?
+  phoneNumber   String?
+  skills        Json?
+  interestAreas Json?
+
+  departmentId String?
+  department   Department?  @relation(fields: [departmentId], references: [id])
+  memberStatus MemberStatus @default(ACTIVE) // MEM-11, độc lập AccountStatus
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  authoredPosts  Post[] @relation("PostAuthor")
+  publishedPosts Post[] @relation("PostPublisher")
+
+  createdEvents Event[] @relation("EventCreator")
+
+  createdRounds RecruitmentRound[]      @relation("RoundCreator")
+  reviewedApps  MembershipApplication[] @relation("ReviewedBy")
+
+  createdProjects Project[] @relation("ProjectCreator")
+  convertedFromApplication MembershipApplication? @relation("ApplicationConversion")
+  @@map("users")
+}
+
+// MODELS — NỘI DUNG (CMS)
+
+model Post {
+  id           String        @id @default(cuid())
+  title        String
+  slug         String        @unique
+  summary      String
+  content      String
+  thumbnailUrl String?
+  category     String
+  scope        ContentScope  @default(PUBLIC) // CMS-05
+  status       ContentStatus @default(DRAFT)
+
+  authorId      String
+  author        User        @relation("PostAuthor", fields: [authorId], references: [id])
+  departmentId  String?
+  department    Department? @relation(fields: [departmentId], references: [id])
+  publishedById String?
+  publishedBy   User?       @relation("PostPublisher", fields: [publishedById], references: [id])
+  publishedAt   DateTime?
+
+  metaTitle       String? // SEO-01
+  metaDescription String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("posts")
+}
+
+// MODELS — SỰ KIỆN
+//
+// Chưa có EventRegistration: BE6/FE4 chỉ yêu cầu "xem danh sách + chi tiết",
+// chưa có task đăng ký/điểm danh nào. Thêm lại (kèm guest registration,
+// EventRegistrationStatus, AttendanceStatus) khi có task đó.
+
+model Event {
+  id            String        @id @default(cuid())
+  title         String
+  slug          String        @unique
+  description   String
+  coverImageUrl String?
+  eventType     String        // Loại/chuyên mục: Workshop, Training, Contest... (BE6 DoD)
+  status        ContentStatus @default(DRAFT)
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  contactPoint String?
+
+  createdById String
+  createdBy   User   @relation("EventCreator", fields: [createdById], references: [id])
+  location    String?
+
+  startAt DateTime
+  endAt   DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("events")
+}
+
+// MODELS — DỰ ÁN
+
+model Project {
+  id           String        @id @default(cuid())
+  title        String
+  slug         String        @unique
+  description  String
+  thumbnailUrl String?
+  technologies Json?         // ["React", "Node.js", "PostgreSQL"] — BE7 DoD
+  projectUrl   String?
+  sourceUrl    String?
+  status       ContentStatus @default(DRAFT)
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  publishedAt  DateTime?
+
+  createdById String
+  createdBy   User   @relation("ProjectCreator", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("projects")
+}
+
+// MODELS — TUYỂN DỤNG
+//
+// Bản tối giản: bỏ RecruitmentQuestion (chưa có task cấu hình câu hỏi theo đợt)
+// và targetDepartmentIds. BE2 (seed) PHẢI tạo sẵn ít nhất 1 RecruitmentRound
+// để BE10 (POST /applications) có round để gắn vào.
+
+model RecruitmentRound {
+  id          String                 @id @default(cuid())
+  title       String
+  slug        String                 @unique
+  description String
+  status      RecruitmentRoundStatus @default(DRAFT)
+  opensAt     DateTime
+  closesAt    DateTime
+
+  createdById String
+  createdBy   User   @relation("RoundCreator", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applications MembershipApplication[]
+
+  @@map("recruitment_rounds")
+}
+
+model MembershipApplication {
+  id                 String           @id @default(cuid())
+  profileCode        String           @unique // Mã tra cứu công khai CSPRNG (REC-06)
+  recruitmentRoundId String
+  recruitmentRound   RecruitmentRound @relation(fields: [recruitmentRoundId], references: [id])
+
+  applicantName       String
+  applicantEmail      String
+  studentId           String
+  faculty             String?
+  major               String?
+  cohort              String?
+  desiredDepartmentId String?
+  desiredDepartment   Department? @relation(fields: [desiredDepartmentId], references: [id])
+  skills              String?
+  experience          String?
+  answers             Json?       // Câu trả lời tự do, chưa có RecruitmentQuestion để tham chiếu
+
+  status       ApplicationStatus @default(NEW)
+  internalNote String? // BR-07: không hiển thị cho ứng viên
+  reviewedById String?
+  reviewedBy   User?             @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt   DateTime?
+
+  // Chuyển thành viên khi ACCEPTED — trỏ thẳng vào User vì đã gộp profile
+  convertedUserId String? @unique
+  convertedUser   User?   @relation("ApplicationConversion", fields: [convertedUserId], references: [id])
+  convertedAt     DateTime?
+
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([recruitmentRoundId, applicantEmail]) // REC-05
+  @@unique([recruitmentRoundId, studentId])      // BR-05
+  @@index([applicantEmail])
+  @@index([recruitmentRoundId])
+  @@map("membership_applications")
+}

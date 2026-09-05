@@ -1,0 +1,853 @@
+{"kind":"deck","id":"pr/yquuuo","name":"Deck"}
+{"kind":"layout","layoutId":"4fad3e5d-b205-4c79-acc9-12a306e6b78b","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"c957ccc8-9004-460f-ae56-0809d499dcf4","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/2zatms","slide":1,"title":"APC PORTAL","textShapes":4}
+{"kind":"shape","id":"sh/yd8ja54z","slide":1,"bbox":[585,0,160,720]}
+{"kind":"textbox","id":"sh/83algfm1","slide":1,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,184,500,42]}
+{"kind":"textbox","id":"sh/t4j29knm","slide":1,"text":"Chúng ta xây gì\nvà mỗi người làm gì?","textPreview":"Chúng ta xây gì | và mỗi người làm gì?","textChars":36,"textLines":2,"bbox":[72,236,530,170]}
+{"kind":"textbox","id":"sh/6h83e54v","slide":1,"text":"Team kickoff • 01/09–15/10/2026","textPreview":"Team kickoff • 01/09–15/10/2026","textChars":31,"textLines":1,"bbox":[72,432,500,38]}
+{"kind":"textbox","id":"sh/72hk7a5g","slide":1,"text":"Hiểu dự án  •  Hiểu công nghệ  •  Bắt đầu đúng việc","textPreview":"Hiểu dự án  •  Hiểu công nghệ  •  Bắt đầu đúng việc","textChars":51,"textLines":1,"bbox":[72,610,520,34]}
+{"kind":"image","id":"im/wbepcjyl","slide":1,"name":"","alt":"Minh họa đội ngũ APC cùng phát triển sản phẩm","bbox":[640,0,640,720]}
+{"kind":"image","id":"im/a9w7a9gf","slide":1,"name":"","alt":"Logo APC","bbox":[72,52,190,72]}
+{"kind":"notes","id":"nt/2zatms","slide":1,"text":"Mở đầu ngắn: hôm nay chúng ta không học toàn bộ kỹ thuật. Mục tiêu là để mỗi người hiểu sản phẩm, phần mình sở hữu và cách phối hợp với người tiếp theo.\n\n[Sources]\n- imgs/hero-isometric-concept.png\n- apps/web/public/assets/home/00-apc-logo.png"}
+{"kind":"slide","id":"sl/54ujyn","slide":2,"title":"APC PORTAL • TEAM KICKOFF","textShapes":12}
+{"kind":"textbox","id":"sh/hs7yhon6","slide":2,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/upwzmt4v","slide":2,"name":"slide-title","text":"Buổi kickoff cần chốt bốn việc","textPreview":"Buổi kickoff cần chốt bốn việc","textChars":30,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/vq5gfy5g","slide":2,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/4fyhs3mx","slide":2,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/5g7yl8ni","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"textbox","id":"sh/itgzqt4r","slide":2,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[84,174,92,70]}
+{"kind":"textbox","id":"sh/jupgjy5c","slide":2,"text":"Dự án giải quyết vấn đề gì?","textPreview":"Dự án giải quyết vấn đề gì?","textChars":27,"textLines":1,"bbox":[200,174,890,70]}
+{"kind":"shape","id":"sh/kjuxgjmt","slide":2,"bbox":[200,252,920,0]}
+{"kind":"textbox","id":"sh/lk3y94ne","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[84,282,92,70]}
+{"kind":"textbox","id":"sh/tg36l47m","slide":2,"text":"Sản phẩm cuối cùng hoạt động ra sao?","textPreview":"Sản phẩm cuối cùng hoạt động ra sao?","textChars":36,"textLines":1,"bbox":[200,282,890,70]}
+{"kind":"shape","id":"sh/8fu5czq1","slide":2,"bbox":[200,360,920,0]}
+{"kind":"textbox","id":"sh/7elojupg","slide":2,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[84,390,92,70]}
+{"kind":"textbox","id":"sh/6tcnap8v","slide":2,"text":"Tôi sở hữu đầu ra nào?","textPreview":"Tôi sở hữu đầu ra nào?","textChars":22,"textLines":1,"bbox":[200,390,890,70]}
+{"kind":"shape","id":"sh/hkn6p47i","slide":2,"bbox":[200,468,920,0]}
+{"kind":"textbox","id":"sh/gje5gzqx","slide":2,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[84,498,92,70]}
+{"kind":"textbox","id":"sh/vi5onupc","slide":2,"text":"Tôi bắt đầu từ đâu và phối hợp với ai?","textPreview":"Tôi bắt đầu từ đâu và phối hợp với ai?","textChars":38,"textLines":1,"bbox":[200,498,890,70]}
+{"kind":"shape","id":"sh/uhcne98r","slide":2,"bbox":[200,576,920,0]}
+{"kind":"notes","id":"nt/54ujyn","slide":2,"text":"Nói rõ kỳ vọng của buổi kickoff. Nếu cuối buổi ai vẫn chưa biết mình làm gì hoặc phải hỏi ai, deck chưa hoàn thành nhiệm vụ.\n\n[Sources]\n- Nội dung do nhóm dự án cung cấp."}
+{"kind":"slide","id":"sl/cbt02x","slide":3,"title":"APC PORTAL • TEAM KICKOFF","textShapes":13}
+{"kind":"textbox","id":"sh/z21krq1k","slide":3,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/03u1kvi5","slide":3,"name":"slide-title","text":"Thông tin APC đang nằm ở quá nhiều nơi","textPreview":"Thông tin APC đang nằm ở quá nhiều nơi","textChars":38,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/l432t0jq","slide":3,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/m5cjm50b","slide":3,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/n6lkva1w","slide":3,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"textbox","id":"sh/9832xkjm","slide":3,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[84,192,30,30]}
+{"kind":"textbox","id":"sh/298ja1k7","slide":3,"text":"Fanpage và email","textPreview":"Fanpage và email","textChars":16,"textLines":1,"bbox":[130,190,514,66]}
+{"kind":"textbox","id":"sh/3ah0j61c","slide":3,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[84,264,30,30]}
+{"kind":"textbox","id":"sh/vidcn2h8","slide":3,"text":"Google Forms","textPreview":"Google Forms","textChars":12,"textLines":1,"bbox":[130,262,514,66]}
+{"kind":"textbox","id":"sh/uh4vex0n","slide":3,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[84,336,30,30]}
+{"kind":"textbox","id":"sh/hkvupsze","slide":3,"text":"UMTOJ","textPreview":"UMTOJ","textChars":5,"textLines":1,"bbox":[130,334,514,66]}
+{"kind":"textbox","id":"sh/gjmdg7it","slide":3,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[84,408,30,30]}
+{"kind":"textbox","id":"sh/7etcjihc","slide":3,"text":"Website từng sự kiện","textPreview":"Website từng sự kiện","textChars":20,"textLines":1,"bbox":[130,406,514,66]}
+{"kind":"shape","id":"sh/6dkbad0r","slide":3,"bbox":[84,500,560,96]}
+{"kind":"textbox","id":"sh/tgbulsz2","slide":3,"text":"APC Portal trở thành nguồn thông tin chính thức và tập trung.","textPreview":"APC Portal trở thành nguồn thông tin chính thức và tập trung.","textChars":61,"textLines":1,"bbox":[112,516,504,66]}
+{"kind":"image","id":"im/5sfu5sze","slide":3,"name":"","geometry":"roundRect","alt":"Sinh viên cùng làm việc","bbox":[730,166,478,430]}
+{"kind":"notes","id":"nt/cbt02x","slide":3,"text":"Portal không thay thế fanpage hay email. Những kênh đó vẫn dùng để phân phối thông tin, nhưng sẽ dẫn người dùng về một nguồn dữ liệu chính thức.\n\n[Sources]\n- docs/00-project-charter.md — Bối cảnh và tuyên bố vấn đề\n- apps/web/public/assets/home/02-apc-students-working.png"}
+{"kind":"slide","id":"sl/786921","slide":4,"title":"APC PORTAL • TEAM KICKOFF","textShapes":13}
+{"kind":"textbox","id":"sh/ruhc3ulg","slide":4,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/svqtwzm1","slide":4,"name":"slide-title","text":"APC Portal có ba khu vực sử dụng","textPreview":"APC Portal có ba khu vực sử dụng","textChars":32,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/twzu5k3m","slide":4,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/ex8byp4r","slide":4,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/fy1c7ulc","slide":4,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/gzad0zmx","slide":4,"bbox":[72,176,332,402]}
+{"kind":"textbox","id":"sh/10ju943i","slide":4,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[100,202,90,54]}
+{"kind":"textbox","id":"sh/21sv2943","slide":4,"text":"Công khai","textPreview":"Công khai","textChars":9,"textLines":1,"bbox":[100,278,270,48]}
+{"kind":"textbox","id":"sh/321cbelo","slide":4,"text":"Giới thiệu APC\nTin tức • Sự kiện\nDự án • Gia nhập","textPreview":"Giới thiệu APC | Tin tức • Sự kiện | Dự án • Gia nhập","textChars":49,"textLines":3,"bbox":[100,348,270,150]}
+{"kind":"shape","id":"sh/rel0vy9k","slide":4,"bbox":[450,176,332,402]}
+{"kind":"textbox","id":"sh/qdcj2dsz","slide":4,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[478,202,90,54]}
+{"kind":"textbox","id":"sh/dgn2x8ra","slide":4,"text":"Thành viên","textPreview":"Thành viên","textChars":10,"textLines":1,"bbox":[478,278,270,48]}
+{"kind":"textbox","id":"sh/cfu143a5","slide":4,"text":"Hồ sơ cá nhân\nLịch hoạt động\nTài liệu nội bộ","textPreview":"Hồ sơ cá nhân | Lịch hoạt động | Tài liệu nội bộ","textChars":44,"textLines":3,"bbox":[478,348,270,150]}
+{"kind":"shape","id":"sh/3ql0ry98","slide":4,"bbox":[828,176,332,402]}
+{"kind":"textbox","id":"sh/2pcjytsn","slide":4,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[856,202,90,54]}
+{"kind":"textbox","id":"sh/pc3it8re","slide":4,"text":"Quản trị","textPreview":"Quản trị","textChars":8,"textLines":1,"bbox":[856,278,270,48]}
+{"kind":"textbox","id":"sh/4bu103at","slide":4,"text":"Nội dung • Tuyển\nThành viên • Quyền\nTheo dõi vận hành","textPreview":"Nội dung • Tuyển | Thành viên • Quyền | Theo dõi vận hành","textChars":53,"textLines":3,"bbox":[856,348,270,150]}
+{"kind":"notes","id":"nt/786921","slide":4,"text":"Giải thích đây là ba khu vực của cùng một sản phẩm, không phải ba dự án độc lập. Giai đoạn hiện tại chưa làm hết mọi chức năng của khu vực thành viên.\n\n[Sources]\n- docs/01-prd.md — Tổng quan sản phẩm"}
+{"kind":"slide","id":"sl/ye70lh","slide":5,"title":"APC PORTAL • TEAM KICKOFF","textShapes":20}
+{"kind":"textbox","id":"sh/1cnmd8ju","slide":5,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/epwnidk3","slide":5,"name":"slide-title","text":"Tài liệu mô tả full MVP; kế hoạch 15/10 chỉ làm một phần","textPreview":"Tài liệu mô tả full MVP; kế hoạch 15/10 chỉ làm một phần","textChars":56,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/fq54bi1o","slide":5,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/sne5g32d","slide":5,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/tonm98jy","slide":5,"text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/6lcnetk7","slide":5,"bbox":[72,174,520,414]}
+{"kind":"textbox","id":"sh/rml47y1s","slide":5,"text":"TẦM NHÌN MVP","textPreview":"TẦM NHÌN MVP","textChars":12,"textLines":1,"bbox":[104,202,440,30]}
+{"kind":"textbox","id":"sh/cjy5s7ih","slide":5,"text":"Portal công khai + thành viên + quản trị","textPreview":"Portal công khai + thành viên + quản trị","textChars":40,"textLines":1,"bbox":[104,250,430,78]}
+{"kind":"textbox","id":"sh/dk76lsj2","slide":5,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[104,362,30,30]}
+{"kind":"textbox","id":"sh/d0juxgju","slide":5,"text":"Hồ sơ và tài liệu thành viên","textPreview":"Hồ sơ và tài liệu thành viên","textChars":28,"textLines":1,"bbox":[150,360,394,52]}
+{"kind":"textbox","id":"sh/czadobi9","slide":5,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[104,420,30,30]}
+{"kind":"textbox","id":"sh/re1cv61o","slide":5,"text":"Đăng ký, điểm danh sự kiện","textPreview":"Đăng ký, điểm danh sự kiện","textChars":26,"textLines":1,"bbox":[150,418,394,52]}
+{"kind":"textbox","id":"sh/qdsvml03","slide":5,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[104,478,30,30]}
+{"kind":"textbox","id":"sh/pcjutgji","slide":5,"text":"Audit và vòng đời dữ liệu","textPreview":"Audit và vòng đời dữ liệu","textChars":25,"textLines":1,"bbox":[150,476,394,52]}
+{"kind":"shape","id":"sh/4bqdkbid","slide":5,"bbox":[632,174,576,414]}
+{"kind":"textbox","id":"sh/3ahcr61s","slide":5,"text":"01/09–15/10/2026","textPreview":"01/09–15/10/2026","textChars":16,"textLines":1,"bbox":[664,202,480,30]}
+{"kind":"textbox","id":"sh/298bi107","slide":5,"text":"Nền tảng + nội dung công khai + tuyển","textPreview":"Nền tảng + nội dung công khai + tuyển","textChars":37,"textLines":1,"bbox":[664,250,486,78]}
+{"kind":"textbox","id":"sh/983e50z2","slide":5,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[664,362,30,30]}
+{"kind":"textbox","id":"sh/o7udwvih","slide":5,"text":"Database, auth và phân quyền","textPreview":"Database, auth và phân quyền","textChars":28,"textLines":1,"bbox":[710,360,430,52]}
+{"kind":"textbox","id":"sh/8b2xsjqt","slide":5,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[664,420,30,30]}
+{"kind":"textbox","id":"sh/tcbe147y","slide":5,"text":"Tin tức, sự kiện, dự án","textPreview":"Tin tức, sự kiện, dự án","textChars":23,"textLines":1,"bbox":[710,418,430,52]}
+{"kind":"textbox","id":"sh/69kfq98n","slide":5,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[664,478,30,30]}
+{"kind":"textbox","id":"sh/7atwzep8","slide":5,"text":"Form gia nhập và CMS admin","textPreview":"Form gia nhập và CMS admin","textChars":26,"textLines":1,"bbox":[710,476,430,52]}
+{"kind":"notes","id":"nt/ye70lh","slide":5,"text":"Nhấn mạnh: PRD là tầm nhìn sản phẩm, còn Excel là phạm vi thực thi hiện tại. Không được hiểu rằng nhóm phải hoàn thành toàn bộ 29 user flow trước 15/10.\n\n[Sources]\n- docs/01-prd.md\n- docs/05-feature-catalog.md\n- APC-Portal-Ke-hoach-cong-viec.xlsx — Bảng nhiệm vụ"}
+{"kind":"slide","id":"sl/497k82","slide":6,"title":"APC PORTAL • TEAM KICKOFF","textShapes":15}
+{"kind":"textbox","id":"sh/76lwvep0","slide":6,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/87ud4jql","slide":6,"name":"slide-title","text":"Chúng ta không bắt đầu từ số 0","textPreview":"Chúng ta không bắt đầu từ số 0","textChars":30,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/983exo7q","slide":6,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/yhsvy983","slide":6,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/zi1wre9o","slide":6,"text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"textbox","id":"sh/lkjeto7u","slide":6,"text":"ĐÃ CÓ","textPreview":"ĐÃ CÓ","textChars":5,"textLines":1,"bbox":[730,176,190,28]}
+{"kind":"textbox","id":"sh/ad8vup87","slide":6,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[730,218,30,30]}
+{"kind":"textbox","id":"sh/be1wnu9s","slide":6,"text":"Trang chủ React","textPreview":"Trang chủ React","textChars":15,"textLines":1,"bbox":[776,216,394,50]}
+{"kind":"textbox","id":"sh/nalcvex8","slide":6,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[730,274,30,30]}
+{"kind":"textbox","id":"sh/m9cb29wn","slide":6,"text":"Fastify /health","textPreview":"Fastify /health","textChars":15,"textLines":1,"bbox":[776,272,394,50]}
+{"kind":"textbox","id":"sh/9cnuxofe","slide":6,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[730,330,30,30]}
+{"kind":"textbox","id":"sh/8but4jet","slide":6,"text":"PostgreSQL • Mailpit • MinIO","textPreview":"PostgreSQL • Mailpit • MinIO","textChars":28,"textLines":1,"bbox":[776,328,394,50]}
+{"kind":"textbox","id":"sh/ve5czex4","slide":6,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[730,386,30,30]}
+{"kind":"textbox","id":"sh/adwb69wj","slide":6,"text":"Lint • test • build cơ bản","textPreview":"Lint • test • build cơ bản","textChars":26,"textLines":1,"bbox":[776,384,394,50]}
+{"kind":"textbox","id":"sh/xgnu1ofa","slide":6,"text":"CẦN XÂY","textPreview":"CẦN XÂY","textChars":7,"textLines":1,"bbox":[730,462,190,28]}
+{"kind":"textbox","id":"sh/wfet8jep","slide":6,"text":"Database nghiệp vụ, đăng nhập, API nội dung, CMS và quy trình gia nhập.","textPreview":"Database nghiệp vụ, đăng nhập, API nội dung, CMS và quy trình gia nhập.","textChars":71,"textLines":1,"bbox":[730,502,430,88]}
+{"kind":"image","id":"im/dcj2xo36","slide":6,"name":"","geometry":"roundRect","alt":"Ảnh chụp trang chủ APC Portal","bbox":[72,166,598,430]}
+{"kind":"notes","id":"nt/497k82","slide":6,"text":"Cho cả đội cảm giác dự án đã có nền. Trang chủ và môi trường local đã sẵn; phần việc còn lại là biến giao diện tĩnh thành sản phẩm có dữ liệu và nghiệp vụ.\n\n[Sources]\n- README.md — Trạng thái hiện tại\n- design-reference/homepage/preview-full.png\n- docs/06-architecture.md"}
+{"kind":"slide","id":"sl/w6l6s7","slide":7,"title":"APC PORTAL • TEAM KICKOFF","textShapes":12}
+{"kind":"textbox","id":"sh/hof2h8ne","slide":7,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/ul43md43","slide":7,"name":"slide-title","text":"Repository được tổ chức theo monorepo TypeScript","textPreview":"Repository được tổ chức theo monorepo TypeScript","textChars":48,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/vmdkfi58","slide":7,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/4r6lsnm5","slide":7,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/5sfmlsnq","slide":7,"text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/ipo3qd4z","slide":7,"bbox":[72,174,610,390]}
+{"kind":"textbox","id":"sh/jqxkji5k","slide":7,"text":"CẤU TRÚC HIỆN TẠI","textPreview":"CẤU TRÚC HIỆN TẠI","textChars":17,"textLines":1,"bbox":[94,190,566,20]}
+{"kind":"textbox","id":"sh/sfqlw7m1","slide":7,"text":"apc-web-portal/\n├─ apps/web        React + Vite\n├─ apps/api        Fastify API\n├─ packages/       Phần dùng chung khi thật sự cần\n├─ docs/           Yêu cầu và luồng nghiệp vụ\n├─ design-reference/\n└─ compose.yaml    Hạ tầng local","textPreview":"apc-web-portal/ | ├─ apps/web        React + Vite | ├─ apps/api        Fastify API | ├─ packages/       Phần dùng chung khi thật sự cần |...","textChars":229,"textLines":7,"bbox":[94,220,566,332]}
+{"kind":"textbox","id":"sh/dgzmpsnm","slide":7,"text":"apps/web","textPreview":"apps/web","textChars":8,"textLines":1,"bbox":[748,188,170,34]}
+{"kind":"textbox","id":"sh/1kjmhwn2","slide":7,"text":"Trang, component, hook và giao tiếp API phía trình duyệt.","textPreview":"Trang, component, hook và giao tiếp API phía trình duyệt.","textChars":57,"textLines":1,"bbox":[748,230,410,64]}
+{"kind":"textbox","id":"sh/gjalormh","slide":7,"text":"apps/api","textPreview":"apps/api","textChars":8,"textLines":1,"bbox":[748,322,170,34]}
+{"kind":"textbox","id":"sh/fi14fm5w","slide":7,"text":"HTTP API, auth, phân quyền và nghiệp vụ phía server.","textPreview":"HTTP API, auth, phân quyền và nghiệp vụ phía server.","textChars":52,"textLines":1,"bbox":[748,364,410,64]}
+{"kind":"textbox","id":"sh/ehs3mh4b","slide":7,"text":"docs","textPreview":"docs","textChars":4,"textLines":1,"bbox":[748,456,170,34]}
+{"kind":"textbox","id":"sh/po3mlwny","slide":7,"text":"Nguồn chuẩn để biết chức năng phải chạy thế nào và ai có quyền gì.","textPreview":"Nguồn chuẩn để biết chức năng phải chạy thế nào và ai có quyền gì.","textChars":66,"textLines":1,"bbox":[748,498,410,74]}
+{"kind":"notes","id":"nt/w6l6s7","slide":7,"text":"Giới thiệu nhanh vị trí code. Thành viên Frontend làm chủ yếu trong apps/web, Backend trong apps/api; trước khi làm nghiệp vụ phải đọc tài liệu liên quan trong docs.\n\n[Sources]\n- docs/06-architecture.md — Ranh giới mã nguồn\n- pnpm-workspace.yaml"}
+{"kind":"slide","id":"sl/86p1xt","slide":8,"title":"APC PORTAL • TEAM KICKOFF","textShapes":19}
+{"kind":"textbox","id":"sh/dwfudczq","slide":8,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/qt4b2xgf","slide":8,"name":"slide-title","text":"Đến 15/10, sản phẩm phải demo được một vòng hoàn chỉnh","textPreview":"Đến 15/10, sản phẩm phải demo được một vòng hoàn chỉnh","textChars":54,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/ruxcb2hk","slide":8,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/4rmt07y9","slide":8,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/psvu9czu","slide":8,"text":"08","textPreview":"08","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"textbox","id":"sh/254byxg3","slide":8,"text":"Một sinh viên có thể…","textPreview":"Một sinh viên có thể…","textChars":21,"textLines":1,"bbox":[72,186,470,46]}
+{"kind":"textbox","id":"sh/36dc72ho","slide":8,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[72,256,30,30]}
+{"kind":"textbox","id":"sh/onqdcryd","slide":8,"text":"Xem tin tức, sự kiện và dự án","textPreview":"Xem tin tức, sự kiện và dự án","textChars":29,"textLines":1,"bbox":[118,254,454,62]}
+{"kind":"textbox","id":"sh/9ozulwzy","slide":8,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[72,324,30,30]}
+{"kind":"textbox","id":"sh/hsne9wf6","slide":8,"text":"Gửi đơn Gia nhập APC","textPreview":"Gửi đơn Gia nhập APC","textChars":20,"textLines":1,"bbox":[118,322,454,62]}
+{"kind":"textbox","id":"sh/wrud0ryl","slide":8,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[72,392,30,30]}
+{"kind":"textbox","id":"sh/vqlw76h0","slide":8,"text":"Nhận xác nhận và kết quả","textPreview":"Nhận xác nhận và kết quả","textChars":24,"textLines":1,"bbox":[118,390,454,62]}
+{"kind":"textbox","id":"sh/upcvy1gf","slide":8,"text":"Một người quản trị có thể…","textPreview":"Một người quản trị có thể…","textChars":26,"textLines":1,"bbox":[672,186,510,46]}
+{"kind":"textbox","id":"sh/9o3e5wza","slide":8,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[672,256,30,30]}
+{"kind":"textbox","id":"sh/8nudwryp","slide":8,"text":"Đăng nhập đúng quyền","textPreview":"Đăng nhập đúng quyền","textChars":20,"textLines":1,"bbox":[718,254,464,62]}
+{"kind":"textbox","id":"sh/72lw3mh4","slide":8,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[672,324,30,30]}
+{"kind":"textbox","id":"sh/m1cvuhgj","slide":8,"text":"Quản lý nội dung và hồ sơ","textPreview":"Quản lý nội dung và hồ sơ","textChars":25,"textLines":1,"bbox":[718,322,464,62]}
+{"kind":"textbox","id":"sh/tk7ehgfe","slide":8,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[672,392,30,30]}
+{"kind":"textbox","id":"sh/sjex8vyt","slide":8,"text":"Upload file, gửi email, kiểm tra staging","textPreview":"Upload file, gửi email, kiểm tra staging","textChars":40,"textLines":1,"bbox":[718,390,464,62]}
+{"kind":"shape","id":"sh/cf6p0jah","slide":8,"bbox":[72,520,1112,78]}
+{"kind":"textbox","id":"sh/dgfqtorm","slide":8,"text":"Điều kiện demo: dữ liệu lưu thật • quyền đúng • upload/email chạy • CI xanh • có staging","textPreview":"Điều kiện demo: dữ liệu lưu thật • quyền đúng • upload/email chạy • CI xanh • có staging","textChars":88,"textLines":1,"bbox":[104,536,1048,46]}
+{"kind":"notes","id":"nt/86p1xt","slide":8,"text":"Chuyển từ danh sách chức năng sang kết quả người dùng. Đây là cách để mọi thành viên hiểu vì sao phần việc của mình tồn tại.\n\n[Sources]\n- APC-Portal-Ke-hoach-cong-viec.xlsx — Bảng nhiệm vụ\n- docs/08-handover.md"}
+{"kind":"slide","id":"sl/nyt4jy","slide":9,"title":"PHẦN 02","textShapes":5}
+{"kind":"shape","id":"sh/x4j61czm","slide":9,"bbox":[400,0,210,720]}
+{"kind":"textbox","id":"sh/w3a587y1","slide":9,"text":"PHẦN 02","textPreview":"PHẦN 02","textChars":7,"textLines":1,"bbox":[72,122,240,24]}
+{"kind":"textbox","id":"sh/j6lo32hc","slide":9,"text":"Công nghệ đang dùng\ntrong APC Portal","textPreview":"Công nghệ đang dùng | trong APC Portal","textChars":36,"textLines":2,"bbox":[72,174,440,150]}
+{"kind":"textbox","id":"sh/i5snahg7","slide":9,"text":"Stack hiện có, phần sẽ bổ sung và cách các thành phần nối với nhau.","textPreview":"Stack hiện có, phần sẽ bổ sung và cách các thành phần nối với nhau.","textChars":67,"textLines":1,"bbox":[72,360,420,110]}
+{"kind":"textbox","id":"sh/5s365czi","slide":9,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/k7u5c7yx","slide":9,"text":"09","textPreview":"09","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"image","id":"im/vixsry1k","slide":9,"name":"","alt":"Minh họa luồng từ giao diện đến máy chủ, dữ liệu và dịch vụ hỗ trợ","bbox":[470,0,810,720]}
+{"kind":"notes","id":"nt/nyt4jy","slide":9,"text":"Dùng slide này làm điểm nghỉ. Phần tiếp theo không cố dạy công nghệ từ đầu, mà giải thích mỗi công nghệ nằm ở đâu trong luồng sản phẩm.\n\n[Sources]\n- outputs/apc-portal-kickoff/assets/apc-portal-tech-illustration.png — generated with built-in image_gen"}
+{"kind":"slide","id":"sl/xb1rk7","slide":10,"title":"APC PORTAL • TEAM KICKOFF","textShapes":17}
+{"kind":"textbox","id":"sh/vidg3elo","slide":10,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/wjmhcjm9","slide":10,"name":"slide-title","text":"Luồng xử lý cơ bản của một request","textPreview":"Luồng xử lý cơ bản của một request","textChars":34,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/xkvy5o3e","slide":10,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/il4zet4z","slide":10,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/jmdg7ylk","slide":10,"text":"10","textPreview":"10","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/kn6hgjm5","slide":10,"bbox":[72,240,220,174]}
+{"kind":"textbox","id":"sh/5ofy9o3q","slide":10,"text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[96,264,42,42]}
+{"kind":"textbox","id":"sh/ypkf2p4v","slide":10,"text":"Người dùng","textPreview":"Người dùng","textChars":10,"textLines":1,"bbox":[96,322,172,38]}
+{"kind":"textbox","id":"sh/zqtgvu5g","slide":10,"text":"Bấm nút","textPreview":"Bấm nút","textChars":7,"textLines":1,"bbox":[96,366,172,28]}
+{"kind":"shape","id":"sh/vqhkv2lk","slide":10,"bbox":[340,240,220,174]}
+{"kind":"textbox","id":"sh/up832xkz","slide":10,"text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[364,264,42,42]}
+{"kind":"textbox","id":"sh/hsz2xc3q","slide":10,"text":"Frontend","textPreview":"Frontend","textChars":8,"textLines":1,"bbox":[364,322,172,38]}
+{"kind":"textbox","id":"sh/wrql4725","slide":10,"text":"React + Vite","textPreview":"React + Vite","textChars":12,"textLines":1,"bbox":[364,366,172,28]}
+{"kind":"shape","id":"sh/7mxkrilo","slide":10,"bbox":[608,240,220,174]}
+{"kind":"textbox","id":"sh/mlo3ydk3","slide":10,"text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[632,264,42,42]}
+{"kind":"textbox","id":"sh/9of2ts3e","slide":10,"text":"Backend","textPreview":"Backend","textChars":7,"textLines":1,"bbox":[632,322,172,38]}
+{"kind":"textbox","id":"sh/8n6l0n2t","slide":10,"text":"Fastify + Zod","textPreview":"Fastify + Zod","textChars":13,"textLines":1,"bbox":[632,366,172,28]}
+{"kind":"shape","id":"sh/zyxknilc","slide":10,"bbox":[876,240,220,174]}
+{"kind":"textbox","id":"sh/yx43udkr","slide":10,"text":"4","textPreview":"4","textChars":1,"textLines":1,"bbox":[900,264,42,42]}
+{"kind":"textbox","id":"sh/2t436doj","slide":10,"text":"Dữ liệu","textPreview":"Dữ liệu","textChars":7,"textLines":1,"bbox":[900,322,172,38]}
+{"kind":"textbox","id":"sh/nud4zi54","slide":10,"text":"PostgreSQL","textPreview":"PostgreSQL","textChars":10,"textLines":1,"bbox":[900,366,172,28]}
+{"kind":"shape","id":"sh/ovml8n6p","slide":10,"bbox":[292,327,48,0]}
+{"kind":"shape","id":"sh/pwvm18na","slide":10,"bbox":[560,327,48,0]}
+{"kind":"shape","id":"sh/ax43adov","slide":10,"bbox":[828,327,48,0]}
+{"kind":"textbox","id":"sh/byx43i5g","slide":10,"text":"File → MinIO     •     Email thử nghiệm → Mailpit","textPreview":"File → MinIO     •     Email thử nghiệm → Mailpit","textChars":49,"textLines":1,"bbox":[340,468,600,46]}
+{"kind":"notes","id":"nt/xb1rk7","slide":10,"text":"Đi từ trái sang phải. Frontend nhận thao tác, Backend kiểm tra quy tắc, Database lưu dữ liệu. File và email là hai nhánh hỗ trợ.\n\n[Sources]\n- docs/06-architecture.md"}
+{"kind":"slide","id":"sl/y53b3z","slide":11,"title":"APC PORTAL • TEAM KICKOFF","textShapes":23}
+{"kind":"textbox","id":"sh/s3e5wzix","slide":11,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/r254nu1c","slide":11,"name":"slide-title","text":"Stack đang được cài trong repository","textPreview":"Stack đang được cài trong repository","textChars":36,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/61wnup0r","slide":11,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/1s76t4ze","slide":11,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/gry50zit","slide":11,"text":"11","textPreview":"11","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"textbox","id":"sh/f6poru1o","slide":11,"text":"Runtime","textPreview":"Runtime","textChars":7,"textLines":1,"bbox":[82,164,180,44]}
+{"kind":"textbox","id":"sh/e5gnyp03","slide":11,"text":"Node.js 22","textPreview":"Node.js 22","textChars":10,"textLines":1,"bbox":[270,164,380,44]}
+{"kind":"textbox","id":"sh/pwr6xozq","slide":11,"text":"Chạy API, scripts và tooling","textPreview":"Chạy API, scripts và tooling","textChars":28,"textLines":1,"bbox":[690,164,470,44]}
+{"kind":"shape","id":"sh/ovy54ji5","slide":11,"bbox":[270,216,890,0]}
+{"kind":"textbox","id":"sh/mh0b2psn","slide":11,"text":"Workspace","textPreview":"Workspace","textChars":9,"textLines":1,"bbox":[82,236,180,44]}
+{"kind":"textbox","id":"sh/7i9svu98","slide":11,"text":"pnpm 10","textPreview":"pnpm 10","textChars":7,"textLines":1,"bbox":[270,236,380,44]}
+{"kind":"textbox","id":"sh/8jit4fat","slide":11,"text":"Quản lý web + api trong cùng repo","textPreview":"Quản lý web + api trong cùng repo","textChars":33,"textLines":1,"bbox":[690,236,470,44]}
+{"kind":"shape","id":"sh/9kraxkre","slide":11,"bbox":[270,288,890,0]}
+{"kind":"textbox","id":"sh/ul0b6psz","slide":11,"text":"Frontend","textPreview":"Frontend","textChars":8,"textLines":1,"bbox":[82,308,180,44]}
+{"kind":"textbox","id":"sh/vm9czu9k","slide":11,"text":"React 19 • Vite 8 • Tailwind 3","textPreview":"React 19 • Vite 8 • Tailwind 3","textChars":30,"textLines":1,"bbox":[270,308,380,44]}
+{"kind":"textbox","id":"sh/wnit8za5","slide":11,"text":"Giao diện và build web","textPreview":"Giao diện và build web","textChars":22,"textLines":1,"bbox":[690,308,470,44]}
+{"kind":"shape","id":"sh/hobu14ra","slide":11,"bbox":[270,360,890,0]}
+{"kind":"textbox","id":"sh/apgbu5sv","slide":11,"text":"Backend","textPreview":"Backend","textChars":7,"textLines":1,"bbox":[82,380,180,44]}
+{"kind":"textbox","id":"sh/bqpsna90","slide":11,"text":"Fastify 5 • Zod 4 • pg 8","textPreview":"Fastify 5 • Zod 4 • pg 8","textChars":24,"textLines":1,"bbox":[270,380,380,44]}
+{"kind":"textbox","id":"sh/ful8v6ps","slide":11,"text":"API, validate và kết nối PostgreSQL","textPreview":"API, validate và kết nối PostgreSQL","textChars":35,"textLines":1,"bbox":[690,380,470,44]}
+{"kind":"shape","id":"sh/etc7218n","slide":11,"bbox":[270,432,890,0]}
+{"kind":"textbox","id":"sh/1w3qxw7y","slide":11,"text":"Quality","textPreview":"Quality","textChars":7,"textLines":1,"bbox":[82,452,180,44]}
+{"kind":"textbox","id":"sh/0vup4bqd","slide":11,"text":"Vitest 4 • Oxlint","textPreview":"Vitest 4 • Oxlint","textChars":17,"textLines":1,"bbox":[270,452,380,44]}
+{"kind":"textbox","id":"sh/rql8rmpw","slide":11,"text":"Test và lint tự động","textPreview":"Test và lint tự động","textChars":20,"textLines":1,"bbox":[690,452,470,44]}
+{"kind":"shape","id":"sh/qpc7yh8b","slide":11,"bbox":[270,504,890,0]}
+{"kind":"textbox","id":"sh/ds3qtw72","slide":11,"text":"Local infra","textPreview":"Local infra","textChars":11,"textLines":1,"bbox":[82,524,180,44]}
+{"kind":"textbox","id":"sh/srup0rqh","slide":11,"text":"PostgreSQL 17 • Mailpit • MinIO","textPreview":"PostgreSQL 17 • Mailpit • MinIO","textChars":31,"textLines":1,"bbox":[270,524,380,44]}
+{"kind":"textbox","id":"sh/bm583qp0","slide":11,"text":"Dữ liệu, email thử và file","textPreview":"Dữ liệu, email thử và file","textChars":26,"textLines":1,"bbox":[690,524,470,44]}
+{"kind":"shape","id":"sh/alwral8f","slide":11,"bbox":[270,576,890,0]}
+{"kind":"shape","id":"sh/8v6d8j21","slide":11,"bbox":[72,602,1136,48]}
+{"kind":"textbox","id":"sh/9wfehojm","slide":11,"text":"Chưa cài/chưa chốt: React Router, ORM (Prisma hoặc Drizzle), session/JWT và thư viện hash mật khẩu.","textPreview":"Chưa cài/chưa chốt: React Router, ORM (Prisma hoặc Drizzle), session/JWT và thư viện hash mật khẩu.","textChars":99,"textLines":1,"bbox":[94,609,1092,34]}
+{"kind":"notes","id":"nt/y53b3z","slide":11,"text":"Đây là danh sách theo package.json và compose hiện tại. Phân biệt rõ công nghệ đã cài với công nghệ nằm trong kế hoạch Sprint 1.\n\n[Sources]\n- package.json\n- apps/web/package.json\n- apps/api/package.json\n- compose.yaml"}
+{"kind":"slide","id":"sl/zbmclu","slide":12,"title":"APC PORTAL • TEAM KICKOFF","textShapes":13}
+{"kind":"textbox","id":"sh/nylkne54","slide":12,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/ozelgjmp","slide":12,"name":"slide-title","text":"Frontend: React, TypeScript, Vite và Tailwind","textPreview":"Frontend: React, TypeScript, Vite và Tailwind","textChars":45,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/90n2pona","slide":12,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/etc3a94n","slide":12,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/zulkje58","slide":12,"text":"12","textPreview":"12","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"textbox","id":"sh/0vulcjmd","slide":12,"text":"React","textPreview":"React","textChars":5,"textLines":1,"bbox":[72,180,260,42]}
+{"kind":"textbox","id":"sh/1w32l4ny","slide":12,"text":"Chia trang thành component","textPreview":"Chia trang thành component","textChars":26,"textLines":1,"bbox":[72,226,420,34]}
+{"kind":"textbox","id":"sh/q5sj6p4b","slide":12,"text":"TypeScript","textPreview":"TypeScript","textChars":10,"textLines":1,"bbox":[72,292,260,42]}
+{"kind":"textbox","id":"sh/r61kfu5w","slide":12,"text":"Giảm lỗi khi truyền dữ liệu","textPreview":"Giảm lỗi khi truyền dữ liệu","textChars":27,"textLines":1,"bbox":[72,338,420,34]}
+{"kind":"textbox","id":"sh/zqd03ih4","slide":12,"text":"Vite + Tailwind","textPreview":"Vite + Tailwind","textChars":15,"textLines":1,"bbox":[72,404,300,42]}
+{"kind":"textbox","id":"sh/y54zadgj","slide":12,"text":"Chạy nhanh và giữ giao diện nhất quán","textPreview":"Chạy nhanh và giữ giao diện nhất quán","textChars":37,"textLines":1,"bbox":[72,450,440,62]}
+{"kind":"shape","id":"sh/lsfi5sza","slide":12,"bbox":[580,174,628,392]}
+{"kind":"textbox","id":"sh/0r6hcnyp","slide":12,"text":"RÚT GỌN TỪ HomePage.tsx","textPreview":"RÚT GỌN TỪ HomePage.tsx","textChars":23,"textLines":1,"bbox":[602,190,584,20]}
+{"kind":"textbox","id":"sh/nux07ihg","slide":12,"text":"export function HomePage() {\n  return (\n    <main>\n      <HeroSection />\n      <NewsSection />\n    </main>\n  )\n}","textPreview":"export function HomePage() { |   return ( |     <main> |       <HeroSection /> |       <NewsSection /> |     </main> |   ) | }","textChars":112,"textLines":8,"bbox":[602,220,584,334]}
+{"kind":"textbox","id":"sh/mtozexgv","slide":12,"text":"Mỗi section là một phần việc có thể phát triển và kiểm tra riêng.","textPreview":"Mỗi section là một phần việc có thể phát triển và kiểm tra riêng.","textChars":65,"textLines":1,"bbox":[580,580,628,38]}
+{"kind":"notes","id":"nt/zbmclu","slide":12,"text":"Không cần giải thích JSX sâu. Chỉ chỉ ra rằng trang lớn được ghép từ phần nhỏ, nhờ vậy FE-2 hay FE-3 có thể sở hữu một nhóm màn hình.\n\n[Sources]\n- apps/web/src/pages/home/HomePage.tsx\n- apps/web/package.json"}
+{"kind":"slide","id":"sl/4d8j7f","slide":13,"title":"APC PORTAL • TEAM KICKOFF","textShapes":26}
+{"kind":"textbox","id":"sh/rqlkj6t8","slide":13,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/crulsbat","slide":13,"name":"slide-title","text":"Frontend sẽ mở rộng từ một trang chủ sang nhiều route","textPreview":"Frontend sẽ mở rộng từ một trang chủ sang nhiều route","textChars":53,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/ds32lgbe","slide":13,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/etc3ulsz","slide":13,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/zulkn6tk","slide":13,"text":"13","textPreview":"13","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"textbox","id":"sh/0velwba5","slide":13,"text":"/","textPreview":"/","textChars":1,"textLines":1,"bbox":[72,174,170,38]}
+{"kind":"textbox","id":"sh/1wn2pgba","slide":13,"text":"Trang chủ","textPreview":"Trang chủ","textChars":9,"textLines":1,"bbox":[262,174,290,38]}
+{"kind":"textbox","id":"sh/uxsjihsf","slide":13,"text":"Đã có","textPreview":"Đã có","textChars":5,"textLines":1,"bbox":[262,212,290,24]}
+{"kind":"shape","id":"sh/fy1kbmt0","slide":13,"bbox":[72,248,480,0]}
+{"kind":"textbox","id":"sh/z2dcfad0","slide":13,"text":"/tin-tuc","textPreview":"/tin-tuc","textChars":8,"textLines":1,"bbox":[72,274,170,38]}
+{"kind":"textbox","id":"sh/y14vm5cf","slide":13,"text":"Danh sách và chi tiết tin","textPreview":"Danh sách và chi tiết tin","textChars":25,"textLines":1,"bbox":[262,274,290,38]}
+{"kind":"textbox","id":"sh/l4vuhkvq","slide":13,"text":"FE-2","textPreview":"FE-2","textChars":4,"textLines":1,"bbox":[262,312,290,24]}
+{"kind":"shape","id":"sh/k3mdoful","slide":13,"bbox":[72,348,480,0]}
+{"kind":"textbox","id":"sh/bydcbqdo","slide":13,"text":"/su-kien","textPreview":"/su-kien","textChars":8,"textLines":1,"bbox":[72,374,170,38]}
+{"kind":"textbox","id":"sh/axkvilc3","slide":13,"text":"Danh sách và chi tiết sự kiện","textPreview":"Danh sách và chi tiết sự kiện","textChars":29,"textLines":1,"bbox":[262,374,290,38]}
+{"kind":"textbox","id":"sh/x0vud0vu","slide":13,"text":"FE-2","textPreview":"FE-2","textChars":4,"textLines":1,"bbox":[262,412,290,24]}
+{"kind":"shape","id":"sh/czmdkvu9","slide":13,"bbox":[72,448,480,0]}
+{"kind":"textbox","id":"sh/nutc7qds","slide":13,"text":"/du-an","textPreview":"/du-an","textChars":6,"textLines":1,"bbox":[72,474,170,38]}
+{"kind":"textbox","id":"sh/29kvelc7","slide":13,"text":"Danh sách và chi tiết dự án","textPreview":"Danh sách và chi tiết dự án","textChars":27,"textLines":1,"bbox":[262,474,290,38]}
+{"kind":"textbox","id":"sh/650vqlgz","slide":13,"text":"FE-3","textPreview":"FE-3","textChars":4,"textLines":1,"bbox":[262,512,290,24]}
+{"kind":"shape","id":"sh/r6twzqxk","slide":13,"bbox":[72,548,480,0]}
+{"kind":"textbox","id":"sh/s72dsvy5","slide":13,"text":"/gia-nhap","textPreview":"/gia-nhap","textChars":9,"textLines":1,"bbox":[650,174,170,38]}
+{"kind":"textbox","id":"sh/tsbe1gfq","slide":13,"text":"Form ứng tuyển","textPreview":"Form ứng tuyển","textChars":14,"textLines":1,"bbox":[840,174,290,38]}
+{"kind":"textbox","id":"sh/etkvulgb","slide":13,"text":"FE-3","textPreview":"FE-3","textChars":4,"textLines":1,"bbox":[840,212,290,24]}
+{"kind":"shape","id":"sh/futw3qxw","slide":13,"bbox":[650,248,480,0]}
+{"kind":"textbox","id":"sh/0v2dwve1","slide":13,"text":"/login","textPreview":"/login","textChars":6,"textLines":1,"bbox":[650,274,170,38]}
+{"kind":"textbox","id":"sh/1wbe50fm","slide":13,"text":"Đăng nhập","textPreview":"Đăng nhập","textChars":9,"textLines":1,"bbox":[840,274,290,38]}
+{"kind":"textbox","id":"sh/2xkfy5w7","slide":13,"text":"FE-1","textPreview":"FE-1","textChars":4,"textLines":1,"bbox":[840,312,290,24]}
+{"kind":"shape","id":"sh/nydw7axs","slide":13,"bbox":[650,348,480,0]}
+{"kind":"textbox","id":"sh/xsfyx4zu","slide":13,"text":"/admin","textPreview":"/admin","textChars":6,"textLines":1,"bbox":[650,374,170,38]}
+{"kind":"textbox","id":"sh/cr6hozi9","slide":13,"text":"CMS và duyệt hồ sơ","textPreview":"CMS và duyệt hồ sơ","textChars":18,"textLines":1,"bbox":[840,374,290,38]}
+{"kind":"textbox","id":"sh/bqxgvuh4","slide":13,"text":"FE-4","textPreview":"FE-4","textChars":4,"textLines":1,"bbox":[840,412,290,24]}
+{"kind":"shape","id":"sh/ap4zmp0j","slide":13,"bbox":[650,448,480,0]}
+{"kind":"shape","id":"sh/lwfy14z6","slide":13,"bbox":[650,488,506,96]}
+{"kind":"textbox","id":"sh/kv6hszyl","slide":13,"text":"FE-1 tạo router và layout trước; các trang còn lại mới có khung để tích hợp.","textPreview":"FE-1 tạo router và layout trước; các trang còn lại mới có khung để tích hợp.","textChars":76,"textLines":1,"bbox":[676,506,454,60]}
+{"kind":"notes","id":"nt/4d8j7f","slide":13,"text":"Dùng route để giải thích dependency Frontend. FE-2 và FE-3 có thể chuẩn bị UI, nhưng router/layout chung do FE-1 mở đường.\n\n[Sources]\n- APC-Portal-Ke-hoach-cong-viec.xlsx — FE1 đến FE7\n- docs/04-sitemap.md"}
+{"kind":"slide","id":"sl/ri37dh","slide":14,"title":"APC PORTAL • TEAM KICKOFF","textShapes":13}
+{"kind":"textbox","id":"sh/jelcnato","slide":14,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/kfudwfu9","slide":14,"name":"slide-title","text":"Backend: Fastify nhận request và trả JSON","textPreview":"Backend: Fastify nhận request và trả JSON","textChars":41,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/5g3upkbe","slide":14,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/apsbq5cr","slide":14,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/va1cjqtc","slide":14,"text":"14","textPreview":"14","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/wbadsvux","slide":14,"bbox":[72,174,600,360]}
+{"kind":"textbox","id":"sh/xcjul0bi","slide":14,"text":"CODE HIỆN CÓ • app.ts","textPreview":"CODE HIỆN CÓ • app.ts","textChars":21,"textLines":1,"bbox":[94,190,556,20]}
+{"kind":"textbox","id":"sh/ml8bmlcv","slide":14,"text":"const app = Fastify()\n\napp.get('/health', async () => ({\n  status: 'ok',\n  service: 'apc-api',\n}))","textPreview":"const app = Fastify() |  | app.get('/health', async () => ({ |   status: 'ok', |   service: 'apc-api', | }))","textChars":98,"textLines":6,"bbox":[94,220,556,302]}
+{"kind":"textbox","id":"sh/nmhcfqtg","slide":14,"text":"GET","textPreview":"GET","textChars":3,"textLines":1,"bbox":[730,184,110,42]}
+{"kind":"textbox","id":"sh/ri50j6xo","slide":14,"text":"Hành động đọc dữ liệu","textPreview":"Hành động đọc dữ liệu","textChars":21,"textLines":1,"bbox":[850,184,310,42]}
+{"kind":"textbox","id":"sh/6hczq1gj","slide":14,"text":"/health","textPreview":"/health","textChars":7,"textLines":1,"bbox":[730,258,180,42]}
+{"kind":"textbox","id":"sh/tknilgfu","slide":14,"text":"Địa chỉ API","textPreview":"Địa chỉ API","textChars":11,"textLines":1,"bbox":[930,258,230,42]}
+{"kind":"textbox","id":"sh/sjehsby9","slide":14,"text":"JSON","textPreview":"JSON","textChars":4,"textLines":1,"bbox":[730,332,110,42]}
+{"kind":"textbox","id":"sh/f650n6x0","slide":14,"text":"Kết quả trả về cho Frontend","textPreview":"Kết quả trả về cho Frontend","textChars":27,"textLines":1,"bbox":[850,332,310,42]}
+{"kind":"shape","id":"sh/e5wzulgf","slide":14,"bbox":[730,432,430,102]}
+{"kind":"textbox","id":"sh/18nipgf6","slide":14,"text":"Frontend có thể ẩn nút, nhưng Backend vẫn phải kiểm tra quyền.","textPreview":"Frontend có thể ẩn nút, nhưng Backend vẫn phải kiểm tra quyền.","textChars":62,"textLines":1,"bbox":[756,448,378,70]}
+{"kind":"notes","id":"nt/ri37dh","slide":14,"text":"Dùng endpoint health đang có làm ví dụ. Sau này news, events hay applications cũng là các endpoint với dữ liệu và quyền phức tạp hơn.\n\n[Sources]\n- apps/api/src/app.ts\n- apps/api/package.json"}
+{"kind":"slide","id":"sl/dwn216","slide":15,"title":"APC PORTAL • TEAM KICKOFF","textShapes":17}
+{"kind":"textbox","id":"sh/wryxk76l","slide":15,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/vq5wbm50","slide":15,"name":"slide-title","text":"Database Sprint 1 cần sáu nhóm dữ liệu nền","textPreview":"Database Sprint 1 cần sáu nhóm dữ liệu nền","textChars":42,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/upwvihof","slide":15,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/5w7ehwn2","slide":15,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/4vyxormx","slide":15,"text":"15","textPreview":"15","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/jupwfm5c","slide":15,"bbox":[72,176,332,150]}
+{"kind":"textbox","id":"sh/itgfmhor","slide":15,"text":"user","textPreview":"user","textChars":4,"textLines":1,"bbox":[96,198,284,40]}
+{"kind":"textbox","id":"sh/l0ne5sny","slide":15,"text":"Tài khoản và hồ sơ cơ bản","textPreview":"Tài khoản và hồ sơ cơ bản","textChars":25,"textLines":1,"bbox":[96,254,284,50]}
+{"kind":"shape","id":"sh/kzudcn6d","slide":15,"bbox":[450,176,332,150]}
+{"kind":"textbox","id":"sh/q5cj2doj","slide":15,"text":"role","textPreview":"role","textChars":4,"textLines":1,"bbox":[474,198,284,40]}
+{"kind":"textbox","id":"sh/b6lkby54","slide":15,"text":"Vai trò và quyền truy cập","textPreview":"Vai trò và quyền truy cập","textChars":25,"textLines":1,"bbox":[474,254,284,50]}
+{"kind":"shape","id":"sh/c7ul436p","slide":15,"bbox":[828,176,332,150]}
+{"kind":"textbox","id":"sh/d832d8na","slide":15,"text":"news","textPreview":"news","textChars":4,"textLines":1,"bbox":[852,198,284,40]}
+{"kind":"textbox","id":"sh/y9c36dof","slide":15,"text":"Tin tức và trạng thái công bố","textPreview":"Tin tức và trạng thái công bố","textChars":29,"textLines":1,"bbox":[852,254,284,50]}
+{"kind":"shape","id":"sh/zalkfi50","slide":15,"bbox":[72,366,332,150]}
+{"kind":"textbox","id":"sh/0bul8n6l","slide":15,"text":"event","textPreview":"event","textChars":5,"textLines":1,"bbox":[96,388,284,40]}
+{"kind":"textbox","id":"sh/lc32hsn6","slide":15,"text":"Ngày, địa điểm và chuyên mục","textPreview":"Ngày, địa điểm và chuyên mục","textChars":28,"textLines":1,"bbox":[96,444,284,50]}
+{"kind":"shape","id":"sh/mxw3axor","slide":15,"bbox":[450,366,332,150]}
+{"kind":"textbox","id":"sh/ny5kji5c","slide":15,"text":"project","textPreview":"project","textChars":7,"textLines":1,"bbox":[474,388,284,40]}
+{"kind":"textbox","id":"sh/j25kr2lk","slide":15,"text":"Mô tả, công nghệ và hình ảnh","textPreview":"Mô tả, công nghệ và hình ảnh","textChars":28,"textLines":1,"bbox":[474,444,284,50]}
+{"kind":"shape","id":"sh/i1wjyxkz","slide":15,"bbox":[828,366,332,150]}
+{"kind":"textbox","id":"sh/5472ts3a","slide":15,"text":"membership_application","textPreview":"membership_application","textChars":22,"textLines":1,"bbox":[852,388,284,40]}
+{"kind":"textbox","id":"sh/k3e10n2p","slide":15,"text":"Đơn gia nhập và trạng thái xử lý","textPreview":"Đơn gia nhập và trạng thái xử lý","textChars":32,"textLines":1,"bbox":[852,444,284,50]}
+{"kind":"textbox","id":"sh/ve50nil8","slide":15,"text":"ORM/migration vẫn cần chốt giữa Prisma và Drizzle trước khi BE-1 triển khai.","textPreview":"ORM/migration vẫn cần chốt giữa Prisma và Drizzle trước khi BE-1 triển khai.","textChars":76,"textLines":1,"bbox":[72,566,1136,34]}
+{"kind":"notes","id":"nt/dwn216","slide":15,"text":"Đây là schema mức khái niệm trong kế hoạch Sprint 1, chưa phải ERD cuối. BE-1 phải chốt ORM, quan hệ và migration rồi chia sẻ ERD ngắn cho nhóm.\n\n[Sources]\n- APC-Portal-Ke-hoach-cong-viec.xlsx — BE1\n- docs/01-prd.md — Mô hình dữ liệu nghiệp vụ"}
+{"kind":"slide","id":"sl/3qk0ca","slide":16,"title":"APC PORTAL • TEAM KICKOFF","textShapes":13}
+{"kind":"textbox","id":"sh/7mdc3q54","slide":16,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/8nmdwvmp","slide":16,"name":"slide-title","text":"Zod validate config và dữ liệu đầu vào","textPreview":"Zod validate config và dữ liệu đầu vào","textChars":38,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/tovu50na","slide":16,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/yxkvq14n","slide":16,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/jytcz658","slide":16,"text":"16","textPreview":"16","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/kz2dsbmt","slide":16,"bbox":[72,174,650,372]}
+{"kind":"textbox","id":"sh/l0bu1gne","slide":16,"text":"RÚT GỌN TỪ config.ts","textPreview":"RÚT GỌN TỪ config.ts","textChars":20,"textLines":1,"bbox":[94,190,606,20]}
+{"kind":"textbox","id":"sh/itov254r","slide":16,"text":"const environmentSchema = z.object({\n  API_PORT: z.coerce.number()\n    .int().positive().default(3000),\n\n  DATABASE_URL: z.string(),\n})","textPreview":"const environmentSchema = z.object({ |   API_PORT: z.coerce.number() |     .int().positive().default(3000), |  |   DATABASE_URL: z.string...","textChars":135,"textLines":6,"bbox":[94,220,606,314]}
+{"kind":"textbox","id":"sh/3uxwba5c","slide":16,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[782,212,30,30]}
+{"kind":"textbox","id":"sh/7atgzyxg","slide":16,"text":"Cổng API phải là số nguyên dương","textPreview":"Cổng API phải là số nguyên dương","textChars":32,"textLines":1,"bbox":[828,210,354,86]}
+{"kind":"textbox","id":"sh/69kf6twv","slide":16,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[782,304,30,30]}
+{"kind":"textbox","id":"sh/tcby18fm","slide":16,"text":"Thiếu giá trị thì dùng mặc định 3000","textPreview":"Thiếu giá trị thì dùng mặc định 3000","textChars":36,"textLines":1,"bbox":[828,302,354,86]}
+{"kind":"textbox","id":"sh/sb2x83e1","slide":16,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[782,396,30,30]}
+{"kind":"textbox","id":"sh/fytg3ixs","slide":16,"text":"Cấu hình sai: dừng sớm và báo lỗi rõ","textPreview":"Cấu hình sai: dừng sớm và báo lỗi rõ","textChars":36,"textLines":1,"bbox":[828,394,354,86]}
+{"kind":"shape","id":"sh/udkzadw7","slide":16,"bbox":[782,504,400,80]}
+{"kind":"textbox","id":"sh/h0by58fy","slide":16,"text":"Hiện dùng cho environment; sẽ tái dùng cho request schema.","textPreview":"Hiện dùng cho environment; sẽ tái dùng cho request schema.","textChars":58,"textLines":1,"bbox":[806,520,352,48]}
+{"kind":"notes","id":"nt/3qk0ca","slide":16,"text":"Liên hệ Zod với form và API: dữ liệu phải được kiểm tra ở ranh giới. Frontend kiểm tra để hỗ trợ người dùng; Backend kiểm tra để bảo vệ hệ thống.\n\n[Sources]\n- apps/api/src/config.ts\n- apps/api/package.json"}
+{"kind":"slide","id":"sl/ukjhrz","slide":17,"title":"APC PORTAL • TEAM KICKOFF","textShapes":13}
+{"kind":"textbox","id":"sh/w3214rqd","slide":17,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/v2t0bmps","slide":17,"name":"slide-title","text":"Đăng nhập và phân quyền là hai bước khác nhau","textPreview":"Đăng nhập và phân quyền là hai bước khác nhau","textChars":45,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/a1kz2h87","slide":17,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/90bi9crm","slide":17,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/8z2h0rq1","slide":17,"text":"17","textPreview":"17","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/nyt07m9g","slide":17,"bbox":[72,206,250,196]}
+{"kind":"textbox","id":"sh/mx0zyh8v","slide":17,"text":"1. Login","textPreview":"1. Login","textChars":8,"textLines":1,"bbox":[94,232,206,38]}
+{"kind":"textbox","id":"sh/lwri5cra","slide":17,"text":"Email/mật khẩu gửi tới POST /auth/login","textPreview":"Email/mật khẩu gửi tới POST /auth/login","textChars":39,"textLines":1,"bbox":[94,292,206,84]}
+{"kind":"shape","id":"sh/0vihw7q5","slide":17,"bbox":[366,206,250,196]}
+{"kind":"textbox","id":"sh/i1wryloj","slide":17,"text":"2. Xác thực","textPreview":"2. Xác thực","textChars":11,"textLines":1,"bbox":[388,232,206,38]}
+{"kind":"textbox","id":"sh/j25sr65o","slide":17,"text":"Verify mật khẩu đã hash; tạo session hoặc JWT","textPreview":"Verify mật khẩu đã hash; tạo session hoặc JWT","textChars":45,"textLines":1,"bbox":[388,292,206,84]}
+{"kind":"shape","id":"sh/43e90b69","slide":17,"bbox":[660,206,250,196]}
+{"kind":"textbox","id":"sh/54natgnu","slide":17,"text":"3. Nhận diện","textPreview":"3. Nhận diện","textChars":12,"textLines":1,"bbox":[682,232,206,38]}
+{"kind":"textbox","id":"sh/udcru1o7","slide":17,"text":"/auth/me trả user và vai trò hiện tại","textPreview":"/auth/me trả user và vai trò hiện tại","textChars":37,"textLines":1,"bbox":[682,292,206,84]}
+{"kind":"shape","id":"sh/velsn65s","slide":17,"bbox":[954,206,250,196]}
+{"kind":"textbox","id":"sh/wfu9wb6d","slide":17,"text":"4. Kiểm quyền","textPreview":"4. Kiểm quyền","textChars":13,"textLines":1,"bbox":[976,232,206,38]}
+{"kind":"textbox","id":"sh/hgnapgny","slide":17,"text":"Middleware cho phép hoặc trả 403","textPreview":"Middleware cho phép hoặc trả 403","textChars":32,"textLines":1,"bbox":[976,292,206,84]}
+{"kind":"shape","id":"sh/m9crq1ob","slide":17,"bbox":[322,304,44,0]}
+{"kind":"shape","id":"sh/7alsjm5w","slide":17,"bbox":[616,304,44,0]}
+{"kind":"shape","id":"sh/b2xgbyhc","slide":17,"bbox":[910,304,44,0]}
+{"kind":"shape","id":"sh/q1of2t0r","slide":17,"bbox":[72,462,1132,112]}
+{"kind":"textbox","id":"sh/d4zyd8z2","slide":17,"text":"Authentication: bạn là ai?     •     Authorization/RBAC: bạn được làm gì?","textPreview":"Authentication: bạn là ai?     •     Authorization/RBAC: bạn được làm gì?","textChars":73,"textLines":1,"bbox":[96,480,1084,72]}
+{"kind":"notes","id":"nt/ukjhrz","slide":17,"text":"Giải thích rõ auth và RBAC để FE-1, FE-4 và BE-2 dùng chung khái niệm. FE có route guard để điều hướng; API vẫn là nơi quyết định cuối cùng.\n\n[Sources]\n- APC-Portal-Ke-hoach-cong-viec.xlsx — BE3, BE4, FE2\n- docs/02-roles-permissions.md"}
+{"kind":"slide","id":"sl/51fbum","slide":18,"title":"APC PORTAL • TEAM KICKOFF","textShapes":14}
+{"kind":"textbox","id":"sh/at0vqtcn","slide":18,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/xwbelobe","slide":18,"name":"slide-title","text":"PostgreSQL, MinIO và Mailpit có ba mục đích riêng","textPreview":"PostgreSQL, MinIO và Mailpit có ba mục đích riêng","textChars":49,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/wv2ds3ut","slide":18,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/jytwnytk","slide":18,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/yxkvutcz","slide":18,"text":"18","textPreview":"18","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/l0bep8ba","slide":18,"bbox":[72,188,332,360]}
+{"kind":"textbox","id":"sh/kz2dw3up","slide":18,"text":"DB","textPreview":"DB","textChars":2,"textLines":1,"bbox":[100,216,72,72]}
+{"kind":"textbox","id":"sh/7mdwritg","slide":18,"text":"PostgreSQL","textPreview":"PostgreSQL","textChars":10,"textLines":1,"bbox":[100,312,272,44]}
+{"kind":"textbox","id":"sh/614vydcv","slide":18,"text":"User, vai trò, tin tức, sự kiện, hồ sơ","textPreview":"User, vai trò, tin tức, sự kiện, hồ sơ","textChars":38,"textLines":1,"bbox":[100,378,272,112]}
+{"kind":"shape","id":"sh/s3alkv65","slide":18,"bbox":[450,188,332,360]}
+{"kind":"textbox","id":"sh/t4jmtg7q","slide":18,"text":"FILE","textPreview":"FILE","textChars":4,"textLines":1,"bbox":[478,216,72,72]}
+{"kind":"textbox","id":"sh/61s3yloz","slide":18,"text":"MinIO","textPreview":"MinIO","textChars":5,"textLines":1,"bbox":[478,312,272,44]}
+{"kind":"textbox","id":"sh/7214rqpk","slide":18,"text":"Ảnh bài viết, ảnh dự án và tệp upload","textPreview":"Ảnh bài viết, ảnh dự án và tệp upload","textChars":37,"textLines":1,"bbox":[478,378,272,112]}
+{"kind":"shape","id":"sh/grulov61","slide":18,"bbox":[828,188,332,360]}
+{"kind":"textbox","id":"sh/hs3mx07m","slide":18,"text":"MAIL","textPreview":"MAIL","textChars":4,"textLines":1,"bbox":[856,216,72,72]}
+{"kind":"textbox","id":"sh/ups3mlob","slide":18,"text":"Mailpit","textPreview":"Mailpit","textChars":7,"textLines":1,"bbox":[856,312,272,44]}
+{"kind":"textbox","id":"sh/fql4vqpg","slide":18,"text":"Nhận email thử nghiệm trên máy local","textPreview":"Nhận email thử nghiệm trên máy local","textChars":36,"textLines":1,"bbox":[856,378,272,112]}
+{"kind":"textbox","id":"sh/4vulsf6d","slide":18,"text":"Mailpit không gửi email thật ra Internet.","textPreview":"Mailpit không gửi email thật ra Internet.","textChars":41,"textLines":1,"bbox":[72,580,1112,32]}
+{"kind":"notes","id":"nt/51fbum","slide":18,"text":"Giải thích bằng loại dữ liệu. PostgreSQL giữ dữ liệu có quan hệ, MinIO giữ file lớn, Mailpit chỉ là hộp thư thử nghiệm cho môi trường local.\n\n[Sources]\n- compose.yaml\n- docs/07-local-development.md"}
+{"kind":"slide","id":"sl/7hyjjl","slide":19,"title":"APC PORTAL • TEAM KICKOFF","textShapes":23}
+{"kind":"textbox","id":"sh/07atwjid","slide":19,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/z61snehs","slide":19,"name":"slide-title","text":"Các API chính trong kế hoạch hiện tại","textPreview":"Các API chính trong kế hoạch hiện tại","textChars":37,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/e5sbu907","slide":19,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/9c3atoza","slide":19,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/obat0jip","slide":19,"text":"19","textPreview":"19","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"textbox","id":"sh/na1sreh4","slide":19,"text":"/auth","textPreview":"/auth","textChars":5,"textLines":1,"bbox":[82,166,210,40]}
+{"kind":"textbox","id":"sh/m9sby90j","slide":19,"text":"login • logout • me","textPreview":"login • logout • me","textChars":19,"textLines":1,"bbox":[310,166,590,40]}
+{"kind":"textbox","id":"sh/pgzahkzq","slide":19,"text":"BE-2","textPreview":"BE-2","textChars":4,"textLines":1,"bbox":[996,166,140,40]}
+{"kind":"shape","id":"sh/4fq9ozi5","slide":19,"bbox":[310,216,826,0]}
+{"kind":"textbox","id":"sh/qdozi1g3","slide":19,"text":"/news","textPreview":"/news","textChars":5,"textLines":1,"bbox":[82,238,210,40]}
+{"kind":"textbox","id":"sh/rex0b6xo","slide":19,"text":"list • detail • create • update • delete","textPreview":"list • detail • create • update • delete","textChars":40,"textLines":1,"bbox":[310,238,590,40]}
+{"kind":"textbox","id":"sh/cf61kby9","slide":19,"text":"BE-3","textPreview":"BE-3","textChars":4,"textLines":1,"bbox":[996,238,140,40]}
+{"kind":"shape","id":"sh/dgzidgfu","slide":19,"bbox":[310,288,826,0]}
+{"kind":"textbox","id":"sh/eh8jmlgf","slide":19,"text":"/events","textPreview":"/events","textChars":7,"textLines":1,"bbox":[82,310,210,40]}
+{"kind":"textbox","id":"sh/zih0fqx0","slide":19,"text":"list • detail • CRUD","textPreview":"list • detail • CRUD","textChars":20,"textLines":1,"bbox":[310,310,590,40]}
+{"kind":"textbox","id":"sh/0jq1ovyl","slide":19,"text":"BE-3","textPreview":"BE-3","textChars":4,"textLines":1,"bbox":[996,310,140,40]}
+{"kind":"shape","id":"sh/lkzihgfq","slide":19,"bbox":[310,360,826,0]}
+{"kind":"textbox","id":"sh/ml8jqlgb","slide":19,"text":"/projects","textPreview":"/projects","textChars":9,"textLines":1,"bbox":[82,382,210,40]}
+{"kind":"textbox","id":"sh/nmh0jqxw","slide":19,"text":"list • detail • CRUD","textPreview":"list • detail • CRUD","textChars":20,"textLines":1,"bbox":[310,382,590,40]}
+{"kind":"textbox","id":"sh/jq107qd4","slide":19,"text":"BE-3","textPreview":"BE-3","textChars":4,"textLines":1,"bbox":[996,382,140,40]}
+{"kind":"shape","id":"sh/ipszelcj","slide":19,"bbox":[310,432,826,0]}
+{"kind":"textbox","id":"sh/5cji90va","slide":19,"text":"/upload","textPreview":"/upload","textChars":7,"textLines":1,"bbox":[82,454,210,40]}
+{"kind":"textbox","id":"sh/kbahgvup","slide":19,"text":"multipart → MinIO → URL/key","textPreview":"multipart → MinIO → URL/key","textChars":27,"textLines":1,"bbox":[310,454,590,40]}
+{"kind":"textbox","id":"sh/vmhg3qds","slide":19,"text":"BE-1","textPreview":"BE-1","textChars":4,"textLines":1,"bbox":[996,454,140,40]}
+{"kind":"shape","id":"sh/al8zalwn","slide":19,"bbox":[310,504,826,0]}
+{"kind":"textbox","id":"sh/xoji50vy","slide":19,"text":"/applications","textPreview":"/applications","textChars":13,"textLines":1,"bbox":[82,526,210,40]}
+{"kind":"textbox","id":"sh/wnahcved","slide":19,"text":"submit • list • approve • reject","textPreview":"submit • list • approve • reject","textChars":32,"textLines":1,"bbox":[310,526,590,40]}
+{"kind":"textbox","id":"sh/nihgz6dw","slide":19,"text":"BE-2","textPreview":"BE-2","textChars":4,"textLines":1,"bbox":[996,526,140,40]}
+{"kind":"shape","id":"sh/mh8z61wb","slide":19,"bbox":[310,576,826,0]}
+{"kind":"shape","id":"sh/cnmxg7u9","slide":19,"bbox":[72,612,1136,42]}
+{"kind":"textbox","id":"sh/dofe9cbu","slide":19,"text":"CRUD = Create • Read • Update • Delete. Các route ghi dữ liệu phải kiểm tra quyền ở Backend.","textPreview":"CRUD = Create • Read • Update • Delete. Các route ghi dữ liệu phải kiểm tra quyền ở Backend.","textChars":92,"textLines":1,"bbox":[90,616,1100,34]}
+{"kind":"notes","id":"nt/7hyjjl","slide":19,"text":"Đây là surface API lấy từ Excel, chưa phải hợp đồng OpenAPI cuối. BE và FE cần chốt field, trạng thái lỗi và response trước khi tích hợp.\n\n[Sources]\n- APC-Portal-Ke-hoach-cong-viec.xlsx — BE3 đến BE10"}
+{"kind":"slide","id":"sl/ycab5o","slide":20,"title":"APC PORTAL • TEAM KICKOFF","textShapes":10}
+{"kind":"textbox","id":"sh/3qtgn6lc","slide":20,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/4r2xgbmx","slide":20,"name":"slide-title","text":"Vì sao local chỉ đưa hạ tầng vào Docker?","textPreview":"Vì sao local chỉ đưa hạ tầng vào Docker?","textChars":40,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/psbypg32","slide":20,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/qtkfil4n","slide":20,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/rutgrql8","slide":20,"text":"20","textPreview":"20","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/cfmxkvmt","slide":20,"bbox":[72,178,520,398]}
+{"kind":"textbox","id":"sh/dgvyt03e","slide":20,"text":"ĐƯA VÀO DOCKER","textPreview":"ĐƯA VÀO DOCKER","textChars":14,"textLines":1,"bbox":[104,206,430,26]}
+{"kind":"textbox","id":"sh/eh4fml4z","slide":20,"text":"PostgreSQL\nMailpit\nMinIO","textPreview":"PostgreSQL | Mailpit | MinIO","textChars":24,"textLines":3,"bbox":[104,264,420,156]}
+{"kind":"textbox","id":"sh/zidgvqlk","slide":20,"text":"Cần đúng phiên bản, port, volume và health check trên mọi máy.","textPreview":"Cần đúng phiên bản, port, volume và health check trên mọi máy.","textChars":62,"textLines":1,"bbox":[104,456,420,82]}
+{"kind":"shape","id":"sh/jutg7m1c","slide":20,"bbox":[632,178,576,398]}
+{"kind":"textbox","id":"sh/itkfehkr","slide":20,"text":"CHẠY TRỰC TIẾP","textPreview":"CHẠY TRỰC TIẾP","textChars":14,"textLines":1,"bbox":[664,206,450,26]}
+{"kind":"textbox","id":"sh/5wvy9cji","slide":20,"text":"React/Vite\nFastify","textPreview":"React/Vite | Fastify","textChars":18,"textLines":2,"bbox":[664,264,470,112]}
+{"kind":"textbox","id":"sh/4v2xg72x","slide":20,"text":"Thay đổi liên tục; chạy ngoài container giúp hot reload, debug và đọc log đơn giản hơn.","textPreview":"Thay đổi liên tục; chạy ngoài container giúp hot reload, debug và đọc log đơn giản hơn.","textChars":87,"textLines":1,"bbox":[664,414,480,124]}
+{"kind":"notes","id":"nt/ycab5o","slide":20,"text":"Nói rõ Docker hoàn toàn có thể chạy web và API. Cấu hình hiện tại chọn tách code ra ngoài container để phát triển local nhanh; đây là suy luận từ cấu hình, chưa phải ADR chính thức.\n\n[Sources]\n- package.json\n- compose.yaml\n- scripts/compose.mjs\n- docs/06-architecture.md"}
+{"kind":"slide","id":"sl/q0qbe9","slide":21,"title":"APC PORTAL • TEAM KICKOFF","textShapes":13}
+{"kind":"textbox","id":"sh/ex4fitkr","slide":21,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/10vyt83i","slide":21,"name":"slide-title","text":"Cách dự án đang chạy trên máy thành viên","textPreview":"Cách dự án đang chạy trên máy thành viên","textChars":40,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/gzmxk32x","slide":21,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/32xgvylo","slide":21,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/214fmtk3","slide":21,"text":"21","textPreview":"21","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/pofyx83e","slide":21,"bbox":[72,172,1136,424]}
+{"kind":"textbox","id":"sh/on6xo329","slide":21,"text":"MÁY CỦA THÀNH VIÊN","textPreview":"MÁY CỦA THÀNH VIÊN","textChars":18,"textLines":1,"bbox":[100,190,400,24]}
+{"kind":"shape","id":"sh/j6twjel4","slide":21,"bbox":[118,248,246,118]}
+{"kind":"textbox","id":"sh/i5kfa94z","slide":21,"text":"React + Vite","textPreview":"React + Vite","textChars":12,"textLines":1,"bbox":[142,270,198,34]}
+{"kind":"textbox","id":"sh/cnup0bqt","slide":21,"text":":5173","textPreview":":5173","textChars":5,"textLines":1,"bbox":[142,314,198,26]}
+{"kind":"shape","id":"sh/xo3q9gre","slide":21,"bbox":[430,248,246,118]}
+{"kind":"textbox","id":"sh/alc7y183","slide":21,"text":"Fastify API","textPreview":"Fastify API","textChars":11,"textLines":1,"bbox":[454,270,198,34]}
+{"kind":"textbox","id":"sh/bml87698","slide":21,"text":":3000","textPreview":":3000","textChars":5,"textLines":1,"bbox":[454,314,198,26]}
+{"kind":"shape","id":"sh/krup4bq5","slide":21,"bbox":[742,218,414,304]}
+{"kind":"textbox","id":"sh/lsnqdgrq","slide":21,"text":"DOCKER COMPOSE","textPreview":"DOCKER COMPOSE","textChars":14,"textLines":1,"bbox":[770,240,350,28]}
+{"kind":"shape","id":"sh/ypc7218z","slide":21,"bbox":[774,300,156,86]}
+{"kind":"textbox","id":"sh/zql8b69k","slide":21,"text":"PostgreSQL\n:5432","textPreview":"PostgreSQL | :5432","textChars":16,"textLines":2,"bbox":[790,314,124,58]}
+{"kind":"shape","id":"sh/0vapsrql","slide":21,"bbox":[968,300,156,86]}
+{"kind":"textbox","id":"sh/1wj61wr6","slide":21,"text":"Mailpit\n:8025","textPreview":"Mailpit | :8025","textChars":13,"textLines":2,"bbox":[984,314,124,58]}
+{"kind":"shape","id":"sh/h0re9ofy","slide":21,"bbox":[870,416,156,86]}
+{"kind":"textbox","id":"sh/wfidgjyd","slide":21,"text":"MinIO\n:9000","textPreview":"MinIO | :9000","textChars":11,"textLines":2,"bbox":[886,430,124,58]}
+{"kind":"shape","id":"sh/ve9w7exs","slide":21,"bbox":[364,307,66,0]}
+{"kind":"shape","id":"sh/ud0ve9g7","slide":21,"bbox":[676,307,98,36]}
+{"kind":"shape","id":"sh/54bedofu","slide":21,"bbox":[676,307,292,36]}
+{"kind":"shape","id":"sh/432xkje9","slide":21,"bbox":[676,307,194,152]}
+{"kind":"notes","id":"nt/q0qbe9","slide":21,"text":"Đây là slide giải thích riêng về Docker. Web và API chạy bằng Node trên máy; Docker Compose chỉ giữ các dịch vụ nền. Khi lên staging/production, web và API có thể được container hóa sau.\n\n[Sources]\n- package.json\n- compose.yaml\n- docs/07-local-development.md"}
+{"kind":"slide","id":"sl/tewnzl","slide":22,"title":"APC PORTAL • TEAM KICKOFF","textShapes":13}
+{"kind":"textbox","id":"sh/qpoje5cr","slide":22,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/dsz2pkbi","slide":22,"name":"slide-title","text":"Cấu hình PostgreSQL trong Docker Compose","textPreview":"Cấu hình PostgreSQL trong Docker Compose","textChars":40,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/crq1gfux","slide":22,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/zehkruto","slide":22,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/yt8jipc3","slide":22,"text":"22","textPreview":"22","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/lgz2tkbe","slide":22,"bbox":[72,170,650,420]}
+{"kind":"textbox","id":"sh/0fq1kzut","slide":22,"text":"CODE HIỆN CÓ • compose.yaml","textPreview":"CODE HIỆN CÓ • compose.yaml","textChars":27,"textLines":1,"bbox":[94,186,606,20]}
+{"kind":"textbox","id":"sh/ni1kvutk","slide":22,"text":"services:\n  postgres:\n    image: postgres:17-alpine\n    ports:\n      - \"127.0.0.1:5432:5432\"\n    volumes:\n      - postgres_data:/var/lib/postgresql/data","textPreview":"services: |   postgres: |     image: postgres:17-alpine |     ports: |       - \"127.0.0.1:5432:5432\" |     volumes: |       - postgres_da...","textChars":152,"textLines":7,"bbox":[94,216,606,362]}
+{"kind":"textbox","id":"sh/mh8jmpsz","slide":22,"text":"image","textPreview":"image","textChars":5,"textLines":1,"bbox":[786,190,140,36]}
+{"kind":"textbox","id":"sh/8vq50n2l","slide":22,"text":"Phiên bản môi trường","textPreview":"Phiên bản môi trường","textChars":20,"textLines":1,"bbox":[942,190,230,36]}
+{"kind":"textbox","id":"sh/9wzmtsj6","slide":22,"text":"ports","textPreview":"ports","textChars":5,"textLines":1,"bbox":[786,284,140,36]}
+{"kind":"textbox","id":"sh/mt8nydkv","slide":22,"text":"Cầu nối vào container","textPreview":"Cầu nối vào container","textChars":21,"textLines":1,"bbox":[942,284,230,56]}
+{"kind":"textbox","id":"sh/7uh4ri10","slide":22,"text":"volume","textPreview":"volume","textChars":6,"textLines":1,"bbox":[786,394,140,36]}
+{"kind":"textbox","id":"sh/wza5472x","slide":22,"text":"Giữ dữ liệu khi container tắt","textPreview":"Giữ dữ liệu khi container tắt","textChars":29,"textLines":1,"bbox":[942,394,230,64]}
+{"kind":"shape","id":"sh/hkj6xcji","slide":22,"bbox":[786,500,386,90]}
+{"kind":"textbox","id":"sh/uxsn2xkr","slide":22,"text":"pnpm infra:up  →  bật hạ tầng","textPreview":"pnpm infra:up  →  bật hạ tầng","textChars":29,"textLines":1,"bbox":[810,516,338,56]}
+{"kind":"notes","id":"nt/tewnzl","slide":22,"text":"Không đọc từng ký tự YAML. Chỉ giải thích image, port và volume. Nhấn mạnh 127.0.0.1 nghĩa là dịch vụ local không mở công khai ra mạng.\n\n[Sources]\n- compose.yaml\n- package.json"}
+{"kind":"slide","id":"sl/3ffcpw","slide":23,"title":"APC PORTAL • TEAM KICKOFF","textShapes":9}
+{"kind":"textbox","id":"sh/7u9ozu9w","slide":23,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/8vipsza1","slide":23,"name":"slide-title","text":"Quy trình chạy dự án trên máy local","textPreview":"Quy trình chạy dự án trên máy local","textChars":35,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/twr614rm","slide":23,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/ux07u9s7","slide":23,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/vy9o3e9s","slide":23,"text":"23","textPreview":"23","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/gjipwjad","slide":23,"bbox":[72,174,570,340]}
+{"kind":"textbox","id":"sh/hkb65ory","slide":23,"text":"CÀI LẦN ĐẦU","textPreview":"CÀI LẦN ĐẦU","textChars":11,"textLines":1,"bbox":[94,190,526,20]}
+{"kind":"textbox","id":"sh/a1gni5s3","slide":23,"text":"corepack enable\npnpm install\nCopy-Item .env.example .env\npnpm infra:up\npnpm dev","textPreview":"corepack enable | pnpm install | Copy-Item .env.example .env | pnpm infra:up | pnpm dev","textChars":79,"textLines":5,"bbox":[94,220,526,282]}
+{"kind":"shape","id":"sh/b2porato","slide":23,"bbox":[684,174,524,340]}
+{"kind":"textbox","id":"sh/zu947qpc","slide":23,"text":"HẰNG NGÀY","textPreview":"HẰNG NGÀY","textChars":9,"textLines":1,"bbox":[706,190,480,20]}
+{"kind":"textbox","id":"sh/et0nel87","slide":23,"text":"pnpm infra:up\npnpm dev\n\n# Trước khi mở PR\npnpm check\n\n# Khi kết thúc\npnpm infra:down","textPreview":"pnpm infra:up | pnpm dev |  | # Trước khi mở PR | pnpm check |  | # Khi kết thúc | pnpm infra:down","textChars":84,"textLines":8,"bbox":[706,220,480,282]}
+{"kind":"shape","id":"sh/1wbm907i","slide":23,"bbox":[72,548,1136,66]}
+{"kind":"textbox","id":"sh/0v25gvqx","slide":23,"text":"infra:down không xóa volume. Không dùng down -v nếu chưa chủ động muốn xóa dữ liệu local.","textPreview":"infra:down không xóa volume. Không dùng down -v nếu chưa chủ động muốn xóa dữ liệu local.","textChars":89,"textLines":1,"bbox":[94,560,1092,42]}
+{"kind":"notes","id":"nt/3ffcpw","slide":23,"text":"Dừng ở các lệnh cần nhớ. URL local chi tiết nằm trong README và docs/07. Mỗi thành viên nên tự chạy quickstart trên máy mình.\n\n[Sources]\n- README.md\n- docs/07-local-development.md\n- package.json"}
+{"kind":"slide","id":"sl/zkbxsv","slide":24,"title":"APC PORTAL • TEAM KICKOFF","textShapes":21}
+{"kind":"textbox","id":"sh/udwjihsb","slide":24,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/1gn2twb2","slide":24,"name":"slide-title","text":"Bốn quyết định kỹ thuật cần chốt trước khi đi sâu","textPreview":"Bốn quyết định kỹ thuật cần chốt trước khi đi sâu","textChars":49,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/gfelkrah","slide":24,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/7alkn2t0","slide":24,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/69cjexsf","slide":24,"text":"24","textPreview":"24","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"textbox","id":"sh/tcn2pcbq","slide":24,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[84,172,70,48]}
+{"kind":"textbox","id":"sh/sbu1g7a5","slide":24,"text":"ORM/migration","textPreview":"ORM/migration","textChars":13,"textLines":1,"bbox":[180,172,250,38]}
+{"kind":"textbox","id":"sh/jmlkj2to","slide":24,"text":"Prisma hay Drizzle","textPreview":"Prisma hay Drizzle","textChars":18,"textLines":1,"bbox":[450,172,440,38]}
+{"kind":"textbox","id":"sh/ilcjaxs3","slide":24,"text":"BE-1 + Tech Lead","textPreview":"BE-1 + Tech Lead","textChars":16,"textLines":1,"bbox":[930,172,240,38]}
+{"kind":"shape","id":"sh/0rahgfy5","slide":24,"bbox":[180,234,990,0]}
+{"kind":"textbox","id":"sh/lsjypkfq","slide":24,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[84,272,70,48]}
+{"kind":"textbox","id":"sh/ypszepgz","slide":24,"text":"Phiên đăng nhập","textPreview":"Phiên đăng nhập","textChars":15,"textLines":1,"bbox":[180,272,250,38]}
+{"kind":"textbox","id":"sh/zq1gnaxk","slide":24,"text":"Session cookie hay JWT","textPreview":"Session cookie hay JWT","textChars":22,"textLines":1,"bbox":[450,272,440,38]}
+{"kind":"textbox","id":"sh/cnahcfy9","slide":24,"text":"BE-2 + FE-1","textPreview":"BE-2 + FE-1","textChars":11,"textLines":1,"bbox":[930,272,240,38]}
+{"kind":"shape","id":"sh/dojylkfu","slide":24,"bbox":[180,334,990,0]}
+{"kind":"textbox","id":"sh/ql8fa5g3","slide":24,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[84,372,70,48]}
+{"kind":"textbox","id":"sh/bmhgjaxo","slide":24,"text":"Hash mật khẩu","textPreview":"Hash mật khẩu","textChars":13,"textLines":1,"bbox":[180,372,250,38]}
+{"kind":"textbox","id":"sh/wjuhozyd","slide":24,"text":"Argon2 hay bcrypt","textPreview":"Argon2 hay bcrypt","textChars":17,"textLines":1,"bbox":[450,372,440,38]}
+{"kind":"textbox","id":"sh/xk3ix4fy","slide":24,"text":"BE-2","textPreview":"BE-2","textChars":4,"textLines":1,"bbox":[930,372,240,38]}
+{"kind":"shape","id":"sh/5gzy1472","slide":24,"bbox":[180,434,990,0]}
+{"kind":"textbox","id":"sh/4fqh8zqh","slide":24,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[84,472,70,48]}
+{"kind":"textbox","id":"sh/jehgzupw","slide":24,"text":"Staging","textPreview":"Staging","textChars":7,"textLines":1,"bbox":[180,472,250,38]}
+{"kind":"textbox","id":"sh/id8z6p8b","slide":24,"text":"VPS/cloud, domain, TLS và cách build image","textPreview":"VPS/cloud, domain, TLS và cách build image","textChars":42,"textLines":1,"bbox":[450,472,440,38]}
+{"kind":"textbox","id":"sh/hczyx476","slide":24,"text":"OP-1 + Tech Lead","textPreview":"OP-1 + Tech Lead","textChars":16,"textLines":1,"bbox":[930,472,240,38]}
+{"kind":"shape","id":"sh/wbqh4zql","slide":24,"bbox":[180,534,990,0]}
+{"kind":"shape","id":"sh/vahgvup0","slide":24,"bbox":[72,588,1136,56]}
+{"kind":"textbox","id":"sh/u9of2p8f","slide":24,"text":"Các quyết định trên cần được ghi bằng issue hoặc ADR trước khi triển khai phần liên quan.","textPreview":"Các quyết định trên cần được ghi bằng issue hoặc ADR trước khi triển khai phần liên quan.","textChars":89,"textLines":1,"bbox":[94,596,1092,40]}
+{"kind":"notes","id":"nt/zkbxsv","slide":24,"text":"Đây là các quyết định còn mở được ghi trong Architecture và kế hoạch. Chốt sớm để tránh BE và FE triển khai theo hai giả định khác nhau.\n\n[Sources]\n- docs/06-architecture.md — Quyết định còn mở\n- APC-Portal-Ke-hoach-cong-viec.xlsx"}
+{"kind":"slide","id":"sl/cswehw","slide":25,"title":"APC PORTAL • TEAM KICKOFF","textShapes":18}
+{"kind":"textbox","id":"sh/3elobyp0","slide":25,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/ofupk36l","slide":25,"name":"slide-title","text":"Mỗi PR tự chạy lint, type-check, test và build","textPreview":"Mỗi PR tự chạy lint, type-check, test và build","textChars":46,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/pg36d876","slide":25,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/eps7et8j","slide":25,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/fq1o7ep4","slide":25,"text":"25","textPreview":"25","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/grapgjqp","slide":25,"bbox":[72,174,610,390]}
+{"kind":"textbox","id":"sh/1s369o7u","slide":25,"text":"ci.yml + package.json","textPreview":"ci.yml + package.json","textChars":21,"textLines":1,"bbox":[94,190,566,20]}
+{"kind":"textbox","id":"sh/ylw7qdon","slide":25,"text":"- name: Verify repository\n  run: pnpm check\n\n\"check\": \"pnpm lint &&\n          pnpm typecheck &&\n          pnpm test &&\n          pnpm build\"","textPreview":"- name: Verify repository |   run: pnpm check |  | \"check\": \"pnpm lint && |           pnpm typecheck && |           pnpm test && |       ...","textChars":140,"textLines":7,"bbox":[94,220,566,332]}
+{"kind":"textbox","id":"sh/zm58jip8","slide":25,"text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[754,182,44,44]}
+{"kind":"textbox","id":"sh/vepwb61k","slide":25,"text":"Lint","textPreview":"Lint","textChars":4,"textLines":1,"bbox":[820,180,170,34]}
+{"kind":"textbox","id":"sh/udgv21kz","slide":25,"text":"Quy ước và lỗi code","textPreview":"Quy ước và lỗi code","textChars":19,"textLines":1,"bbox":[990,180,200,34]}
+{"kind":"shape","id":"sh/hg7edwja","slide":25,"bbox":[776,238,0,0]}
+{"kind":"textbox","id":"sh/wfyd4b2p","slide":25,"text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[754,278,44,44]}
+{"kind":"textbox","id":"sh/jipwf61g","slide":25,"text":"Type-check","textPreview":"Type-check","textChars":10,"textLines":1,"bbox":[820,276,170,34]}
+{"kind":"textbox","id":"sh/ihgv61kv","slide":25,"text":"Kiểu dữ liệu","textPreview":"Kiểu dữ liệu","textChars":12,"textLines":1,"bbox":[990,276,200,34]}
+{"kind":"shape","id":"sh/5krehgjm","slide":25,"bbox":[776,334,0,0]}
+{"kind":"textbox","id":"sh/4jyd8b21","slide":25,"text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[754,374,44,44]}
+{"kind":"textbox","id":"sh/r69wjq1c","slide":25,"text":"Test","textPreview":"Test","textChars":4,"textLines":1,"bbox":[820,372,170,34]}
+{"kind":"textbox","id":"sh/650falk7","slide":25,"text":"Hành vi quan trọng","textPreview":"Hành vi quan trọng","textChars":18,"textLines":1,"bbox":[990,372,200,34]}
+{"kind":"shape","id":"sh/21kzip4f","slide":25,"bbox":[776,430,0,0]}
+{"kind":"textbox","id":"sh/32tgbulk","slide":25,"text":"4","textPreview":"4","textChars":1,"textLines":1,"bbox":[754,470,44,44]}
+{"kind":"textbox","id":"sh/o3mhkfm5","slide":25,"text":"Build","textPreview":"Build","textChars":5,"textLines":1,"bbox":[820,468,170,34]}
+{"kind":"textbox","id":"sh/p4vydk3q","slide":25,"text":"Có thể đóng gói","textPreview":"Có thể đóng gói","textChars":15,"textLines":1,"bbox":[990,468,200,34]}
+{"kind":"notes","id":"nt/cswehw","slide":25,"text":"CI không thay thế review, nhưng giúp review tập trung vào logic thay vì lỗi cơ bản. PR đỏ thì chưa merge.\n\n[Sources]\n- .github/workflows/ci.yml\n- package.json\n- CONTRIBUTING.md"}
+{"kind":"slide","id":"sl/ot2pj7","slide":26,"title":"APC PORTAL • TEAM KICKOFF","textShapes":18}
+{"kind":"textbox","id":"sh/4zq1wrah","slide":26,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/3yhk3m9w","slide":26,"name":"slide-title","text":"Ví dụ: luồng dữ liệu của trang Tin tức","textPreview":"Ví dụ: luồng dữ liệu của trang Tin tức","textChars":38,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/2xojuhsb","slide":26,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/hwf21crq","slide":26,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/gv61s7a5","slide":26,"text":"26","textPreview":"26","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"textbox","id":"sh/fuxkz29k","slide":26,"text":"VÍ DỤ MINH HỌA — route chưa được triển khai","textPreview":"VÍ DỤ MINH HỌA — route chưa được triển khai","textChars":43,"textLines":1,"bbox":[72,152,760,24]}
+{"kind":"shape","id":"sh/utojqhsf","slide":26,"bbox":[72,238,230,190]}
+{"kind":"textbox","id":"sh/1sj2dgra","slide":26,"text":"FE-2","textPreview":"FE-2","textChars":4,"textLines":1,"bbox":[94,260,58,58]}
+{"kind":"textbox","id":"sh/0ral4bap","slide":26,"text":"Gọi /news","textPreview":"Gọi /news","textChars":9,"textLines":1,"bbox":[94,336,186,34]}
+{"kind":"textbox","id":"sh/md47ehcj","slide":26,"text":"Hiển thị danh sách","textPreview":"Hiển thị danh sách","textChars":18,"textLines":1,"bbox":[94,378,186,42]}
+{"kind":"shape","id":"sh/7ex8nmt4","slide":26,"bbox":[350,238,230,190]}
+{"kind":"textbox","id":"sh/8f6pgrup","slide":26,"text":"BE-3","textPreview":"BE-3","textChars":4,"textLines":1,"bbox":[372,260,58,58]}
+{"kind":"textbox","id":"sh/9gfqpwba","slide":26,"text":"Xử lý API","textPreview":"Xử lý API","textChars":9,"textLines":1,"bbox":[372,336,186,34]}
+{"kind":"textbox","id":"sh/y947ahcn","slide":26,"text":"Kiểm tra và trả JSON","textPreview":"Kiểm tra và trả JSON","textChars":20,"textLines":1,"bbox":[372,378,186,42]}
+{"kind":"shape","id":"sh/zadojmt8","slide":26,"bbox":[628,238,230,190]}
+{"kind":"textbox","id":"sh/kbmpcrut","slide":26,"text":"BE-1","textPreview":"BE-1","textChars":4,"textLines":1,"bbox":[650,260,58,58]}
+{"kind":"textbox","id":"sh/lcv6lcbe","slide":26,"text":"Schema news","textPreview":"Schema news","textChars":11,"textLines":1,"bbox":[650,336,186,34]}
+{"kind":"textbox","id":"sh/i5o7m1cr","slide":26,"text":"Lưu dữ liệu đúng cấu trúc","textPreview":"Lưu dữ liệu đúng cấu trúc","textChars":25,"textLines":1,"bbox":[650,378,186,42]}
+{"kind":"shape","id":"sh/j6h8v6tc","slide":26,"bbox":[906,238,230,190]}
+{"kind":"textbox","id":"sh/fq94ny9o","slide":26,"text":"OP-2","textPreview":"OP-2","textChars":4,"textLines":1,"bbox":[928,260,58,58]}
+{"kind":"textbox","id":"sh/ep03etsj","slide":26,"text":"Kiểm thử","textPreview":"Kiểm thử","textChars":8,"textLines":1,"bbox":[928,336,186,34]}
+{"kind":"textbox","id":"sh/1crmp8ru","slide":26,"text":"Loading • lỗi • kết quả","textPreview":"Loading • lỗi • kết quả","textChars":23,"textLines":1,"bbox":[928,378,186,42]}
+{"kind":"shape","id":"sh/0ri5g3a9","slide":26,"bbox":[302,333,48,0]}
+{"kind":"shape","id":"sh/ne94ri90","slide":26,"bbox":[580,333,48,0]}
+{"kind":"shape","id":"sh/2d0nidsf","slide":26,"bbox":[858,333,48,0]}
+{"kind":"shape","id":"sh/pgbmt8r6","slide":26,"bbox":[72,486,1064,82]}
+{"kind":"textbox","id":"sh/of25knal","slide":26,"text":"fetch('/news')    →    app.get('/news')    →    SELECT ... FROM news","textPreview":"fetch('/news')    →    app.get('/news')    →    SELECT ... FROM news","textChars":68,"textLines":1,"bbox":[96,503,1016,48]}
+{"kind":"notes","id":"nt/ot2pj7","slide":26,"text":"Dùng ví dụ tin tức để nối phần công nghệ với phân công. FE có thể dựng giao diện bằng dữ liệu mẫu, nhưng tính năng chỉ xong khi API, database và kiểm thử cùng hoàn tất.\n\n[Sources]\n- APC-Portal-Ke-hoach-cong-viec.xlsx — BE1, BE5, FE3, IN4\n- Code trên slide là minh họa tương lai, không phải code hiện có"}
+{"kind":"slide","id":"sl/u5hek7","slide":27,"title":"APC PORTAL • TEAM KICKOFF","textShapes":15}
+{"kind":"textbox","id":"sh/by9wve54","slide":27,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/wzixojmp","slide":27,"name":"slide-title","text":"Luồng Gia nhập APC nối Frontend, Backend, email và CMS","textPreview":"Luồng Gia nhập APC nối Frontend, Backend, email và CMS","textChars":54,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/x0rexona","slide":27,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/y10fq94f","slide":27,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/j29gze50","slide":27,"text":"27","textPreview":"27","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/k32xsjml","slide":27,"bbox":[72,214,196,188]}
+{"kind":"textbox","id":"sh/l4by1on6","slide":27,"text":"1. Điền form","textPreview":"1. Điền form","textChars":12,"textLines":1,"bbox":[90,238,160,38]}
+{"kind":"textbox","id":"sh/e5gfep4b","slide":27,"text":"FE-3 validate từng trường","textPreview":"FE-3 validate từng trường","textChars":25,"textLines":1,"bbox":[90,302,160,70]}
+{"kind":"shape","id":"sh/z6pwnu5w","slide":27,"bbox":[300,214,196,188]}
+{"kind":"textbox","id":"sh/fqxcr210","slide":27,"text":"2. Nộp đơn","textPreview":"2. Nộp đơn","textChars":10,"textLines":1,"bbox":[318,238,160,38]}
+{"kind":"textbox","id":"sh/upovixkf","slide":27,"text":"POST /applications","textPreview":"POST /applications","textChars":18,"textLines":1,"bbox":[318,302,160,70]}
+{"kind":"shape","id":"sh/hsfutsj6","slide":27,"bbox":[528,214,196,188]}
+{"kind":"textbox","id":"sh/gr6dk72l","slide":27,"text":"3. Lưu hồ sơ","textPreview":"3. Lưu hồ sơ","textChars":12,"textLines":1,"bbox":[546,238,160,38]}
+{"kind":"textbox","id":"sh/7mdcni14","slide":27,"text":"BE-2 + PostgreSQL","textPreview":"BE-2 + PostgreSQL","textChars":17,"textLines":1,"bbox":[546,302,160,70]}
+{"kind":"shape","id":"sh/614vedkj","slide":27,"bbox":[756,214,196,188]}
+{"kind":"textbox","id":"sh/tovupsju","slide":27,"text":"4. Gửi email","textPreview":"4. Gửi email","textChars":12,"textLines":1,"bbox":[774,238,160,38]}
+{"kind":"textbox","id":"sh/snmdgn29","slide":27,"text":"Mailpit khi chạy local","textPreview":"Mailpit khi chạy local","textChars":22,"textLines":1,"bbox":[774,302,160,70]}
+{"kind":"shape","id":"sh/jydcjils","slide":27,"bbox":[984,214,196,188]}
+{"kind":"textbox","id":"sh/ixkvadk7","slide":27,"text":"5. Duyệt","textPreview":"5. Duyệt","textChars":8,"textLines":1,"bbox":[1002,238,160,38]}
+{"kind":"textbox","id":"sh/mtkvmd4f","slide":27,"text":"FE-4 CMS approve/reject","textPreview":"FE-4 CMS approve/reject","textChars":23,"textLines":1,"bbox":[1002,302,160,70]}
+{"kind":"shape","id":"sh/nutwvy5k","slide":27,"bbox":[268,308,32,0]}
+{"kind":"shape","id":"sh/8v2do3m5","slide":27,"bbox":[496,308,32,0]}
+{"kind":"shape","id":"sh/9wbex8nq","slide":27,"bbox":[724,308,32,0]}
+{"kind":"shape","id":"sh/axkvqd4b","slide":27,"bbox":[952,308,32,0]}
+{"kind":"shape","id":"sh/vydwzi5w","slide":27,"bbox":[72,472,1136,98]}
+{"kind":"textbox","id":"sh/wzmdsnmh","slide":27,"text":"BE-10 phụ thuộc RBAC (BE-4) và email (BE-9); FE-6 chỉ hoàn tất khi API submit chạy ổn định.","textPreview":"BE-10 phụ thuộc RBAC (BE-4) và email (BE-9); FE-6 chỉ hoàn tất khi API submit chạy ổn định.","textChars":91,"textLines":1,"bbox":[98,490,1084,62]}
+{"kind":"notes","id":"nt/u5hek7","slide":27,"text":"Dùng luồng này để giải thích dependency có ý nghĩa nghiệp vụ, không chỉ là mã task. Đây là một trong các vòng demo chính vào cuối giai đoạn.\n\n[Sources]\n- APC-Portal-Ke-hoach-cong-viec.xlsx — BE9, BE10, FE6, FE7\n- docs/03-user-flows.md — Luồng Gia nhập APC"}
+{"kind":"slide","id":"sl/rdw2tl","slide":28,"title":"APC PORTAL • TEAM KICKOFF","textShapes":16}
+{"kind":"textbox","id":"sh/fqdozu5g","slide":28,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/0bmpsz61","slide":28,"name":"slide-title","text":"Chín thành viên, ba nhóm trách nhiệm","textPreview":"Chín thành viên, ba nhóm trách nhiệm","textChars":36,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/1cv614nm","slide":28,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/qlknmpoz","slide":28,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/rmtovu5k","slide":28,"text":"28","textPreview":"28","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/snmpoz65","slide":28,"bbox":[72,176,1136,104]}
+{"kind":"textbox","id":"sh/dov6xknq","slide":28,"text":"BACKEND","textPreview":"BACKEND","textChars":7,"textLines":1,"bbox":[96,198,190,58]}
+{"kind":"textbox","id":"sh/aho7y9o3","slide":28,"text":"Thiên • BE-1","textPreview":"Thiên • BE-1","textChars":12,"textLines":1,"bbox":[306,198,273.33,58]}
+{"kind":"textbox","id":"sh/bixo7e5o","slide":28,"text":"Minh • BE-2","textPreview":"Minh • BE-2","textChars":11,"textLines":1,"bbox":[589.33,198,273.33,58]}
+{"kind":"textbox","id":"sh/j2lwjqx0","slide":28,"text":"Khương • BE-3","textPreview":"Khương • BE-3","textChars":13,"textLines":1,"bbox":[872.67,198,273.33,58]}
+{"kind":"shape","id":"sh/i1cfqlwf","slide":28,"bbox":[72,310,1136,104]}
+{"kind":"textbox","id":"sh/543elgfq","slide":28,"text":"FRONTEND","textPreview":"FRONTEND","textChars":8,"textLines":1,"bbox":[96,332,190,58]}
+{"kind":"textbox","id":"sh/k3uxsvel","slide":28,"text":"Huỳnh • FE-1","textPreview":"Huỳnh • FE-1","textChars":12,"textLines":1,"bbox":[306,332,202.5,58]}
+{"kind":"textbox","id":"sh/765gnqxw","slide":28,"text":"Gia Bảo • FE-2","textPreview":"Gia Bảo • FE-2","textChars":14,"textLines":1,"bbox":[518.5,332,202.5,58]}
+{"kind":"textbox","id":"sh/65wfulwb","slide":28,"text":"Đăng Nghĩa • FE-3","textPreview":"Đăng Nghĩa • FE-3","textChars":17,"textLines":1,"bbox":[731,332,202.5,58]}
+{"kind":"textbox","id":"sh/tsnyp0f2","slide":28,"text":"Hoàn Phúc • FE-4","textPreview":"Hoàn Phúc • FE-4","textChars":16,"textLines":1,"bbox":[943.5,332,202.5,58]}
+{"kind":"shape","id":"sh/srexwveh","slide":28,"bbox":[72,444,1136,104]}
+{"kind":"textbox","id":"sh/fu5grax8","slide":28,"text":"HẠ TẦNG / QA","textPreview":"HẠ TẦNG / QA","textChars":12,"textLines":1,"bbox":[96,466,190,58]}
+{"kind":"textbox","id":"sh/utwfy5wn","slide":28,"text":"An Khang • OP-1","textPreview":"An Khang • OP-1","textChars":15,"textLines":1,"bbox":[306,466,415,58]}
+{"kind":"textbox","id":"sh/qp0zq9gv","slide":28,"text":"Tiến Bảo • OP-2","textPreview":"Tiến Bảo • OP-2","textChars":15,"textLines":1,"bbox":[731,466,415,58]}
+{"kind":"notes","id":"nt/rdw2tl","slide":28,"text":"Giới thiệu tên theo nhóm trước, chưa đi vào từng task. Mỗi mã là một vùng trách nhiệm; không chỉ là chức danh.\n\n[Sources]\n- Danh sách thành viên do người dùng cung cấp\n- APC-Portal-Ke-hoach-cong-viec.xlsx — Thành viên"}
+{"kind":"slide","id":"sl/4clel9","slide":29,"title":"APC PORTAL • TEAM KICKOFF","textShapes":19}
+{"kind":"textbox","id":"sh/p072d0fq","slide":29,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/2dw3i5wz","slide":29,"name":"slide-title","text":"Phân công Backend","textPreview":"Phân công Backend","textChars":17,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/nepkbaxk","slide":29,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/0belgvet","slide":29,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/1cn290fe","slide":29,"text":"29","textPreview":"29","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"textbox","id":"sh/e9w3elw3","slide":29,"text":"BE-1","textPreview":"BE-1","textChars":4,"textLines":1,"bbox":[78,192,70,70]}
+{"kind":"textbox","id":"sh/fa5k7qx8","slide":29,"text":"Phạm Đăng Hoàng Thiên","textPreview":"Phạm Đăng Hoàng Thiên","textChars":21,"textLines":1,"bbox":[176,178,360,48]}
+{"kind":"textbox","id":"sh/s7elcbex","slide":29,"text":"DB • Seed • Upload","textPreview":"DB • Seed • Upload","textChars":18,"textLines":1,"bbox":[176,230,380,38]}
+{"kind":"textbox","id":"sh/t8n25gfi","slide":29,"text":"PostgreSQL • ORM • MinIO","textPreview":"PostgreSQL • ORM • MinIO","textChars":24,"textLines":1,"bbox":[628,192,506,54]}
+{"kind":"textbox","id":"sh/lsbqpgfm","slide":29,"text":"BE1 • BE2 • BE8","textPreview":"BE1 • BE2 • BE8","textChars":15,"textLines":1,"bbox":[628,240,506,26]}
+{"kind":"shape","id":"sh/k72pgby1","slide":29,"bbox":[176,282,958,0]}
+{"kind":"textbox","id":"sh/j6t8n6xw","slide":29,"text":"BE-2","textPreview":"BE-2","textChars":4,"textLines":1,"bbox":[78,324,70,70]}
+{"kind":"textbox","id":"sh/y5k7e1gb","slide":29,"text":"Trương Phúc Minh","textPreview":"Trương Phúc Minh","textChars":16,"textLines":1,"bbox":[176,310,360,48]}
+{"kind":"textbox","id":"sh/x4b6lwfq","slide":29,"text":"Auth • RBAC • Email • Tuyển","textPreview":"Auth • RBAC • Email • Tuyển","textChars":27,"textLines":1,"bbox":[176,362,380,38]}
+{"kind":"textbox","id":"sh/w32pcry5","slide":29,"text":"Fastify • Zod • Mailpit","textPreview":"Fastify • Zod • Mailpit","textChars":23,"textLines":1,"bbox":[628,324,506,54]}
+{"kind":"textbox","id":"sh/b29ojmxk","slide":29,"text":"BE3 • BE4 • BE9 • BE10","textPreview":"BE3 • BE4 • BE9 • BE10","textChars":22,"textLines":1,"bbox":[628,372,506,26]}
+{"kind":"shape","id":"sh/a107a1gz","slide":29,"bbox":[176,414,958,0]}
+{"kind":"textbox","id":"sh/90r6hwfe","slide":29,"text":"BE-3","textPreview":"BE-3","textChars":4,"textLines":1,"bbox":[78,456,70,70]}
+{"kind":"textbox","id":"sh/ozip8ry9","slide":29,"text":"Phan Anh Khương","textPreview":"Phan Anh Khương","textChars":15,"textLines":1,"bbox":[176,442,360,48]}
+{"kind":"textbox","id":"sh/0jmpor6p","slide":29,"text":"API tin • sự kiện • dự án","textPreview":"API tin • sự kiện • dự án","textChars":25,"textLines":1,"bbox":[176,494,380,38]}
+{"kind":"textbox","id":"sh/1kvqxwna","slide":29,"text":"Fastify • REST • PostgreSQL","textPreview":"Fastify • REST • PostgreSQL","textChars":27,"textLines":1,"bbox":[628,456,506,54]}
+{"kind":"textbox","id":"sh/eh47mhoz","slide":29,"text":"BE5 • BE6 • BE7","textPreview":"BE5 • BE6 • BE7","textChars":15,"textLines":1,"bbox":[628,504,506,26]}
+{"kind":"shape","id":"sh/fid8vm5k","slide":29,"bbox":[176,546,958,0]}
+{"kind":"notes","id":"nt/4clel9","slide":29,"text":"Thiên xây nền dữ liệu; Minh giữ tài khoản, quyền và quy trình gia nhập; Khương cung cấp các API nội dung. Nhấn vào đầu ra, không chỉ nhắc tên công nghệ.\n\n[Sources]\n- Danh sách thành viên do người dùng cung cấp\n- APC-Portal-Ke-hoach-cong-viec.xlsx — Thành viên và Bảng nhiệm vụ"}
+{"kind":"slide","id":"sl/lmhib4","slide":30,"title":"APC PORTAL • TEAM KICKOFF","textShapes":20}
+{"kind":"textbox","id":"sh/ofat0fm5","slide":30,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/ne1c7alk","slide":30,"name":"slide-title","text":"Phân công Frontend","textPreview":"Phân công Frontend","textChars":18,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/2dsbyp4f","slide":30,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/xk3ud432","slide":30,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/cjut4zmh","slide":30,"text":"30","textPreview":"30","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"textbox","id":"sh/bi1cbulw","slide":30,"text":"FE-1","textPreview":"FE-1","textChars":4,"textLines":1,"bbox":[78,176,64,64]}
+{"kind":"textbox","id":"sh/ahsb2p4b","slide":30,"text":"Lương Huỳnh","textPreview":"Lương Huỳnh","textChars":11,"textLines":1,"bbox":[172,168,360,44]}
+{"kind":"textbox","id":"sh/l83uh43y","slide":30,"text":"Router • Layout • Auth UI • Component","textPreview":"Router • Layout • Auth UI • Component","textChars":37,"textLines":1,"bbox":[580,168,574,44]}
+{"kind":"textbox","id":"sh/knud8zmd","slide":30,"text":"React • TypeScript • Tailwind • API     FE1 • FE2 • FE9","textPreview":"React • TypeScript • Tailwind • API     FE1 • FE2 • FE9","textChars":55,"textLines":1,"bbox":[580,212,574,34]}
+{"kind":"shape","id":"sh/61sripgz","slide":30,"bbox":[172,254,982,0]}
+{"kind":"textbox","id":"sh/721sruhk","slide":30,"text":"FE-2","textPreview":"FE-2","textChars":4,"textLines":1,"bbox":[78,278,64,64]}
+{"kind":"textbox","id":"sh/s3a9kzy5","slide":30,"text":"Nguyễn Gia Bảo","textPreview":"Nguyễn Gia Bảo","textChars":14,"textLines":1,"bbox":[172,270,360,44]}
+{"kind":"textbox","id":"sh/t4jat4zq","slide":30,"text":"Trang Tin tức • Sự kiện","textPreview":"Trang Tin tức • Sự kiện","textChars":23,"textLines":1,"bbox":[580,270,574,44]}
+{"kind":"textbox","id":"sh/u5srm9gb","slide":30,"text":"React • TypeScript • Tailwind • API     FE3 • FE4","textPreview":"React • TypeScript • Tailwind • API     FE3 • FE4","textChars":49,"textLines":1,"bbox":[580,314,574,34]}
+{"kind":"shape","id":"sh/f6lsvehw","slide":30,"bbox":[172,356,982,0]}
+{"kind":"textbox","id":"sh/g7u9ojy1","slide":30,"text":"FE-3","textPreview":"FE-3","textChars":4,"textLines":1,"bbox":[78,380,64,64]}
+{"kind":"textbox","id":"sh/h83ax4fm","slide":30,"text":"Lê Đăng Nghĩa","textPreview":"Lê Đăng Nghĩa","textChars":13,"textLines":1,"bbox":[172,372,360,44]}
+{"kind":"textbox","id":"sh/a98ra5gr","slide":30,"text":"Trang Dự án • Form Gia nhập","textPreview":"Trang Dự án • Form Gia nhập","textChars":27,"textLines":1,"bbox":[580,372,574,44]}
+{"kind":"textbox","id":"sh/bah8jahc","slide":30,"text":"React • TypeScript • Tailwind • API     FE5 • FE6","textPreview":"React • TypeScript • Tailwind • API     FE5 • FE6","textChars":49,"textLines":1,"bbox":[580,416,574,34]}
+{"kind":"shape","id":"sh/zedob6x4","slide":30,"bbox":[172,458,982,0]}
+{"kind":"textbox","id":"sh/ed47i1wj","slide":30,"text":"FE-4","textPreview":"FE-4","textChars":4,"textLines":1,"bbox":[78,482,64,64]}
+{"kind":"textbox","id":"sh/1gf6dgfa","slide":30,"text":"Huỳnh Hoàn Phúc","textPreview":"Huỳnh Hoàn Phúc","textChars":15,"textLines":1,"bbox":[172,474,360,44]}
+{"kind":"textbox","id":"sh/0f6pkbep","slide":30,"text":"CMS Admin • Test Frontend","textPreview":"CMS Admin • Test Frontend","textChars":25,"textLines":1,"bbox":[580,474,574,44]}
+{"kind":"textbox","id":"sh/rqdo76x8","slide":30,"text":"React • TypeScript • Tailwind • API     FE7 • FE8","textPreview":"React • TypeScript • Tailwind • API     FE7 • FE8","textChars":49,"textLines":1,"bbox":[580,518,574,34]}
+{"kind":"shape","id":"sh/qp4ne1wn","slide":30,"bbox":[172,560,982,0]}
+{"kind":"notes","id":"nt/lmhib4","slide":30,"text":"Huỳnh chuẩn bị khung chung; Gia Bảo và Đăng Nghĩa làm các luồng public; Hoàn Phúc làm CMS và test. Người làm trang vẫn phải phối hợp với người cung cấp API.\n\n[Sources]\n- Danh sách thành viên do người dùng cung cấp\n- APC-Portal-Ke-hoach-cong-viec.xlsx — Thành viên và Bảng nhiệm vụ"}
+{"kind":"slide","id":"sl/urhmbm","slide":31,"title":"APC PORTAL • TEAM KICKOFF","textShapes":15}
+{"kind":"textbox","id":"sh/x8but8zi","slide":31,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/al0vit07","slide":31,"name":"slide-title","text":"Phân công Hạ tầng/QA và phần APC duyệt","textPreview":"Phân công Hạ tầng/QA và phần APC duyệt","textChars":38,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/b69cryhs","slide":31,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/ojidgji1","slide":31,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/9krupozm","slide":31,"text":"31","textPreview":"31","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/mh0vet0v","slide":31,"bbox":[72,180,530,320]}
+{"kind":"textbox","id":"sh/ni9cnehg","slide":31,"text":"OP-1","textPreview":"OP-1","textChars":4,"textLines":1,"bbox":[104,212,72,72]}
+{"kind":"textbox","id":"sh/0fydcji5","slide":31,"text":"Đặng Phúc An Khang","textPreview":"Đặng Phúc An Khang","textChars":18,"textLines":1,"bbox":[202,214,340,42]}
+{"kind":"textbox","id":"sh/1grulozq","slide":31,"text":"CI • Staging • Backup","textPreview":"CI • Staging • Backup","textChars":21,"textLines":1,"bbox":[104,304,440,44]}
+{"kind":"textbox","id":"sh/1wb6h4fa","slide":31,"text":"GitHub Actions • Docker • VPS","textPreview":"GitHub Actions • Docker • VPS","textChars":29,"textLines":1,"bbox":[104,372,440,42]}
+{"kind":"textbox","id":"sh/0v258zyp","slide":31,"text":"IN1 • IN2 • IN3","textPreview":"IN1 • IN2 • IN3","textChars":15,"textLines":1,"bbox":[104,422,440,26]}
+{"kind":"shape","id":"sh/futofux4","slide":31,"bbox":[638,180,570,320]}
+{"kind":"textbox","id":"sh/etkn6pgj","slide":31,"text":"OP-2","textPreview":"OP-2","textChars":4,"textLines":1,"bbox":[670,212,72,72]}
+{"kind":"textbox","id":"sh/dsb6dkfy","slide":31,"text":"Nguyễn Tiến Bảo","textPreview":"Nguyễn Tiến Bảo","textChars":15,"textLines":1,"bbox":[768,214,360,42]}
+{"kind":"textbox","id":"sh/s7254fyd","slide":31,"text":"QA • E2E • Nội dung • Docs","textPreview":"QA • E2E • Nội dung • Docs","textChars":26,"textLines":1,"bbox":[670,304,466,44]}
+{"kind":"textbox","id":"sh/r69obaxs","slide":31,"text":"Checklist • test luồng • tài liệu","textPreview":"Checklist • test luồng • tài liệu","textChars":33,"textLines":1,"bbox":[670,372,466,42]}
+{"kind":"textbox","id":"sh/q50n2pgn","slide":31,"text":"IN4 • CT2 • DOC1","textPreview":"IN4 • CT2 • DOC1","textChars":16,"textLines":1,"bbox":[670,422,466,26]}
+{"kind":"shape","id":"sh/54r69kf2","slide":31,"bbox":[72,532,1136,72]}
+{"kind":"textbox","id":"sh/43i50fyh","slide":31,"text":"APC/CLB chịu trách nhiệm duyệt nội dung, hình ảnh và dữ liệu thật trước khi công bố.","textPreview":"APC/CLB chịu trách nhiệm duyệt nội dung, hình ảnh và dữ liệu thật trước khi công bố.","textChars":84,"textLines":1,"bbox":[102,546,1076,44]}
+{"kind":"notes","id":"nt/urhmbm","slide":31,"text":"Nhấn mạnh QA không phải người kiểm tra sau cùng. OP-2 phối hợp từ lúc có user flow; OP-1 bảo đảm code có thể chạy, triển khai và khôi phục.\n\n[Sources]\n- Danh sách thành viên do người dùng cung cấp\n- APC-Portal-Ke-hoach-cong-viec.xlsx — Thành viên\n- docs/08-handover.md"}
+{"kind":"slide","id":"sl/pg1djp","slide":32,"title":"APC PORTAL • TEAM KICKOFF","textShapes":21}
+{"kind":"textbox","id":"sh/sj6do3ud","slide":32,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/rixwvyds","slide":32,"name":"slide-title","text":"Kế hoạch từ 01/09 đến deadline 15/10","textPreview":"Kế hoạch từ 01/09 đến deadline 15/10","textChars":36,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/6hovmtc7","slide":32,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/5gfetovm","slide":32,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/4vmdkju1","slide":32,"text":"32","textPreview":"32","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/judwredg","slide":32,"bbox":[100,330,1050,0]}
+{"kind":"textbox","id":"sh/it4vi9cv","slide":32,"text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[84,306,50,50]}
+{"kind":"textbox","id":"sh/hsvep4vq","slide":32,"text":"01–12/09","textPreview":"01–12/09","textChars":8,"textLines":1,"bbox":[72,188,250,42]}
+{"kind":"textbox","id":"sh/wrmdgju5","slide":32,"text":"NỀN TẢNG","textPreview":"NỀN TẢNG","textChars":8,"textLines":1,"bbox":[72,242,250,24]}
+{"kind":"textbox","id":"sh/y9wju5c7","slide":32,"text":"DB • Auth • Router\nCI • Duyệt trang chủ","textPreview":"DB • Auth • Router | CI • Duyệt trang chủ","textChars":39,"textLines":2,"bbox":[72,390,250,92]}
+{"kind":"textbox","id":"sh/za5k3qtc","slide":32,"text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[356,306,50,50]}
+{"kind":"textbox","id":"sh/0be1wvux","slide":32,"text":"15–26/09","textPreview":"15–26/09","textChars":8,"textLines":1,"bbox":[344,188,250,42]}
+{"kind":"textbox","id":"sh/lc7250bi","slide":32,"text":"NỘI DUNG","textPreview":"NỘI DUNG","textChars":8,"textLines":1,"bbox":[344,242,250,24]}
+{"kind":"textbox","id":"sh/qlwjqlcv","slide":32,"text":"CMS API\nTrang public","textPreview":"CMS API | Trang public","textChars":20,"textLines":2,"bbox":[344,390,250,92]}
+{"kind":"textbox","id":"sh/r650zqtg","slide":32,"text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[628,306,50,50]}
+{"kind":"textbox","id":"sh/c7e1svu1","slide":32,"text":"29/09–10/10","textPreview":"29/09–10/10","textChars":11,"textLines":1,"bbox":[616,188,250,42]}
+{"kind":"textbox","id":"sh/d8n210bm","slide":32,"text":"QUẢN TRỊ","textPreview":"QUẢN TRỊ","textChars":8,"textLines":1,"bbox":[616,242,250,24]}
+{"kind":"textbox","id":"sh/2hcjmlcz","slide":32,"text":"CMS admin\nForm Gia nhập","textPreview":"CMS admin | Form Gia nhập","textChars":23,"textLines":2,"bbox":[616,390,250,92]}
+{"kind":"textbox","id":"sh/3il0v6tk","slide":32,"text":"4","textPreview":"4","textChars":1,"textLines":1,"bbox":[900,306,50,50]}
+{"kind":"textbox","id":"sh/7m1g3m9c","slide":32,"text":"13–15/10","textPreview":"13–15/10","textChars":8,"textLines":1,"bbox":[888,188,320,42]}
+{"kind":"textbox","id":"sh/6l8zuhsr","slide":32,"text":"CHỐT","textPreview":"CHỐT","textChars":4,"textLines":1,"bbox":[888,242,320,24]}
+{"kind":"textbox","id":"sh/tojy5cr2","slide":32,"text":"Staging • QA\nBackup • Bàn giao","textPreview":"Staging • QA | Backup • Bàn giao","textChars":30,"textLines":2,"bbox":[888,390,320,92]}
+{"kind":"shape","id":"sh/snahw7ah","slide":32,"bbox":[72,530,1136,68]}
+{"kind":"textbox","id":"sh/fq1g7m98","slide":32,"text":"Deadline cứng: 15/10/2026","textPreview":"Deadline cứng: 15/10/2026","textChars":25,"textLines":1,"bbox":[96,544,1088,40]}
+{"kind":"notes","id":"nt/pg1djp","slide":32,"text":"Chỉ nói mục tiêu của từng chặng, không đọc từng task. Dùng Excel cho danh sách chi tiết.\n\n[Sources]\n- APC-Portal-Ke-hoach-cong-viec.xlsx — Quy ước & Điều phối và Bảng nhiệm vụ"}
+{"kind":"slide","id":"sl/58e714","slide":33,"title":"APC PORTAL • TEAM KICKOFF","textShapes":21}
+{"kind":"textbox","id":"sh/ah8v29sj","slide":33,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/x4zudora","slide":33,"name":"slide-title","text":"Sprint 1 phải mở được năm nút chặn","textPreview":"Sprint 1 phải mở được năm nút chặn","textChars":34,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/w3qd4jap","slide":33,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/j6hcfe9g","slide":33,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/i58v69sv","slide":33,"text":"33","textPreview":"33","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"textbox","id":"sh/58juhor6","slide":33,"text":"BE1","textPreview":"BE1","textChars":3,"textLines":1,"bbox":[108,206,82,82]}
+{"kind":"textbox","id":"sh/k7qd8jal","slide":33,"text":"Database","textPreview":"Database","textChars":8,"textLines":1,"bbox":[72,310,154,38]}
+{"kind":"textbox","id":"sh/7a1cjy9c","slide":33,"text":"Thiên","textPreview":"Thiên","textChars":5,"textLines":1,"bbox":[72,354,154,28]}
+{"kind":"textbox","id":"sh/69svatsr","slide":33,"text":"BE3","textPreview":"BE3","textChars":3,"textLines":1,"bbox":[334,206,82,82]}
+{"kind":"textbox","id":"sh/snul4rmt","slide":33,"text":"Đăng nhập","textPreview":"Đăng nhập","textChars":9,"textLines":1,"bbox":[298,310,154,38]}
+{"kind":"textbox","id":"sh/donmxw3e","slide":33,"text":"Minh","textPreview":"Minh","textChars":4,"textLines":1,"bbox":[298,354,154,28]}
+{"kind":"textbox","id":"sh/qlc32h4n","slide":33,"text":"FE1","textPreview":"FE1","textChars":3,"textLines":1,"bbox":[560,206,82,82]}
+{"kind":"textbox","id":"sh/rml4vml8","slide":33,"text":"Router","textPreview":"Router","textChars":6,"textLines":1,"bbox":[524,310,154,38]}
+{"kind":"textbox","id":"sh/0re58rm5","slide":33,"text":"Huỳnh","textPreview":"Huỳnh","textChars":5,"textLines":1,"bbox":[524,354,154,28]}
+{"kind":"textbox","id":"sh/1cnm1w3a","slide":33,"text":"IN1","textPreview":"IN1","textChars":3,"textLines":1,"bbox":[786,206,82,82]}
+{"kind":"textbox","id":"sh/epw3614z","slide":33,"text":"CI","textPreview":"CI","textChars":2,"textLines":1,"bbox":[750,310,154,38]}
+{"kind":"textbox","id":"sh/fq54zmlk","slide":33,"text":"An Khang","textPreview":"An Khang","textChars":8,"textLines":1,"bbox":[750,354,154,28]}
+{"kind":"textbox","id":"sh/ofy5cbm1","slide":33,"text":"CT1","textPreview":"CT1","textChars":3,"textLines":1,"bbox":[1012,206,82,82]}
+{"kind":"textbox","id":"sh/pg7m5g3m","slide":33,"text":"Duyệt UI","textPreview":"Duyệt UI","textChars":8,"textLines":1,"bbox":[976,310,154,38]}
+{"kind":"textbox","id":"sh/xc3mpwvq","slide":33,"text":"APC","textPreview":"APC","textChars":3,"textLines":1,"bbox":[976,354,154,28]}
+{"kind":"shape","id":"sh/wbulwbe5","slide":33,"bbox":[72,442,530,118]}
+{"kind":"textbox","id":"sh/bal4n6dk","slide":33,"text":"BE3 bắt đầu sau khi BE1 đủ nền database.","textPreview":"BE3 bắt đầu sau khi BE1 đủ nền database.","textChars":40,"textLines":1,"bbox":[100,460,474,82]}
+{"kind":"shape","id":"sh/a9s3u1wz","slide":33,"bbox":[638,442,570,118]}
+{"kind":"textbox","id":"sh/l03mtgvm","slide":33,"text":"Không bắt đầu task khi dependency chưa Xong.","textPreview":"Không bắt đầu task khi dependency chưa Xong.","textChars":44,"textLines":1,"bbox":[666,460,514,82]}
+{"kind":"notes","id":"nt/58e714","slide":33,"text":"Năm nút chặn là cách dễ nhớ của Sprint 1. Auth phụ thuộc database; các trang sau phụ thuộc router và API.\n\n[Sources]\n- APC-Portal-Ke-hoach-cong-viec.xlsx — Chi tiết Sprint 1 và Quy ước & Điều phối"}
+{"kind":"slide","id":"sl/r9inew","slide":34,"title":"APC PORTAL • TEAM KICKOFF","textShapes":25}
+{"kind":"textbox","id":"sh/oruhkb2d","slide":34,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/nql0r61s","slide":34,"name":"slide-title","text":"Sau nền tảng, đội chuyển sang nội dung và quản trị","textPreview":"Sau nền tảng, đội chuyển sang nội dung và quản trị","textChars":50,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/mpczi1k7","slide":34,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/1o3ipgjm","slide":34,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/0nuhgb21","slide":34,"text":"34","textPreview":"34","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/zmlgn61g","slide":34,"bbox":[72,178,540,382]}
+{"kind":"textbox","id":"sh/elcze1kb","slide":34,"text":"SPRINT 2 • 15–26/09","textPreview":"SPRINT 2 • 15–26/09","textChars":19,"textLines":1,"bbox":[104,204,450,28]}
+{"kind":"textbox","id":"sh/dkjylwjq","slide":34,"text":"API + trang public","textPreview":"API + trang public","textChars":18,"textLines":1,"bbox":[104,250,450,44]}
+{"kind":"textbox","id":"sh/cjahcr25","slide":34,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[104,324,30,30]}
+{"kind":"textbox","id":"sh/exk3ih8v","slide":34,"text":"RBAC","textPreview":"RBAC","textChars":4,"textLines":1,"bbox":[150,322,404,46]}
+{"kind":"textbox","id":"sh/fydkrm9g","slide":34,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[104,376,30,30]}
+{"kind":"textbox","id":"sh/gzmlkrq1","slide":34,"text":"News / Events / Projects API","textPreview":"News / Events / Projects API","textChars":28,"textLines":1,"bbox":[150,374,404,46]}
+{"kind":"textbox","id":"sh/10v2twrm","slide":34,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[104,428,30,30]}
+{"kind":"textbox","id":"sh/69k3eh8z","slide":34,"text":"Upload và email","textPreview":"Upload và email","textChars":15,"textLines":1,"bbox":[150,426,404,46]}
+{"kind":"textbox","id":"sh/ratkn294","slide":34,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[104,480,30,30]}
+{"kind":"textbox","id":"sh/sb2lg7qp","slide":34,"text":"Trang Tin tức và Sự kiện","textPreview":"Trang Tin tức và Sự kiện","textChars":24,"textLines":1,"bbox":[150,478,404,46]}
+{"kind":"shape","id":"sh/twb2pcra","slide":34,"bbox":[648,178,560,382]}
+{"kind":"textbox","id":"sh/i50jax8n","slide":34,"text":"SPRINT 3 • 29/09–10/10","textPreview":"SPRINT 3 • 29/09–10/10","textChars":22,"textLines":1,"bbox":[680,204,470,28]}
+{"kind":"textbox","id":"sh/j6tkj298","slide":34,"text":"CMS + quy trình Gia nhập","textPreview":"CMS + quy trình Gia nhập","textChars":24,"textLines":1,"bbox":[680,250,470,44]}
+{"kind":"textbox","id":"sh/ny58vulo","slide":34,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[680,324,30,30]}
+{"kind":"textbox","id":"sh/mxwr29k3","slide":34,"text":"Trang Dự án","textPreview":"Trang Dự án","textChars":11,"textLines":1,"bbox":[726,322,424,46]}
+{"kind":"textbox","id":"sh/90nqx43u","slide":34,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[680,376,30,30]}
+{"kind":"textbox","id":"sh/oze94z29","slide":34,"text":"Form Gia nhập APC","textPreview":"Form Gia nhập APC","textChars":17,"textLines":1,"bbox":[726,374,424,46]}
+{"kind":"textbox","id":"sh/b2p8zel0","slide":34,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[680,428,30,30]}
+{"kind":"textbox","id":"sh/a1gr69kf","slide":34,"text":"CMS admin","textPreview":"CMS admin","textChars":9,"textLines":1,"bbox":[726,426,424,46]}
+{"kind":"textbox","id":"sh/x47q1o3q","slide":34,"text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[680,480,30,30]}
+{"kind":"textbox","id":"sh/w3y98j2l","slide":34,"text":"Duyệt/từ chối đơn và nội dung thật","textPreview":"Duyệt/từ chối đơn và nội dung thật","textChars":34,"textLines":1,"bbox":[726,478,424,46]}
+{"kind":"shape","id":"sh/r6l83alg","slide":34,"bbox":[72,590,1136,56]}
+{"kind":"textbox","id":"sh/q5c7upkv","slide":34,"text":"13–15/10: staging • QA/E2E • backup/restore • bàn giao","textPreview":"13–15/10: staging • QA/E2E • backup/restore • bàn giao","textChars":54,"textLines":1,"bbox":[96,598,1088,40]}
+{"kind":"notes","id":"nt/r9inew","slide":34,"text":"Sau Sprint 1, công việc chuyển từ nền tảng sang các luồng nhìn thấy được. Sprint 2 mở API và public pages; Sprint 3 nối CMS và tuyển thành viên.\n\n[Sources]\n- APC-Portal-Ke-hoach-cong-viec.xlsx — Bảng nhiệm vụ và Quy ước & Điều phối"}
+{"kind":"slide","id":"sl/4fbxd6","slide":35,"title":"APC PORTAL • TEAM KICKOFF","textShapes":17}
+{"kind":"textbox","id":"sh/8ra1sni5","slide":35,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/7q1kji1k","slide":35,"name":"slide-title","text":"Quy trình làm một task trong repo","textPreview":"Quy trình làm một task trong repo","textChars":33,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/6psjqd0z","slide":35,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/loj2h8je","slide":35,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/knq1o3it","slide":35,"text":"35","textPreview":"35","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"shape","id":"sh/jmhkfy18","slide":35,"bbox":[72,220,152,126]}
+{"kind":"textbox","id":"sh/yl8jmd0n","slide":35,"text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[124,238,48,48]}
+{"kind":"textbox","id":"sh/xkz2d8ji","slide":35,"text":"Nhận task","textPreview":"Nhận task","textChars":9,"textLines":1,"bbox":[84,296,128,38]}
+{"kind":"shape","id":"sh/wjq1k3ix","slide":35,"bbox":[256,220,152,126]}
+{"kind":"textbox","id":"sh/qtsvqh8b","slide":35,"text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[308,238,48,48]}
+{"kind":"textbox","id":"sh/ru1wzmpw","slide":35,"text":"Tạo branch","textPreview":"Tạo branch","textChars":10,"textLines":1,"bbox":[268,296,128,38]}
+{"kind":"shape","id":"sh/svadsrqh","slide":35,"bbox":[440,220,152,126]}
+{"kind":"textbox","id":"sh/dwje1w72","slide":35,"text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[492,238,48,48]}
+{"kind":"textbox","id":"sh/i5svmx8f","slide":35,"text":"Code + tự test","textPreview":"Code + tự test","textChars":14,"textLines":1,"bbox":[452,296,128,38]}
+{"kind":"shape","id":"sh/361wv2pk","slide":35,"bbox":[624,220,152,126]}
+{"kind":"textbox","id":"sh/47ado7q5","slide":35,"text":"4","textPreview":"4","textChars":1,"textLines":1,"bbox":[676,238,48,48]}
+{"kind":"textbox","id":"sh/58jexc7q","slide":35,"text":"Mở PR","textPreview":"Mở PR","textChars":5,"textLines":1,"bbox":[636,296,128,38]}
+{"kind":"shape","id":"sh/u18vix83","slide":35,"bbox":[808,220,152,126]}
+{"kind":"textbox","id":"sh/v2hwr2po","slide":35,"text":"5","textPreview":"5","textChars":1,"textLines":1,"bbox":[860,238,48,48]}
+{"kind":"textbox","id":"sh/zudk3u14","slide":35,"text":"Review + CI","textPreview":"Review + CI","textChars":11,"textLines":1,"bbox":[820,296,128,38]}
+{"kind":"shape","id":"sh/yt4japkj","slide":35,"bbox":[992,220,152,126]}
+{"kind":"textbox","id":"sh/lwv254ja","slide":35,"text":"6","textPreview":"6","textChars":1,"textLines":1,"bbox":[1044,238,48,48]}
+{"kind":"textbox","id":"sh/0vm1cz2p","slide":35,"text":"Merge + cập nhật sheet","textPreview":"Merge + cập nhật sheet","textChars":22,"textLines":1,"bbox":[1004,296,128,38]}
+{"kind":"shape","id":"sh/nydk7e1g","slide":35,"bbox":[224,283,32,0]}
+{"kind":"shape","id":"sh/mx4je9kv","slide":35,"bbox":[408,283,32,0]}
+{"kind":"shape","id":"sh/90f29oj6","slide":35,"bbox":[592,283,32,0]}
+{"kind":"shape","id":"sh/8zmlgj21","slide":35,"bbox":[776,283,32,0]}
+{"kind":"shape","id":"sh/32tkva1w","slide":35,"bbox":[960,283,32,0]}
+{"kind":"shape","id":"sh/21kj25kr","slide":35,"bbox":[72,422,1136,138]}
+{"kind":"textbox","id":"sh/s7yhwbi9","slide":35,"text":"XONG = code chạy  +  test tối thiểu  +  pnpm check xanh  +  1 review  +  sheet cập nhật","textPreview":"XONG = code chạy  +  test tối thiểu  +  pnpm check xanh  +  1 review  +  sheet cập nhật","textChars":87,"textLines":1,"bbox":[104,448,1072,74]}
+{"kind":"notes","id":"nt/4fbxd6","slide":35,"text":"Giải thích Definition of Done. Viết code xong chưa phải hoàn thành; đầu ra phải kiểm tra được, review được và người tiếp theo dùng được.\n\n[Sources]\n- APC-Portal-Ke-hoach-cong-viec.xlsx — Quy ước & Điều phối\n- CONTRIBUTING.md"}
+{"kind":"slide","id":"sl/s6duns","slide":36,"title":"APC PORTAL • TEAM KICKOFF","textShapes":16}
+{"kind":"textbox","id":"sh/x8jqhkz6","slide":36,"text":"APC PORTAL • TEAM KICKOFF","textPreview":"APC PORTAL • TEAM KICKOFF","textChars":25,"textLines":1,"bbox":[72,36,650,22]}
+{"kind":"textbox","id":"sh/a58765gf","slide":36,"name":"slide-title","text":"Quy ước phối hợp và xử lý blocker","textPreview":"Quy ước phối hợp và xử lý blocker","textChars":33,"textLines":1,"bbox":[72,68,1136,56]}
+{"kind":"shape","id":"sh/b6h8fah0","slide":36,"bbox":[72,132,1136,0]}
+{"kind":"textbox","id":"sh/kvapczyh","slide":36,"text":"APC PORTAL","textPreview":"APC PORTAL","textChars":10,"textLines":1,"bbox":[72,684,200,18]}
+{"kind":"textbox","id":"sh/lwjql4f2","slide":36,"text":"36","textPreview":"36","textChars":2,"textLines":1,"bbox":[1168,684,40,18]}
+{"kind":"textbox","id":"sh/y9s7apgb","slide":36,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[84,174,76,62]}
+{"kind":"textbox","id":"sh/ju18juxw","slide":36,"text":"Kẹt quá nửa ngày","textPreview":"Kẹt quá nửa ngày","textChars":16,"textLines":1,"bbox":[190,174,360,34]}
+{"kind":"textbox","id":"sh/0z6p0vyd","slide":36,"text":"Chuyển trạng thái Blocked và ghi lý do.","textPreview":"Chuyển trạng thái Blocked và ghi lý do.","textChars":39,"textLines":1,"bbox":[570,174,590,54]}
+{"kind":"shape","id":"sh/10fq90zy","slide":36,"bbox":[190,246,970,0]}
+{"kind":"textbox","id":"sh/hw72lk3q","slide":36,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[84,278,76,62]}
+{"kind":"textbox","id":"sh/wvy1sfm5","slide":36,"text":"Check-in hai lần/tuần","textPreview":"Check-in hai lần/tuần","textChars":21,"textLines":1,"bbox":[190,278,360,34]}
+{"kind":"textbox","id":"sh/vupkjalk","slide":36,"text":"Cập nhật trạng thái trước buổi họp.","textPreview":"Cập nhật trạng thái trước buổi họp.","textChars":35,"textLines":1,"bbox":[570,278,590,54]}
+{"kind":"shape","id":"sh/utgjq54z","slide":36,"bbox":[190,350,970,0]}
+{"kind":"textbox","id":"sh/5kr2pk3m","slide":36,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[84,382,76,62]}
+{"kind":"textbox","id":"sh/4jy1wzm1","slide":36,"text":"P0 trước P1","textPreview":"P0 trước P1","textChars":11,"textLines":1,"bbox":[190,382,360,34]}
+{"kind":"textbox","id":"sh/3ipknulg","slide":36,"text":"Không mở thêm việc khi nút chặn chưa xong.","textPreview":"Không mở thêm việc khi nút chặn chưa xong.","textChars":42,"textLines":1,"bbox":[570,382,590,54]}
+{"kind":"shape","id":"sh/ihgjup4b","slide":36,"bbox":[190,454,970,0]}
+{"kind":"textbox","id":"sh/dor2t43y","slide":36,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[84,486,76,62]}
+{"kind":"textbox","id":"sh/sni10zmd","slide":36,"text":"Không push thẳng main","textPreview":"Không push thẳng main","textChars":21,"textLines":1,"bbox":[190,486,360,34]}
+{"kind":"textbox","id":"sh/c3adc7yl","slide":36,"text":"Mỗi thay đổi đi qua PR, review và CI.","textPreview":"Mỗi thay đổi đi qua PR, review và CI.","textChars":37,"textLines":1,"bbox":[570,486,590,54]}
+{"kind":"shape","id":"sh/x4ju5cf6","slide":36,"bbox":[190,558,970,0]}
+{"kind":"notes","id":"nt/s6duns","slide":36,"text":"Tạo văn hóa báo sớm. Blocked không phải thất bại; im lặng khiến dependency bị trễ mới là rủi ro.\n\n[Sources]\n- APC-Portal-Ke-hoach-cong-viec.xlsx — Quy ước & Điều phối\n- CONTRIBUTING.md"}
+{"kind":"slide","id":"sl/bqdbmu","slide":37,"title":"BẮT ĐẦU NGAY","textShapes":15}
+{"kind":"textbox","id":"sh/d8zitw3m","slide":37,"text":"BẮT ĐẦU NGAY","textPreview":"BẮT ĐẦU NGAY","textChars":12,"textLines":1,"bbox":[72,70,360,28]}
+{"kind":"textbox","id":"sh/qlojy1kv","slide":37,"text":"Bốn việc sau buổi kickoff","textPreview":"Bốn việc sau buổi kickoff","textChars":25,"textLines":1,"bbox":[72,118,760,64]}
+{"kind":"textbox","id":"sh/r6x0r6lg","slide":37,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[72,228,52,52]}
+{"kind":"textbox","id":"sh/0bq14b2x","slide":37,"text":"Mỗi người chạy được dự án local","textPreview":"Mỗi người chạy được dự án local","textChars":31,"textLines":1,"bbox":[150,228,720,48]}
+{"kind":"textbox","id":"sh/1cz2xg3i","slide":37,"text":"Ngày mai","textPreview":"Ngày mai","textChars":8,"textLines":1,"bbox":[932,228,260,48]}
+{"kind":"shape","id":"sh/e98j21kr","slide":37,"bbox":[150,292,1042,0]}
+{"kind":"textbox","id":"sh/zah0v6lc","slide":37,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[72,320,52,52]}
+{"kind":"textbox","id":"sh/ofa18v29","slide":37,"text":"Chốt reviewer cho task Sprint 1","textPreview":"Chốt reviewer cho task Sprint 1","textChars":31,"textLines":1,"bbox":[150,320,720,48]}
+{"kind":"textbox","id":"sh/9gj21g3e","slide":37,"text":"Hôm nay","textPreview":"Hôm nay","textChars":7,"textLines":1,"bbox":[932,320,260,48]}
+{"kind":"shape","id":"sh/18ru9kvm","slide":37,"bbox":[150,384,1042,0]}
+{"kind":"textbox","id":"sh/0nit0fe1","slide":37,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[72,412,52,52]}
+{"kind":"textbox","id":"sh/zmpc7udg","slide":37,"text":"BE1 • FE1 • IN1 mở branch/PR đầu tiên","textPreview":"BE1 • FE1 • IN1 mở branch/PR đầu tiên","textChars":37,"textLines":1,"bbox":[150,412,720,48]}
+{"kind":"textbox","id":"sh/elgbypwb","slide":37,"text":"Trước 05/09","textPreview":"Trước 05/09","textChars":11,"textLines":1,"bbox":[932,412,260,48]}
+{"kind":"shape","id":"sh/9crud4vy","slide":37,"bbox":[150,476,1042,0]}
+{"kind":"textbox","id":"sh/obid4zed","slide":37,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[72,504,52,52]}
+{"kind":"textbox","id":"sh/na9cbuds","slide":37,"text":"APC chốt nội dung và giao diện trang chủ","textPreview":"APC chốt nội dung và giao diện trang chủ","textChars":40,"textLines":1,"bbox":[150,504,720,48]}
+{"kind":"textbox","id":"sh/m90v2pw7","slide":37,"text":"05/09","textPreview":"05/09","textChars":5,"textLines":1,"bbox":[932,504,260,48]}
+{"kind":"shape","id":"sh/pg7u10ve","slide":37,"bbox":[150,568,1042,0]}
+{"kind":"textbox","id":"sh/4fytsvet","slide":37,"text":"Mục tiêu sau cùng: mỗi người biết đầu ra của mình và người đang chờ đầu ra đó.","textPreview":"Mục tiêu sau cùng: mỗi người biết đầu ra của mình và người đang chờ đầu ra đó.","textChars":78,"textLines":1,"bbox":[72,626,1120,42]}
+{"kind":"notes","id":"nt/bqdbmu","slide":37,"text":"Kết thúc bằng hành động, không kết thúc bằng cảm ơn. Chốt người làm, deadline và kênh cập nhật ngay sau buổi họp.\n\n[Sources]\n- APC-Portal-Ke-hoach-cong-viec.xlsx — Chi tiết Sprint 1\n- Danh sách thành viên do người dùng cung cấp"}

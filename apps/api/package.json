@@ -9,19 +9,24 @@
     "start": "node dist/server.js",
     "lint": "oxlint src test",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:migrate": "prisma migrate dev --schema src/db/schema.prisma",
+    "db:generate": "prisma generate --schema src/db/schema.prisma"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",
+    "@prisma/client": "^6.19.3",
     "dotenv": "^17.2.2",
     "fastify": "^5.6.1",
     "pg": "^8.16.3",
     "zod": "^4.1.11"
   },
   "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^11.16.0",
     "@types/node": "^24.7.2",
     "@types/pg": "^8.15.5",
     "oxlint": "^1.23.0",
+    "prisma": "^6.19.3",
     "tsx": "^4.20.6",
     "typescript": "~6.0.2",
     "vitest": "^4.1.1"
