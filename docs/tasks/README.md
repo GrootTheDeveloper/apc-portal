@@ -5,6 +5,7 @@ Task trong `APC-Portal-Ke-hoach-cong-viec.xlsx` chỉ ghi tóm tắt. Thư mục
 | File | Nội dung |
 | --- | --- |
 | [phase-0-starters.md](./phase-0-starters.md) | CT1, IN1, FE1 — 3 task khởi động, không phụ thuộc |
+| [wave-1-p1.md](./wave-1-p1.md) | Wave 1 sau BE1: BE4, BE3, BE2, FE2, website mock (Gia Bảo/Nghĩa/Phúc) |
 
 ## Khung một phiếu
 
