@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.1 |
+| Phiên bản | 1.2 |
 | Trạng thái | Bản thảo để APC rà soát |
-| Ngày cập nhật | 27/08/2026 |
+| Ngày cập nhật | 05/09/2026 |
 | Sản phẩm | APC Portal |
 | Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC) |
 | Tài liệu nền tảng | [APC Portal - Project Charter](./00-project-charter.md) |
@@ -15,6 +15,7 @@
 | --- | --- |
 | 1.0 | Baseline PRD hoàn chỉnh gồm mục tiêu, 29 luồng, yêu cầu, dữ liệu, bảo mật, vận hành và tiêu chí nghiệm thu MVP |
 | 1.1 | Liên kết baseline với giai đoạn local-first và tách cam kết production chưa được phê duyệt |
+| 1.2 | Bỏ hạng mục Thành tích (PRT-02 và mục 7.7 đổi thành "Dự án và sản phẩm"); cập nhật PUB-05, ORG-04, BR-20, FLOW-18 và bảng thực thể |
 
 > Trạng thái triển khai ngày 27/08/2026: nền tảng local và trang chủ đang được xây dựng. Mọi yêu cầu VPS/staging/production là release gate tương lai và chỉ có hiệu lực sau khi APC chọn hạ tầng.
 
@@ -28,7 +29,7 @@ Mỗi yêu cầu chức năng có một mã định danh cố định. Mã này 
 
 APC Portal là cổng thông tin chính thức và hệ thống vận hành nội bộ của APC. Sản phẩm gồm ba khu vực:
 
-1. **Khu vực công khai:** giới thiệu APC, tin tức, sự kiện, dự án, thành tích và tuyển thành viên.
+1. **Khu vực công khai:** giới thiệu APC, tin tức, sự kiện, dự án và tuyển thành viên.
 2. **Khu vực thành viên:** hồ sơ cá nhân, thông báo, lịch hoạt động, đăng ký sự kiện và tài liệu nội bộ.
 3. **Khu vực quản trị:** quản lý nội dung, tuyển thành viên, sự kiện, thành viên, phân quyền và nhật ký hoạt động.
 
@@ -93,7 +94,7 @@ Một người dùng có thể có nhiều vai trò nghiệp vụ, nhưng không
 | FLOW-15 | Sự kiện | Tạo, chỉnh sửa, công bố, hủy hoặc lưu trữ sự kiện | Người quản lý sự kiện | Sự kiện xuất hiện đúng phạm vi và trạng thái |
 | FLOW-16 | Sự kiện | Xuất danh sách, điểm danh và ghi lịch sử tham gia | Ban quản lý sự kiện | Kết quả tham gia được lưu vào hồ sơ thành viên |
 | FLOW-17 | Nội dung | Soạn, xem trước, công bố, gỡ và lưu trữ bài viết | Người quản lý nội dung | Nội dung xuất hiện hoặc được ẩn đúng trạng thái |
-| FLOW-18 | Dự án | Tạo và công bố dự án, sản phẩm hoặc thành tích | Ban chuyên môn/Ban Chủ nhiệm | Hồ sơ được chuẩn bị trong phạm vi ban và được Ban Chủ nhiệm công bố |
+| FLOW-18 | Dự án | Tạo và công bố dự án hoặc sản phẩm | Ban chuyên môn/Ban Chủ nhiệm | Hồ sơ được chuẩn bị trong phạm vi ban và được Ban Chủ nhiệm công bố |
 | FLOW-19 | Tài liệu | Tải lên, phân quyền, thay thế, tải xuống và lưu trữ tài liệu | Người quản lý tài liệu, thành viên | Tài liệu chỉ được truy cập bởi đúng đối tượng |
 | FLOW-20 | Phân quyền | Gán hoặc thu hồi vai trò và quyền theo ban chuyên môn | Ban Chủ nhiệm/Quản trị viên kỹ thuật | Người dùng có đúng quyền cần thiết và không vượt phạm vi |
 | FLOW-21 | Kiểm soát | Tra cứu audit log và điều tra thay đổi | Ban Chủ nhiệm/Quản trị viên kỹ thuật | Hành động quản trị được truy vết theo người, thời gian và đối tượng |
@@ -151,7 +152,7 @@ Các luồng từ `FLOW-01` đến `FLOW-29` phải được mô tả chi tiết
 | PUB-02 | Hiển thị trang giới thiệu gồm sứ mệnh, cơ cấu, ban chuyên môn và thông tin liên hệ | Bắt buộc |
 | PUB-03 | Hiển thị danh sách và chi tiết tin tức, thông báo theo trạng thái đã công bố | Bắt buộc |
 | PUB-04 | Hiển thị danh sách, chi tiết và lịch sự kiện công khai | Bắt buộc |
-| PUB-05 | Hiển thị dự án, sản phẩm và thành tích của APC | Bắt buộc |
+| PUB-05 | Hiển thị dự án và sản phẩm của APC | Bắt buộc |
 | PUB-06 | Hiển thị thông tin đợt tuyển đang mở và biểu mẫu ứng tuyển | Bắt buộc |
 | PUB-07 | Cho phép tìm kiếm cơ bản theo tiêu đề trong tin tức, sự kiện và dự án | Bắt buộc |
 | PUB-08 | Cung cấp trang lỗi 404 và trạng thái bảo trì rõ ràng | Bắt buộc |
@@ -241,13 +242,12 @@ Các luồng từ `FLOW-01` đến `FLOW-29` phải được mô tả chi tiết
 | CMS-05 | Thông báo nội bộ chỉ hiển thị cho nhóm vai trò hoặc ban chuyên môn được chọn | Bắt buộc |
 | CMS-06 | Thao tác công bố, gỡ hoặc lưu trữ nội dung được ghi vào audit log | Bắt buộc |
 
-### 7.7. Dự án và thành tích
+### 7.7. Dự án và sản phẩm
 
 | Mã | Yêu cầu | Mức ưu tiên |
 | --- | --- | --- |
 | PRT-01 | Người có quyền tạo và chỉnh sửa thông tin dự án/sản phẩm trong phạm vi của mình với tên, mô tả, hình ảnh, thành viên tham gia, công nghệ và liên kết; Ban Chủ nhiệm công bố | Bắt buộc |
-| PRT-02 | Người có quyền tạo và chỉnh sửa thành tích trong phạm vi của mình với tên, thời gian, cấp độ, mô tả và hình ảnh; Ban Chủ nhiệm công bố | Bắt buộc |
-| PRT-03 | Dự án và thành tích có trạng thái Ẩn hoặc Công khai | Bắt buộc |
+| PRT-03 | Dự án và sản phẩm có trạng thái Ẩn hoặc Công khai | Bắt buộc |
 | PRT-04 | Chỉ công khai tên, hình ảnh hoặc thông tin cá nhân của thành viên khi có sự đồng ý được lưu lại | Bắt buộc |
 
 ### 7.8. Tài liệu nội bộ
@@ -284,7 +284,7 @@ Các luồng từ `FLOW-01` đến `FLOW-29` phải được mô tả chi tiết
 | ORG-01 | Ban Chủ nhiệm quản lý tên, mô tả, sứ mệnh, thông tin liên hệ và liên kết chính thức của APC | Bắt buộc |
 | ORG-02 | Ban Chủ nhiệm tạo, sửa, sắp xếp và lưu trữ Ban chuyên môn với tên, mô tả và đầu mối liên hệ | Bắt buộc |
 | ORG-03 | Không được lưu trữ một Ban chuyên môn còn thành viên hoạt động; thành viên phải được chuyển ban hoặc cập nhật trạng thái trước | Bắt buộc |
-| ORG-04 | Ban Chủ nhiệm chọn tin tức, sự kiện, dự án và thành tích nổi bật trên trang chủ | Bắt buộc |
+| ORG-04 | Ban Chủ nhiệm chọn tin tức, sự kiện và dự án nổi bật trên trang chủ | Bắt buộc |
 | ORG-05 | Thay đổi thông tin liên hệ, cơ cấu và nội dung nổi bật được ghi audit log | Bắt buộc |
 | ORG-06 | Ban chuyên môn có trạng thái Đang hoạt động hoặc Lưu trữ; ban lưu trữ không nhận thành viên, sự kiện hoặc tài liệu mới | Bắt buộc |
 
@@ -321,7 +321,7 @@ Các luồng từ `FLOW-01` đến `FLOW-29` phải được mô tả chi tiết
 | BR-17 | Email giao dịch là tác vụ hậu xử lý; trạng thái nghiệp vụ được quyết định bởi transaction chính, không phụ thuộc kết quả gửi email |
 | BR-18 | Import thành viên phải dùng transaction toàn lô: một dòng lỗi làm toàn bộ lô không được ghi vào database |
 | BR-19 | Vai trò đặc quyền chỉ có hiệu lực sau khi tài khoản hoàn tất TOTP; thu hồi vai trò phải vô hiệu hóa các phiên đặc quyền hiện có |
-| BR-20 | Thông tin cá nhân trong dự án, thành tích hoặc nội dung công khai phải có bản ghi đồng ý còn hiệu lực |
+| BR-20 | Thông tin cá nhân trong dự án hoặc nội dung công khai phải có bản ghi đồng ý còn hiệu lực |
 | BR-21 | Cùng một tài khoản không được đồng thời mang `BOARD` và `TECH_ADMIN` |
 
 ## 9. Mô hình dữ liệu nghiệp vụ
@@ -337,7 +337,7 @@ Các luồng từ `FLOW-01` đến `FLOW-29` phải được mô tả chi tiết
 | Event | Thông tin sự kiện, phạm vi, sức chứa, thời gian đăng ký và trạng thái |
 | EventRegistration | Tài khoản hoặc thông tin người đăng ký, mã đăng ký, thời điểm, trạng thái đăng ký và điểm danh |
 | Post | Tin tức, thông báo, chuyên mục, nội dung, tác giả và trạng thái |
-| Project/Achievement | Dự án, sản phẩm, thành tích và dữ liệu trình bày công khai |
+| Project | Dự án, sản phẩm và dữ liệu trình bày công khai |
 | Document/DocumentVersion | Metadata, quyền truy cập và lịch sử các phiên bản tệp |
 | SiteSetting | Thông tin APC, liên hệ, liên kết chính thức và cấu hình nội dung nổi bật |
 | ConsentRecord | Chủ thể, mục đích, phiên bản nội dung đồng ý, thời gian và trạng thái hiệu lực |
@@ -623,7 +623,7 @@ Việc xóa hoặc ẩn danh dữ liệu được áp dụng ngay trên hệ th�
 
 ### AC-01. Truy cập khu vực công khai
 
-- Khách truy cập xem được giới thiệu, tin tức, sự kiện, dự án, thành tích và thông tin tuyển thành viên trên desktop và mobile.
+- Khách truy cập xem được giới thiệu, tin tức, sự kiện, dự án và thông tin tuyển thành viên trên desktop và mobile.
 - Nội dung chưa công bố hoặc đã lưu trữ không xuất hiện công khai.
 
 ### AC-02. Tuyển thành viên trọn quy trình

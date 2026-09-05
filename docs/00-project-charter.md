@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.1 |
+| Phiên bản | 1.2 |
 | Trạng thái | Bản thảo để APC rà soát |
-| Ngày cập nhật | 27/08/2026 |
+| Ngày cập nhật | 05/09/2026 |
 | Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC) |
 | Đơn vị | Câu lạc bộ Lập trình ứng dụng (APC), Khoa Công Nghệ, UMT |
 | Tên sản phẩm | APC Portal |
@@ -15,6 +15,7 @@
 | --- | --- |
 | 1.0 | Baseline hoàn chỉnh về bối cảnh, mục tiêu, phạm vi MVP, nguyên tắc vận hành và ràng buộc triển khai |
 | 1.1 | Ghi nhận giai đoạn local-first; hạ tầng production chưa được chọn và cần quyết định riêng |
+| 1.2 | Bỏ hạng mục Thành tích khỏi phạm vi; đồng bộ với bản kế hoạch bàn giao (route công khai tiếng Anh, tuyển thành viên theo mô hình đợt tuyển) |
 
 Tài liệu này xác lập định hướng sản phẩm, phạm vi MVP và các nguyên tắc triển khai của APC Portal.
 
@@ -43,7 +44,7 @@ Sự phân tán này dẫn đến các vấn đề:
 - Quy trình tuyển thành viên và đăng ký sự kiện tốn nhiều thao tác thủ công.
 - Dữ liệu thành viên khó bàn giao giữa các nhiệm kỳ.
 - Việc cập nhật nội dung phụ thuộc vào từng kênh và từng người quản lý.
-- Sản phẩm, thành tích và năng lực kỹ thuật của APC chưa được trình bày tập trung.
+- Sản phẩm và năng lực kỹ thuật của APC chưa được trình bày tập trung.
 
 ## 3. Tầm nhìn sản phẩm
 
@@ -53,7 +54,7 @@ Portal là nguồn thông tin chuẩn của câu lạc bộ. Fanpage, email và 
 
 ## 4. Mục tiêu
 
-1. Tạo một địa chỉ chính thức để giới thiệu APC, hoạt động, dự án, thành tích và thông tin liên hệ.
+1. Tạo một địa chỉ chính thức để giới thiệu APC, hoạt động, dự án và thông tin liên hệ.
 2. Tập trung hóa tin tức, lịch sự kiện, đăng ký hoạt động và tài liệu câu lạc bộ.
 3. Hỗ trợ trọn vòng đời thành viên từ ứng tuyển, xét duyệt, hoạt động đến khi kết thúc tham gia.
 4. Giảm phụ thuộc vào biểu mẫu và bảng tính rời rạc trong các quy trình thường xuyên.
@@ -64,7 +65,7 @@ Portal là nguồn thông tin chuẩn của câu lạc bộ. Fanpage, email và 
 
 | Nhóm | Nhu cầu chính |
 | --- | --- |
-| Khách truy cập | Tìm hiểu APC, hoạt động, dự án, thành tích và kênh liên hệ |
+| Khách truy cập | Tìm hiểu APC, hoạt động, dự án và kênh liên hệ |
 | Sinh viên UMT | Theo dõi sự kiện, ứng tuyển và đăng ký tham gia hoạt động |
 | Ứng viên | Gửi và theo dõi trạng thái đơn ứng tuyển |
 | Thành viên APC | Quản lý hồ sơ, xem lịch, đăng ký hoạt động và truy cập tài liệu nội bộ |
@@ -79,7 +80,7 @@ Portal là nguồn thông tin chuẩn của câu lạc bộ. Fanpage, email và 
 - Giới thiệu, sứ mệnh, cơ cấu và thông tin liên hệ.
 - Tin tức và thông báo.
 - Danh sách, chi tiết và lịch sự kiện.
-- Dự án, sản phẩm và thành tích của câu lạc bộ.
+- Dự án và sản phẩm của câu lạc bộ.
 - Trang tuyển thành viên và biểu mẫu ứng tuyển.
 - Liên kết rõ ràng đến UMTOJ và các website sự kiện liên quan.
 

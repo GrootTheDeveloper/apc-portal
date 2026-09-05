@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.1 |
+| Phiên bản | 1.2 |
 | Trạng thái | Bản thảo để APC rà soát |
-| Ngày cập nhật | 27/08/2026 |
+| Ngày cập nhật | 05/09/2026 |
 | Sản phẩm | APC Portal |
 | Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC) |
 | Tài liệu liên quan | [Project Charter](./00-project-charter.md), [PRD](./01-prd.md), [Roles and Permissions](./02-roles-permissions.md) |
@@ -15,6 +15,7 @@
 | --- | --- |
 | 1.0 | Baseline hoàn chỉnh gồm `FLOW-01` đến `FLOW-29`, nhánh lỗi, truy vết và sơ đồ tổ chức/vận hành |
 | 1.1 | Ghi nhận trang chủ là luồng được khởi tạo đầu tiên và các luồng production chưa triển khai |
+| 1.2 | Bỏ Thành tích khỏi FLOW-18 (đổi thành "Dự án và sản phẩm") và các sơ đồ/điều hướng liên quan |
 
 > Hiện chỉ `FLOW-01` có giao diện baseline theo bản thiết kế đã duyệt. Các luồng còn lại là đặc tả để rà soát, không phải chức năng đã hoàn thành.
 
@@ -62,7 +63,7 @@ flowchart LR
     Board["Ban Chủ nhiệm"] --> Recruitment
     Board --> Member
     Board --> Event
-    Board --> Content["Nội dung, dự án và thành tích"]
+    Board --> Content["Nội dung và dự án"]
     Board --> Document
     Board --> Organization["Thông tin tổ chức và onboarding"]
     System["Tác vụ nền"] --> Notification["Email giao dịch"]
@@ -96,7 +97,7 @@ flowchart TB
         F14["FLOW-14: Đăng ký sự kiện"] --> F15["FLOW-15: Quản lý sự kiện"]
         F15 --> F16["FLOW-16: Điểm danh"]
         F17["FLOW-17: Bài viết"]
-        F18["FLOW-18: Dự án và thành tích"]
+        F18["FLOW-18: Dự án và sản phẩm"]
         F19["FLOW-19: Tài liệu"]
         F24["FLOW-24: Thông tin tổ chức"]
     end
@@ -156,7 +157,7 @@ flowchart TB
 | Thuộc tính | Nội dung |
 | --- | --- |
 | Tác nhân | PUBLIC |
-| Điểm bắt đầu | Người dùng mở danh sách tin tức, sự kiện, dự án hoặc thành tích |
+| Điểm bắt đầu | Người dùng mở danh sách tin tức, sự kiện hoặc dự án |
 | Điều kiện trước | Nội dung có trạng thái Công khai/Đã công bố |
 | Kết quả | Người dùng xem được nội dung phù hợp hoặc trạng thái không có kết quả |
 | Truy vết | `PUB-03`, `PUB-04`, `PUB-05`, `PUB-07`, `CMS-04`, `SEO-01`, `SEO-03` |
@@ -614,7 +615,7 @@ flowchart TD
     H --> I["Ghi lịch sử tham gia"]
 ```
 
-## 9. Nội dung, dự án và thành tích
+## 9. Nội dung và dự án
 
 ### FLOW-17. Soạn và công bố bài viết
 
@@ -644,19 +645,19 @@ flowchart TD
 - Gỡ nội dung: chuyển về Bản nháp hoặc Lưu trữ, không xóa lịch sử.
 - Người không đúng phạm vi gọi API công bố: trả 403.
 
-### FLOW-18. Quản lý thông tin dự án, sản phẩm và thành tích
+### FLOW-18. Quản lý thông tin dự án và sản phẩm
 
 | Thuộc tính | Nội dung |
 | --- | --- |
 | Tác nhân | DEPARTMENT_MANAGER, BOARD |
-| Điểm bắt đầu | Người có quyền mở quản trị Dự án/Thành tích |
+| Điểm bắt đầu | Người có quyền mở quản trị Dự án/Sản phẩm |
 | Điều kiện trước | Phiên hợp lệ và có dữ liệu giới thiệu cần cập nhật |
 | Kết quả | Hồ sơ giới thiệu được lưu hoặc công bố |
 | Truy vết | `PRT-01` đến `PRT-04`, `BR-15`, `BR-20`, `DATA-03`, `DATA-07` |
 
 **Luồng chính**
 
-1. Người dùng chọn loại Dự án/Sản phẩm hoặc Thành tích.
+1. Người dùng chọn loại Dự án hoặc Sản phẩm.
 2. Người dùng nhập tên, mô tả, hình ảnh, công nghệ, thành viên hiển thị, liên kết và kiểm tra trạng thái đồng ý công khai của thành viên.
 3. Hệ thống kiểm tra dữ liệu và lưu ở trạng thái Ẩn.
 4. Người dùng xem trước trang giới thiệu.
@@ -895,7 +896,7 @@ flowchart TD
 
 1. Ban Chủ nhiệm mở trang cấu hình và xem dữ liệu đang công bố.
 2. Người dùng sửa tên hiển thị, mô tả, sứ mệnh, email liên hệ và các liên kết chính thức.
-3. Người dùng chọn tin tức, sự kiện, dự án và thành tích nổi bật.
+3. Người dùng chọn tin tức, sự kiện và dự án nổi bật.
 4. Hệ thống kiểm tra URL, dữ liệu bắt buộc và quyền công khai của nội dung được chọn.
 5. Ban Chủ nhiệm xem trước và lưu.
 6. Hệ thống xóa cache liên quan, cập nhật trang công khai và ghi audit log.

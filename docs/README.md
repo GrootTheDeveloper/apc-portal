@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.1 |
+| Phiên bản | 1.2 |
 | Trạng thái | Bản thảo để APC rà soát |
-| Ngày cập nhật | 27/08/2026 |
+| Ngày cập nhật | 05/09/2026 |
 | Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC), Khoa Công Nghệ, UMT |
 | Giai đoạn hiện tại | Khởi tạo và phát triển local; chưa chọn hạ tầng production |
 
@@ -53,7 +53,7 @@ Nếu tài liệu mâu thuẫn, dừng triển khai phần bị ảnh hưởng, 
 - React/Vite cho web và Node.js/Fastify cho API.
 - PostgreSQL, Mailpit và MinIO chạy local bằng Docker Compose.
 - Trang chủ theo bản thiết kế đã duyệt là màn hình đầu tiên tại `/`.
-- Giao diện trang chủ không chứa khối thống kê/cơ cấu nhân sự và thành tích tiêu biểu.
+- Hero trang chủ có dải 4 chỉ số CLB dạng placeholder (số mẫu, chờ APC xác nhận số thật); trang chủ vẫn không có khối cơ cấu nhân sự riêng.
 - Header dùng nhãn `Gia nhập APC`; nghiệp vụ nội bộ vẫn có thể gọi là tuyển thành viên.
 - Chưa có VPS, staging hoặc production trong phạm vi triển khai hiện tại.
 

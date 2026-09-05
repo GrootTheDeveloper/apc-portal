@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.0 |
+| Phiên bản | 1.1 |
 | Trạng thái | Bản thảo để APC rà soát |
-| Ngày cập nhật | 27/08/2026 |
+| Ngày cập nhật | 05/09/2026 |
 | Phạm vi | Chia giai đoạn triển khai từ trang chủ đến Portal MVP |
 
 Tài liệu này là backlog mức tính năng. Quy tắc nghiệp vụ chi tiết vẫn nằm trong [PRD](./01-prd.md), [Roles and Permissions](./02-roles-permissions.md) và [User Flows](./03-user-flows.md).
@@ -20,7 +20,7 @@ Tài liệu này là backlog mức tính năng. Quy tắc nghiệp vụ chi ti�
 | PUB-02 | Header: Giới thiệu, Hoạt động, Sự kiện, Tin tức, Dự án, Gia nhập APC, UMTOJ, Về APC, Đăng nhập | Đã có giao diện; chưa có route đích |
 | PUB-03 | Hero, giá trị cốt lõi, hoạt động, dự án, sự kiện, đối tác, CTA và footer | Đã có nội dung mẫu; cần APC duyệt nội dung thật |
 
-Trang chủ không hiển thị khối thống kê/cơ cấu nhân sự và thành tích tiêu biểu. Các nội dung đó, nếu được duyệt, thuộc trang `Về APC` hoặc trang riêng ở giai đoạn sau.
+Hero trang chủ hiển thị dải 4 chỉ số CLB dạng placeholder (số mẫu trong `HeroSection.tsx`, chờ APC xác nhận số thật). Trang chủ không có khối cơ cấu nhân sự riêng; nội dung đó, nếu được duyệt, thuộc trang `Về APC` hoặc trang riêng ở giai đoạn sau.
 
 ## 2. P1 - Website công khai
 
