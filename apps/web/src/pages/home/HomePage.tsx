@@ -1,7 +1,6 @@
 import { useRef } from 'react'
 
 import { useScrollReveal } from './hooks/useScrollReveal'
-import { Navbar } from './sections/Navbar'
 import { HeroSection } from './sections/HeroSection'
 import { ValuesSection } from './sections/ValuesSection'
 import { ActivitiesSection } from './sections/ActivitiesSection'
@@ -12,7 +11,6 @@ import { PartnersSection } from './sections/PartnersSection'
 import { HostSection } from './sections/HostSection'
 import { JoinSection } from './sections/JoinSection'
 import { SectionSeam } from './sections/SectionSeam'
-import { SiteFooter } from './sections/SiteFooter'
 import './home.css'
 
 export function HomePage() {
@@ -21,7 +19,6 @@ export function HomePage() {
 
   return (
     <div ref={rootRef}>
-      <Navbar />
       <main>
         <HeroSection />
         <SectionSeam thin />
@@ -41,7 +38,6 @@ export function HomePage() {
         <SectionSeam thin />
         <JoinSection />
       </main>
-      <SiteFooter />
     </div>
   )
 }
