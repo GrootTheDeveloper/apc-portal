@@ -22,6 +22,7 @@
 | Kỹ thuật | [07 - Local Development](./07-local-development.md) | Cài đặt, chạy và kiểm tra local |
 | Bàn giao | [08 - Handover](./08-handover.md) | Điều kiện để APC tiếp nhận repository |
 | Giao diện | [Design System](../DESIGN.md) | Màu sắc, chữ, layout và component |
+| Kỹ thuật | [Developer Guide (PDF)](./tech/developer-guide.pdf) | Sổ tay tổng hợp cả hệ thống, nhiều sơ đồ — đọc trước khi vào code |
 
 ## 2. Thứ tự đọc theo vai trò
 

@@ -13,3 +13,9 @@ coverage/
 apps/api/data/
 apps/api/src/db/generated/
 apps/web/.vite/
+
+# LaTeX build intermediates
+docs/tech/*.aux
+docs/tech/*.log
+docs/tech/*.out
+docs/tech/*.toc

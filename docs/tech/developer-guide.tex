@@ -1,0 +1,426 @@
+% APC Portal — Sổ tay kỹ thuật (Developer Guide)
+% Biên dịch: xelatex developer-guide.tex  (chạy 2 lần cho mục lục)
+% Yêu cầu: XeLaTeX + TeX Gyre fonts + TikZ (đã có trong TeX Live full)
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=2.3cm]{geometry}
+\usepackage{fontspec}
+\defaultfontfeatures{Ligatures=TeX}
+\setmainfont{TeX Gyre Termes}
+\setsansfont{TeX Gyre Heros}
+\setmonofont{TeX Gyre Cursor}[Scale=0.92]
+
+\usepackage{xcolor}
+\definecolor{apcred}{HTML}{C8102E}
+\definecolor{apcblue}{HTML}{1F2A44}
+\definecolor{apcgold}{HTML}{C48A00}
+\definecolor{softgray}{HTML}{F2F3F5}
+\definecolor{linegray}{HTML}{C9CED6}
+\definecolor{inkgray}{HTML}{475467}
+
+\usepackage{sectsty}
+\allsectionsfont{\sffamily}
+\sectionfont{\sffamily\color{apcblue}\large}
+\subsectionfont{\sffamily\color{apcred}\normalsize}
+
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{fancyvrb}
+\usepackage{enumitem}
+\setlist{nosep,leftmargin=1.4em}
+\usepackage[unicode,hidelinks,pdfusetitle]{hyperref}
+\usepackage{xurl}
+
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,fit,backgrounds}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\sffamily\footnotesize\color{inkgray}APC Portal — Sổ tay kỹ thuật}
+\fancyhead[R]{\sffamily\footnotesize\color{inkgray}\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\sloppy
+
+% ---- style dùng chung cho sơ đồ ----
+\tikzset{
+  box/.style={draw=linegray,fill=softgray,rounded corners=3pt,align=center,
+    font=\sffamily\small,inner sep=6pt,minimum height=9mm},
+  ent/.style={draw=apcblue,fill=white,rounded corners=2pt,align=center,
+    font=\sffamily\small,inner sep=5pt,minimum width=26mm},
+  hub/.style={draw=apcred,line width=0.7pt,fill=apcred!6,rounded corners=2pt,
+    align=center,font=\sffamily\small,inner sep=5pt,minimum width=26mm},
+  fl/.style={-{Stealth[length=2.2mm]},draw=inkgray},
+  rel/.style={-{Stealth[length=2mm]},draw=inkgray,font=\sffamily\scriptsize\itshape},
+}
+
+\newcommand{\code}[1]{{\ttfamily #1}}
+
+\begin{document}
+
+% ================= TRANG BÌA =================
+\begin{titlepage}
+\centering
+\vspace*{2.2cm}
+{\sffamily\Huge\bfseries\color{apcblue} APC Portal\par}
+\vspace{6pt}
+{\sffamily\LARGE\color{apcred} Sổ tay kỹ thuật cho lập trình viên\par}
+\vspace{4pt}
+{\sffamily\large\color{inkgray} Developer Guide — hiểu hệ thống trong 15 phút\par}
+\vspace{2cm}
+\begin{tikzpicture}
+\node[box,fill=white,draw=apcblue] (b){Trình duyệt};
+\node[box,right=10mm of b] (w){\textbf{apps/web}\\React + Vite};
+\node[box,right=10mm of w] (a){\textbf{apps/api}\\Node + Fastify};
+\node[box,right=10mm of a,fill=apcblue!8] (d){PostgreSQL\\Mailpit · MinIO};
+\draw[fl] (b)--(w); \draw[fl] (w)--node[above,font=\sffamily\scriptsize]{HTTP/JSON}(a); \draw[fl] (a)--(d);
+\end{tikzpicture}
+\vfill
+{\sffamily\color{inkgray}
+Câu lạc bộ Lập trình ứng dụng (APC) — Khoa Công nghệ, UMT\\[2pt]
+Sinh từ mã nguồn tại nhánh \code{main} · cập nhật 07/09/2026\\
+Nguồn sự thật là \code{docs/*.md} + schema Prisma; tài liệu này tổng hợp lại.\par}
+\end{titlepage}
+
+\tableofcontents
+\thispagestyle{fancy}
+\clearpage
+
+% ================= 1. GIỚI THIỆU =================
+\section{Tài liệu này dùng để làm gì}
+Repo đã có 9 tài liệu \code{docs/*.md} theo từng chủ đề và toàn bộ mã nguồn. Nhưng đọc rời rạc thì
+khó dựng được \emph{bức tranh tổng thể}. Sổ tay này là \textbf{bản đồ}: đọc một lượt là hình dung
+được hệ thống chạy thế nào, dữ liệu ra sao, mã nằm ở đâu và đóng góp code theo quy trình nào.
+
+\textbf{Không thay thế} tài liệu gốc. Khi cần chi tiết nghiệp vụ, luôn quay về \code{docs/*.md}
+(mục~\ref{sec:index}). Khi tài liệu này lệch với mã, \emph{mã và \code{docs/*.md} đúng} — hãy sinh lại
+PDF (mục~\ref{sec:regen}).
+
+\begin{description}[leftmargin=2.2em,style=nextline]
+  \item[Người mới vào dự án] đọc hết, theo thứ tự.
+  \item[Đang bắt tay code] xem mục~\ref{sec:code} (bản đồ mã), \ref{sec:run} (chạy local), \ref{sec:flow} (quy trình PR).
+  \item[Làm backend] xem thêm mục~\ref{sec:data} (dữ liệu) và \ref{sec:rbac} (phân quyền).
+\end{description}
+
+% ================= 2. KIẾN TRÚC =================
+\section{Tổng quan kiến trúc}
+Một \textbf{monorepo TypeScript} quản lý bằng pnpm workspaces. Kiến trúc là \emph{modular monolith}:
+web và api tách nhau nhưng triển khai đơn giản, chưa có microservice / queue / Redis.
+
+\begin{center}
+\begin{tikzpicture}[node distance=14mm]
+\node[box,fill=white,draw=apcblue] (br) {Trình duyệt\\người dùng};
+\node[box,right=of br] (web) {\textbf{apps/web}\\React + Vite\\(SPA, react-router)};
+\node[box,right=of web] (api) {\textbf{apps/api}\\Fastify\\(REST + auth/RBAC)};
+\node[box,right=of api,fill=apcblue!8] (db) {PostgreSQL\\(Prisma)};
+\node[box,below=10mm of api,fill=apcgold!12,draw=apcgold] (mail) {Mailpit\\(email local)};
+\node[box,right=10mm of mail,fill=apcgold!12,draw=apcgold] (minio) {MinIO\\(tệp, S3-API)};
+\draw[fl] (br) -- (web);
+\draw[fl] (web) -- node[above,font=\sffamily\scriptsize]{HTTP/JSON} (api);
+\draw[fl] (api) -- node[above,font=\sffamily\scriptsize]{Prisma} (db);
+\draw[fl] (api) -- (mail);
+\draw[fl] (api) -- (minio);
+\end{tikzpicture}
+\end{center}
+
+\noindent\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Thành phần} & \textbf{Vai trò} \\ \midrule
+\code{apps/web} & Giao diện + điều hướng phía trình duyệt (React/Vite, Tailwind). \\
+\code{apps/api} & HTTP API, xác thực, phân quyền, nghiệp vụ máy chủ (Fastify + Prisma). \\
+PostgreSQL & Cơ sở dữ liệu quan hệ; truy cập qua Prisma. \\
+Mailpit & Hộp thư local để xem email giao dịch (\code{:8025}). \\
+MinIO & Lưu tệp/ảnh theo API tương thích S3 (console \code{:9001}). \\ \bottomrule
+\end{tabularx}
+
+\medskip
+\noindent Hạ tầng local dựng bằng Docker Compose (\code{compose.yaml}). Chưa có staging/production —
+đó là phạm vi về sau (\code{docs/06} mục 5).
+
+% ================= 3. BẢN ĐỒ MÃ NGUỒN =================
+\section{Bản đồ mã nguồn}\label{sec:code}
+\noindent\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Đường dẫn} & \textbf{Nội dung} \\ \midrule
+\code{apps/web/src/pages/} & Mỗi trang một thư mục; trang chủ ở \code{home/} tách theo từng section. \\
+\code{apps/web/src/layouts/} & \code{RootLayout} = Navbar + \code{<Outlet/>} + Footer dùng chung. \\
+\code{apps/web/src/App.tsx} & Khai báo router (danh sách route, xem mục~\ref{sec:routes}). \\
+\code{apps/api/src/app.ts} & Dựng Fastify, đăng ký CORS + route. Hiện có \code{/health}. \\
+\code{apps/api/src/config.ts} & Nạp + kiểm biến môi trường bằng Zod. \\
+\code{apps/api/src/db/schema.prisma} & Định nghĩa dữ liệu (nguồn sự thật của DB). \\
+\code{apps/api/src/db/migrations/} & Migration sinh bởi \code{prisma migrate}. \\
+\code{packages/*} & Kiểu / component thật sự dùng chung (chưa tạo package suy đoán). \\
+\code{docs/} & Tài liệu nghiệp vụ + kỹ thuật (mục~\ref{sec:index}). \\
+\code{compose.yaml} & Hạ tầng local (Postgres, Mailpit, MinIO). \\ \bottomrule
+\end{tabularx}
+
+% ================= 4. VÒNG ĐỜI REQUEST =================
+\section{Vòng đời một request}\label{sec:flow}
+Từ lúc người dùng bấm đến lúc dữ liệu về màn hình:
+
+\begin{center}
+\begin{tikzpicture}[node distance=8mm and 12mm]
+\node[box] (ui) {React\\(component)};
+\node[box,right=of ui] (rt) {react-router\\+ fetch};
+\node[box,right=of rt] (cors) {Fastify\\CORS};
+\node[box,right=of cors] (auth) {preHandler\\auth + RBAC};
+\node[box,below=10mm of auth] (h) {Route\\handler};
+\node[box,left=of h] (svc) {Prisma\\query};
+\node[box,left=of svc] (pg) {PostgreSQL};
+\draw[fl] (ui)--(rt); \draw[fl] (rt)-- node[above,font=\sffamily\scriptsize]{JSON} (cors);
+\draw[fl] (cors)--(auth); \draw[fl] (auth)--(h);
+\draw[fl] (h)--(svc); \draw[fl] (svc)--(pg);
+\draw[fl,dashed] (pg) to[bend left=18] node[below,font=\sffamily\scriptsize]{kết quả} (ui);
+\end{tikzpicture}
+\end{center}
+
+\noindent Điểm cần nhớ: \textbf{auth} (\emph{anh là ai?}) và \textbf{RBAC} (\emph{anh được làm gì?}) nằm ở
+tầng \code{preHandler} — chạy \emph{trước} mọi handler. Handler chỉ chạy khi đã qua cửa quyền, nên
+nghiệp vụ không phải tự kiểm quyền rải rác (xem mục~\ref{sec:rbac}).
+
+% ================= 5. MÔ HÌNH DỮ LIỆU =================
+\section{Mô hình dữ liệu}\label{sec:data}
+Sinh từ \code{apps/api/src/db/schema.prisma}. Bảy thực thể, chia ba nhóm: \emph{Tổ chức}, \emph{Nội dung},
+\emph{Tuyển dụng}.
+
+\begin{center}
+\begin{tikzpicture}
+% hai hub ở giữa
+\node[hub] (dept) at (0,0) {Department};
+\node[hub] (user) at (0,-2.3) {User};
+% nội dung bên trái
+\node[ent] (post)  at (-4.9, 0.5) {Post};
+\node[ent] (event) at (-4.9,-1.15) {Event};
+\node[ent] (proj)  at (-4.9,-2.8) {Project};
+% tuyển bên phải
+\node[ent] (round) at (5.1, 0.1) {RecruitmentRound};
+\node[ent] (app)   at (5.1,-2.3) {MembershipApplication};
+
+\draw[rel] (user) -- node[right]{thuộc} (dept);
+% nội dung -> ban + người tạo (mũi tên ngắn, không nhãn; xem bullet bên dưới)
+\draw[fl] (post.east)  -- (dept.west);
+\draw[fl] (post.east)  -- (user.west);
+\draw[fl] (event.east) -- (dept.west);
+\draw[fl] (event.east) -- (user.west);
+\draw[fl] (proj.east)  -- (dept.west);
+\draw[fl] (proj.east)  -- (user.west);
+% tuyển
+\draw[fl] (round.west) -- (user.east);
+\draw[fl] (app.north)  -- node[right,font=\sffamily\scriptsize\itshape]{thuộc đợt} (round.south);
+\draw[fl,dashed] (app.west) -- (user.east);
+\begin{scope}[on background layer]
+\node[fit=(dept)(user),draw=apcred!40,dashed,rounded corners,inner sep=9pt,label={[font=\sffamily\scriptsize\color{apcred}]above:Tổ chức}]{};
+\node[fit=(post)(proj),draw=apcblue!30,dashed,rounded corners,inner sep=9pt,label={[font=\sffamily\scriptsize\color{apcblue}]above:Nội dung (CMS)}]{};
+\node[fit=(round)(app),draw=apcgold!60,dashed,rounded corners,inner sep=9pt,label={[font=\sffamily\scriptsize\color{apcgold}]above:Tuyển dụng}]{};
+\end{scope}
+\end{tikzpicture}
+\end{center}
+
+\noindent\textbf{Quan hệ chính} (khóa ngoại):
+\begin{itemize}
+  \item \code{User} $\to$ \code{Department} (\code{departmentId}, tùy chọn): thành viên thuộc một ban.
+  \item \code{Post/Event/Project} $\to$ \code{User} (người tạo, bắt buộc) và $\to$ \code{Department} (tùy chọn). \code{Post} còn có \code{publishedBy}.
+  \item \code{RecruitmentRound} $\to$ \code{User} (người tạo).
+  \item \code{MembershipApplication} $\to$ \code{RecruitmentRound} (bắt buộc), \code{Department} (ban mong muốn), \code{User} (người duyệt), và \code{User} 1--1 khi đơn được chấp nhận và chuyển thành thành viên.
+\end{itemize}
+
+\subsection{Chi tiết trường (rút gọn)}
+Bỏ qua \code{id}, \code{createdAt}, \code{updatedAt} (mọi bảng đều có).
+
+\begin{longtable}{@{}l l >{\raggedright\arraybackslash}p{7.2cm}@{}}
+\multicolumn{3}{@{}l}{\textbf{\color{apcblue}Department}}\\ \toprule
+Trường & Kiểu & Ghi chú \\ \midrule\endhead
+name, code & String & \code{code} là duy nhất. \\
+status & enum & ACTIVE / ARCHIVED. \\
+order & Int & Thứ tự hiển thị. \\ \bottomrule
+\end{longtable}
+
+\begin{longtable}{@{}l l >{\raggedright\arraybackslash}p{7.2cm}@{}}
+\multicolumn{3}{@{}l}{\textbf{\color{apcblue}User}}\\ \toprule
+Trường & Kiểu & Ghi chú \\ \midrule\endhead
+username, email & String & Duy nhất; dùng đăng nhập. \\
+passwordHash & String & Băm \textbf{Argon2id} (SEC-02). \\
+role & enum & MEMBER / DEPARTMENT\_MANAGER / BOARD / TECH\_ADMIN. \\
+status & enum & PENDING\_ACTIVATION / ACTIVE / LOCKED / INACTIVE. \\
+mustChangePassword, isTemporaryPassword, temporaryPasswordExpiresAt & & Luồng mật khẩu tạm (BR-04). \\
+failedLoginAttempts, lockoutUntil & & Khóa tạm khi sai nhiều (SEC-05). \\
+fullName, studentId, faculty, major, cohort, avatarUrl, phoneNumber, skills, interestAreas & & Hồ sơ gộp trực tiếp (MEM-02). \\
+departmentId & FK? & Ban đang sinh hoạt. \\
+memberStatus & enum & ACTIVE / PAUSED / LEFT — độc lập \code{status} tài khoản (MEM-11). \\ \bottomrule
+\end{longtable}
+
+\begin{longtable}{@{}l l >{\raggedright\arraybackslash}p{7.2cm}@{}}
+\multicolumn{3}{@{}l}{\textbf{\color{apcblue}Post} (tin tức / bài viết)}\\ \toprule
+Trường & Kiểu & Ghi chú \\ \midrule\endhead
+title, slug, summary, content & String & \code{slug} duy nhất. \\
+thumbnailUrl, category & & Ảnh + chuyên mục. \\
+scope & enum & PUBLIC / INTERNAL (CMS-05). \\
+status & enum & DRAFT / PUBLISHED / ARCHIVED. \\
+authorId, publishedById, departmentId & FK & Tác giả (bắt buộc), người công bố, ban. \\
+publishedAt, metaTitle, metaDescription & & Thời điểm công bố + SEO. \\ \bottomrule
+\end{longtable}
+
+\begin{longtable}{@{}l l >{\raggedright\arraybackslash}p{7.2cm}@{}}
+\multicolumn{3}{@{}l}{\textbf{\color{apcblue}Event} (sự kiện)}\\ \toprule
+Trường & Kiểu & Ghi chú \\ \midrule\endhead
+title, slug, description & String & \\
+coverImageUrl, eventType, location, contactPoint & & Loại: Workshop/Training/Contest\ldots \\
+status & enum & DRAFT / PUBLISHED / ARCHIVED. \\
+startAt, endAt & DateTime & Thời gian diễn ra. \\
+createdById, departmentId & FK & Người tạo (bắt buộc), ban. \\ \bottomrule
+\end{longtable}
+\noindent\textit{Chưa có bảng đăng ký/điểm danh} — hiện chỉ yêu cầu xem danh sách + chi tiết; thêm khi có task tương ứng.
+
+\begin{longtable}{@{}l l >{\raggedright\arraybackslash}p{7.2cm}@{}}
+\multicolumn{3}{@{}l}{\textbf{\color{apcblue}Project} (dự án)}\\ \toprule
+Trường & Kiểu & Ghi chú \\ \midrule\endhead
+title, slug, description & String & \code{slug} duy nhất. \\
+thumbnailUrl, technologies, projectUrl, sourceUrl & & \code{technologies} là JSON (\code{["React","Node.js"]}). \\
+status & enum & DRAFT / PUBLISHED / ARCHIVED. \\
+createdById, departmentId & FK & Người tạo (bắt buộc), ban. \\ \bottomrule
+\end{longtable}
+
+\begin{longtable}{@{}l l >{\raggedright\arraybackslash}p{7.2cm}@{}}
+\multicolumn{3}{@{}l}{\textbf{\color{apcblue}RecruitmentRound} (đợt tuyển)}\\ \toprule
+Trường & Kiểu & Ghi chú \\ \midrule\endhead
+title, slug, description & String & \code{slug} duy nhất. \\
+status & enum & DRAFT / OPEN / CLOSED / ARCHIVED. \\
+opensAt, closesAt & DateTime & Cửa sổ mở đơn. \\
+createdById & FK & Người tạo (BOARD). \\ \bottomrule
+\end{longtable}
+\noindent\textit{Bản tối giản}: chưa có \code{RecruitmentQuestion} (câu hỏi cấu hình theo đợt) — câu trả lời tự do lưu ở \code{answers} của đơn.
+
+\begin{longtable}{@{}l l >{\raggedright\arraybackslash}p{7.2cm}@{}}
+\multicolumn{3}{@{}l}{\textbf{\color{apcblue}MembershipApplication} (đơn ứng tuyển)}\\ \toprule
+Trường & Kiểu & Ghi chú \\ \midrule\endhead
+profileCode & String & Mã tra cứu công khai (CSPRNG, REC-06), duy nhất. \\
+recruitmentRoundId & FK & Thuộc đợt tuyển. \\
+applicantName, applicantEmail, studentId, faculty, major, cohort & & Thông tin ứng viên. \\
+desiredDepartmentId & FK? & Ban mong muốn. \\
+skills, experience, answers & & \code{answers} là JSON (trả lời tự do). \\
+status & enum & NEW / REVIEWING / INTERVIEW / ACCEPTED / REJECTED / WITHDRAWN. \\
+internalNote, reviewedById, reviewedAt & & Ghi chú nội bộ (không lộ cho ứng viên, BR-07). \\
+convertedUserId, convertedAt & FK? 1--1 & Trỏ tới \code{User} khi chuyển thành thành viên. \\ \bottomrule
+\end{longtable}
+\noindent Ràng buộc duy nhất: một email / một MSSV chỉ nộp một lần trong cùng đợt (REC-05, BR-05).
+
+% ================= 6. VAI TRÒ & PHÂN QUYỀN =================
+\section{Vai trò \& phân quyền (RBAC)}\label{sec:rbac}
+Bốn vai trò, phân quyền theo \emph{vai trò} và \emph{phạm vi}. Chi tiết ma trận: \code{docs/02-roles-permissions.md}.
+
+\noindent\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X l@{}}
+\toprule
+\textbf{Vai trò} & \textbf{Mục đích} & \textbf{Phạm vi} \\ \midrule
+\code{MEMBER} & Dùng Portal, quản lý hồ sơ cá nhân, đăng ký hoạt động. & Cá nhân \\
+\code{DEPARTMENT\_MANAGER} & Quản lý thành viên/nội dung/sự kiện trong ban. & Ban của mình \\
+\code{BOARD} & Quản lý toàn bộ nghiệp vụ câu lạc bộ. & Toàn CLB \\
+\code{TECH\_ADMIN} & Vận hành, bảo mật, cấu hình hệ thống. & Hệ thống \\ \bottomrule
+\end{tabularx}
+
+\medskip
+\noindent Ba nguyên tắc phải nhớ khi viết API:
+\begin{itemize}
+  \item \textbf{Phạm vi} (\code{SCOPE}): \code{DEPARTMENT\_MANAGER} chỉ đụng dữ liệu ban mình; ban khác trả \textbf{403}.
+  \item \textbf{Không tự nâng quyền}: không ai tự cấp vai trò / mở rộng phạm vi cho chính mình (RP-06).
+  \item \textbf{TECH\_ADMIN không phải super-admin nghiệp vụ}: quyền kỹ thuật không dùng để đọc/sửa dữ liệu nghiệp vụ.
+\end{itemize}
+\noindent Cửa quyền đặt ở \code{preHandler} (\code{requireAuth}, \code{requireRole}, \code{requireScope}) — xem task BE4 trong \code{docs/tasks/wave-1-p1.md}.
+
+% ================= 7. BẢN ĐỒ ROUTE =================
+\section{Bản đồ route (web)}\label{sec:routes}
+URL dùng segment tiếng Anh (\code{docs/04} §3.2). Khai báo trong \code{apps/web/src/App.tsx}.
+
+\noindent\begin{tabularx}{\textwidth}{@{}l l >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Route} & \textbf{Truy cập} & \textbf{Trang} \\ \midrule
+\code{/} & Công khai & Trang chủ (đã dựng). \\
+\code{/about} & Công khai & Về APC. \\
+\code{/news} & Công khai & Tin tức. \\
+\code{/events} & Công khai & Sự kiện. \\
+\code{/projects} & Công khai & Dự án. \\
+\code{/recruitment} & Công khai & Gia nhập APC (đợt tuyển + form). \\
+\code{/login} & Công khai & Đăng nhập. \\
+\code{/admin} & \textbf{Bảo vệ} & Khu quản trị (cần đăng nhập + quyền). \\
+\code{*} & — & 404. \\ \bottomrule
+\end{tabularx}
+
+\medskip
+\noindent Hiện các trang trong (trừ trang chủ) là stub \code{Placeholder}; Wave 1 bắt đầu thay bằng trang thật.
+
+% ================= 8. CHẠY LOCAL =================
+\section{Chạy local}\label{sec:run}
+Chi tiết đầy đủ: \code{docs/07-local-development.md}. Tóm tắt:
+
+\begin{Verbatim}[frame=single,rulecolor=\color{linegray},fontsize=\small]
+pnpm install            # cài dependencies
+pnpm infra:up           # bật Postgres + Mailpit + MinIO (Docker)
+pnpm --filter @apc/api db:migrate   # tạo bảng
+pnpm --filter @apc/api db:seed      # nạp dữ liệu mẫu (task BE2)
+pnpm dev                # chạy web + api
+pnpm check              # lint + typecheck + test + build (đúng cái CI chạy)
+\end{Verbatim}
+
+\noindent Cổng: web \code{:5173}, api \code{:3000}, Mailpit \code{:8025}, MinIO console \code{:9001}.
+Biến môi trường trong \code{.env} (mẫu ở \code{.env.example}); \textbf{không commit \code{.env}}, không hardcode secret.
+
+% ================= 9. QUY TRÌNH ĐÓNG GÓP =================
+\section{Quy trình đóng góp}\label{sec:contrib}
+Nhánh \code{main} được bảo vệ: \textbf{không push thẳng}. Mọi thay đổi đi qua Pull Request.
+
+\begin{center}
+\begin{tikzpicture}[node distance=7mm]
+\node[box] (br) {tạo nhánh};
+\node[box,right=of br] (co) {commit\\+ push};
+\node[box,right=of co] (pr) {mở PR};
+\node[box,right=of pr] (ci) {CI \code{quality}\\lint·type·test·build};
+\node[box,right=of ci] (rv) {1 review\\approve};
+\node[box,right=of rv] (mg) {merge\\vào main};
+\draw[fl] (br)--(co); \draw[fl] (co)--(pr); \draw[fl] (pr)--(ci);
+\draw[fl] (ci)-- node[above,font=\sffamily\scriptsize]{xanh} (rv); \draw[fl] (rv)--(mg);
+\draw[fl,dashed,apcred] (ci) to[bend left=22] node[below,font=\sffamily\scriptsize\color{apcred}]{đỏ $\to$ sửa} (co);
+\end{tikzpicture}
+\end{center}
+
+\begin{itemize}
+  \item Một task = một nhánh = một PR. Tên nhánh theo phiếu (vd \code{be4-rbac}).
+  \item PR phải: CI \code{quality} \textbf{xanh} + \textbf{1 review} approve (tác giả không tự duyệt được).
+  \item Không bắt đầu task khi \emph{phụ thuộc} chưa xong (vd chưa có BE4 thì khoan làm BE5).
+  \item Không commit secret / dữ liệu cá nhân thật / tên đối tác chưa được phép công bố.
+\end{itemize}
+
+% ================= 10. CHỈ MỤC =================
+\section{Chỉ mục tài liệu \& phiếu việc}\label{sec:index}
+\noindent\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Tài liệu} & \textbf{Vai trò} \\ \midrule
+\code{docs/00-project-charter.md} & Bài toán, mục tiêu, ranh giới MVP. \\
+\code{docs/01-prd.md} & Yêu cầu + tiêu chí nghiệm thu chi tiết. \\
+\code{docs/02-roles-permissions.md} & Vai trò, phạm vi, ma trận quyền. \\
+\code{docs/03-user-flows.md} & Luồng chính, lỗi, kết quả. \\
+\code{docs/04-sitemap.md} & Trang, route, điều hướng. \\
+\code{docs/05-feature-catalog.md} & Thứ tự triển khai chức năng. \\
+\code{docs/06-architecture.md} & Kiến trúc + quyết định còn mở. \\
+\code{docs/07-local-development.md} & Cài đặt, chạy, kiểm tra local. \\
+\code{docs/08-handover.md} & Điều kiện bàn giao cho APC. \\
+\code{DESIGN.md} & Màu, chữ, layout, component. \\ \midrule
+\code{docs/tasks/phase-0-starters.md} & Phiếu CT1, IN1, FE1. \\
+\code{docs/tasks/wave-1-p1.md} & Phiếu Wave 1: BE4, BE3, BE2, FE2, website mock. \\
+\code{APC-Portal-Ke-hoach-cong-viec.xlsx} & Kế hoạch: Lộ trình + backlog + phân công. \\ \bottomrule
+\end{tabularx}
+
+\subsection{Giữ tài liệu này khớp mã}\label{sec:regen}
+PDF này \textbf{chụp lại} trạng thái tại thời điểm sinh — nó không tự cập nhật. Khi schema hoặc kiến trúc đổi,
+sửa \code{docs/tech/developer-guide.tex} rồi sinh lại:
+
+\begin{Verbatim}[frame=single,rulecolor=\color{linegray},fontsize=\small]
+cd docs/tech && xelatex developer-guide.tex && xelatex developer-guide.tex
+\end{Verbatim}
+
+\vfill
+\noindent{\sffamily\footnotesize\color{inkgray}
+Sinh từ mã tại nhánh \code{main}, 07/09/2026. Nếu tài liệu này khác với mã hoặc \code{docs/*.md},
+hãy tin mã trước rồi sinh lại PDF.}
+
+\end{document}
