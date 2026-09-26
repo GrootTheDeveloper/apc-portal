@@ -26,6 +26,16 @@ erDiagram
     }
   
 
+  "user_roles" {
+
+    }
+  
+
+  "sessions" {
+
+    }
+  
+
   "recruitment_rounds" {
 
     }
@@ -36,6 +46,11 @@ erDiagram
     }
   
     "users" }o--|o "departments" : "department"
+    "user_roles" }o--|| "users" : "user"
+    "user_roles" }o--|o "departments" : "department"
+    "user_roles" }o--|o "users" : "grantedBy"
+    "user_roles" }o--|o "users" : "revokedBy"
+    "sessions" }o--|| "users" : "user"
     "posts" }o--|| "users" : "author"
     "posts" }o--|o "departments" : "department"
     "posts" }o--|o "users" : "publishedBy"

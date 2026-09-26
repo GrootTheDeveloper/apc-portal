@@ -10,6 +10,8 @@ datasource db {
 
 // ENUMS
 
+// MEMBER là vai trò nền của mọi tài khoản (RP-01), không lưu trong user_roles.
+// user_roles chỉ lưu DEPARTMENT_MANAGER, BOARD, TECH_ADMIN.
 enum Role {
   MEMBER
   DEPARTMENT_MANAGER
@@ -36,8 +38,7 @@ enum DepartmentStatus {
   ARCHIVED
 }
 
-// Dùng chung cho News/Event/Project — chưa cần tách riêng vì
-// chưa có task nào yêu cầu vòng đời trạng thái khác nhau giữa 3 loại này.
+// Dùng cho Post và Project. Project: DRAFT = Ẩn, PUBLISHED = Công khai (PRT-03).
 enum ContentStatus {
   DRAFT
   PUBLISHED
@@ -57,6 +58,23 @@ enum ApplicationStatus {
   ACCEPTED
   REJECTED
   WITHDRAWN
+}
+
+// Trạng thái gán vai trò (ADM-08, STATE-14)
+enum RoleAssignmentStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+// Trạng thái sự kiện (EVT-12, docs/01 §9.2)
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  ENDED
+  ARCHIVED
 }
 
 enum RecruitmentRoundStatus {
@@ -79,6 +97,7 @@ model Department {
   updatedAt   DateTime         @updatedAt
 
   users        User[]
+  roles        UserRole[]
   posts        Post[]
   events       Event[]
   projects     Project[]
@@ -88,16 +107,12 @@ model Department {
 }
 
 // MODELS — NGƯỜI DÙNG
-// Gộp thẳng thông tin hồ sơ (MEM-02) vào User thay vì tách MemberProfile riêng,
-// vì chưa có task nào (BE1–BE10, FE1–FE9) sửa các field này qua UI ngoài BE2 seed
-// và BE10 (tạo user khi convert từ application). Tách bảng khi có task
-// "trang hồ sơ cá nhân" / "quản lý thành viên" thật sự.
+// Hồ sơ thành viên (MEM-02, thực thể MemberProfile trong docs/01 §9) gộp thẳng vào User.
 model User {
   id           String        @id @default(cuid())
   username     String        @unique // Tên đăng nhập (AUTH-02, BR-02)
   email        String        @unique
-  passwordHash String                // Băm Argon2id (SEC-02)
-  role         Role          @default(MEMBER)
+  passwordHash String // Băm Argon2id (SEC-02)
   status       AccountStatus @default(PENDING_ACTIVATION)
 
   mustChangePassword         Boolean   @default(true)
@@ -119,12 +134,17 @@ model User {
   skills        Json?
   interestAreas Json?
 
-  departmentId String?
+  departmentId String? // Ban đang hoạt động; khác phạm vi quản lý trong user_roles
   department   Department?  @relation(fields: [departmentId], references: [id])
   memberStatus MemberStatus @default(ACTIVE) // MEM-11, độc lập AccountStatus
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  roles        UserRole[] @relation("RoleHolder")
+  grantedRoles UserRole[] @relation("RoleGrantor")
+  revokedRoles UserRole[] @relation("RoleRevoker")
+  sessions     Session[]
 
   authoredPosts  Post[] @relation("PostAuthor")
   publishedPosts Post[] @relation("PostPublisher")
@@ -134,9 +154,58 @@ model User {
   createdRounds RecruitmentRound[]      @relation("RoundCreator")
   reviewedApps  MembershipApplication[] @relation("ReviewedBy")
 
-  createdProjects Project[] @relation("ProjectCreator")
+  createdProjects          Project[]              @relation("ProjectCreator")
   convertedFromApplication MembershipApplication? @relation("ApplicationConversion")
+
   @@map("users")
+}
+
+// Gán vai trò quản lý/đặc quyền (docs/02 §9). Một người có thể có nhiều dòng,
+// ví dụ quản lý 2 ban. Không được vừa BOARD vừa TECH_ADMIN (BR-21) — kiểm ở service.
+model UserRole {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("RoleHolder", fields: [userId], references: [id])
+  role   Role
+
+  departmentId String? // Bắt buộc khi role = DEPARTMENT_MANAGER (RP-02)
+  department   Department? @relation(fields: [departmentId], references: [id])
+
+  status    RoleAssignmentStatus @default(PENDING) // BOARD/TECH_ADMIN chỉ ACTIVE sau TOTP (RP-13)
+  startsAt  DateTime
+  expiresAt DateTime? // Bắt buộc với BOARD/TECH_ADMIN: không muộn hơn hết nhiệm kỳ (RP-03)
+  reason    String // RP-11
+
+  grantedById String? // null khi tạo bằng bootstrap (RP-15)
+  grantedBy   User?     @relation("RoleGrantor", fields: [grantedById], references: [id])
+  revokedById String?
+  revokedBy   User?     @relation("RoleRevoker", fields: [revokedById], references: [id])
+  revokedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@map("user_roles")
+}
+
+// Phiên đăng nhập lưu ở server (docs/06 §5). Cookie chỉ chứa token ngẫu nhiên; DB lưu hash.
+model Session {
+  id        String @id @default(cuid())
+  userId    String
+  user      User   @relation(fields: [userId], references: [id])
+  tokenHash String @unique // SHA-256 của token trong cookie
+
+  twoFactorVerified Boolean @default(false) // Phiên đã qua TOTP, mới dùng được quyền đặc quyền (FLOW-27)
+
+  createdAt    DateTime  @default(now())
+  lastActiveAt DateTime  @default(now()) // Hết hạn sau 8 giờ không hoạt động (SEC-06)
+  revokedAt    DateTime? // Đăng xuất, đổi mật khẩu, khóa tài khoản (AUTH-08)
+  ipAddress    String?
+  userAgent    String?
+
+  @@index([userId])
+  @@map("sessions")
 }
 
 // MODELS — NỘI DUNG (CMS)
@@ -172,25 +241,23 @@ model Post {
 
 // MODELS — SỰ KIỆN
 //
-// Chưa có EventRegistration: BE6/FE4 chỉ yêu cầu "xem danh sách + chi tiết",
-// chưa có task đăng ký/điểm danh nào. Thêm lại (kèm guest registration,
-// EventRegistrationStatus, AttendanceStatus) khi có task đó.
+// Bảng đăng ký/điểm danh (EventRegistration) thêm ở việc E2 (docs/plan/E-su-kien.md).
 
 model Event {
-  id            String        @id @default(cuid())
+  id            String      @id @default(cuid())
   title         String
-  slug          String        @unique
+  slug          String      @unique
   description   String
   coverImageUrl String?
-  eventType     String        // Loại/chuyên mục: Workshop, Training, Contest... (BE6 DoD)
-  status        ContentStatus @default(DRAFT)
+  eventType     String // Loại/chuyên mục: Workshop, Training, Contest...
+  status        EventStatus @default(DRAFT)
 
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id])
   contactPoint String?
 
   createdById String
-  createdBy   User   @relation("EventCreator", fields: [createdById], references: [id])
+  createdBy   User    @relation("EventCreator", fields: [createdById], references: [id])
   location    String?
 
   startAt DateTime
@@ -211,7 +278,7 @@ model Project {
   slug         String        @unique
   description  String
   thumbnailUrl String?
-  technologies Json?         // ["React", "Node.js", "PostgreSQL"] — BE7 DoD
+  technologies Json? // ["React", "Node.js", "PostgreSQL"]
   projectUrl   String?
   sourceUrl    String?
   status       ContentStatus @default(DRAFT)
@@ -232,9 +299,8 @@ model Project {
 
 // MODELS — TUYỂN DỤNG
 //
-// Bản tối giản: bỏ RecruitmentQuestion (chưa có task cấu hình câu hỏi theo đợt)
-// và targetDepartmentIds. BE2 (seed) PHẢI tạo sẵn ít nhất 1 RecruitmentRound
-// để BE10 (POST /applications) có round để gắn vào.
+// Câu hỏi đợt tuyển: cột JSON `questions` trên RecruitmentRound, thêm ở việc R2.
+// ConsentRecord thêm ở việc B2 (docs/plan/B-bao-mat.md), dùng chung cho R3 và E3.
 
 model RecruitmentRound {
   id          String                 @id @default(cuid())
@@ -272,7 +338,7 @@ model MembershipApplication {
   desiredDepartment   Department? @relation(fields: [desiredDepartmentId], references: [id])
   skills              String?
   experience          String?
-  answers             Json?       // Câu trả lời tự do, chưa có RecruitmentQuestion để tham chiếu
+  answers             Json? // Câu trả lời, lưu theo id câu hỏi trong RecruitmentRound.questions
 
   status       ApplicationStatus @default(NEW)
   internalNote String? // BR-07: không hiển thị cho ứng viên
@@ -281,15 +347,15 @@ model MembershipApplication {
   reviewedAt   DateTime?
 
   // Chuyển thành viên khi ACCEPTED — trỏ thẳng vào User vì đã gộp profile
-  convertedUserId String? @unique
-  convertedUser   User?   @relation("ApplicationConversion", fields: [convertedUserId], references: [id])
+  convertedUserId String?   @unique
+  convertedUser   User?     @relation("ApplicationConversion", fields: [convertedUserId], references: [id])
   convertedAt     DateTime?
 
   submittedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@unique([recruitmentRoundId, applicantEmail]) // REC-05
-  @@unique([recruitmentRoundId, studentId])      // BR-05
+  @@unique([recruitmentRoundId, studentId]) // BR-05
   @@index([applicantEmail])
   @@index([recruitmentRoundId])
   @@map("membership_applications")
