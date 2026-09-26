@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.2 |
-| Trạng thái | Bản thảo để APC rà soát |
-| Ngày cập nhật | 05/09/2026 |
+| Phiên bản | 1.3 |
+| Trạng thái | Đã duyệt (27/09/2026) |
+| Ngày cập nhật | 27/09/2026 |
 | Sản phẩm | APC Portal |
 | Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC) |
 | Tài liệu đầu vào | [PRD](./01-prd.md), [Roles and Permissions](./02-roles-permissions.md), [User Flows](./03-user-flows.md) |
@@ -16,8 +16,9 @@
 | 1.0 | Baseline hoàn chỉnh về kiến trúc thông tin, 101 route tiếng Anh, điều hướng, route guard và truy vết `FLOW-01` đến `FLOW-29` |
 | 1.1 | Ánh xạ bản thiết kế trang chủ vào `/`; các route còn lại chưa được khởi tạo |
 | 1.2 | Bỏ trang Thành tích (PAGE-PUB-11/12, PAGE-MGT-PRT-05..08); nhãn header dùng "Gia nhập APC"; giữ segment URL cố định tiếng Anh |
+| 1.3 | APC duyệt; cập nhật trạng thái route đã khởi tạo |
 
-> Chỉ route `/` có giao diện baseline trong mã nguồn tại thời điểm 27/08/2026. Danh mục route còn lại là kiến trúc thông tin dự kiến và cần được ưu tiên theo Feature Catalog.
+> Tại 27/09/2026: route `/` có giao diện hoàn chỉnh; `/about`, `/news`, `/events`, `/projects`, `/recruitment`, `/login`, `/admin` đã có khung trang tạm. Các route còn lại triển khai theo [docs/plan](./plan/README.md).
 
 ## 1. Mục đích
 
@@ -147,7 +148,7 @@ flowchart TB
 
 | Layout | Phạm vi | Điều hướng chính |
 | --- | --- | --- |
-| Public layout | `PAGE-PUB-*` | Header công khai, tìm kiếm, chân trang |
+| Public layout | `PAGE-PUB-*` | Header công khai, chân trang |
 | Auth layout | `PAGE-AUTH-*` | Logo APC, hỗ trợ tài khoản, quay về trang chủ; không có menu quản trị |
 | Member layout | `PAGE-MEM-*` | Điều hướng thành viên, menu tài khoản và lối vào quản trị nếu có quyền |
 | Management layout | `PAGE-MGT-*` | Sidebar theo vai trò/phạm vi, breadcrumb, menu tài khoản |
@@ -160,19 +161,20 @@ flowchart TB
 
 **Header desktop**
 
-1. Trang chủ.
-2. Giới thiệu.
-3. Tin tức.
-4. Sự kiện.
-5. Dự án.
-6. Gia nhập APC (nghiệp vụ nội bộ gọi là tuyển thành viên).
-7. UMTOJ, được đánh dấu là liên kết ngoài.
-8. Tìm kiếm bằng nút biểu tượng.
-9. Đăng nhập.
+Logo APC dẫn về trang chủ. Các mục theo thứ tự (khớp `apps/web/src/layouts/Navbar.tsx`):
+
+1. Giới thiệu → `/about`.
+2. Hoạt động → khối hoạt động trên trang chủ (`/#activities`).
+3. Sự kiện → `/events`.
+4. Tin tức → `/news`.
+5. Dự án → `/projects`.
+6. Gia nhập APC → `/recruitment` (nghiệp vụ nội bộ gọi là tuyển thành viên).
+7. UMTOJ → `https://sot.umtoj.edu.vn`, mở tab mới, có biểu tượng liên kết ngoài.
+8. Nút Đăng nhập → `/login`.
 
 **Header mobile**
 
-- Giữ logo, nút tìm kiếm và nút mở menu ở hàng đầu.
+- Giữ logo và nút mở menu ở hàng đầu. Menu mở ra gồm các mục trên và nút Đăng nhập.
 - Các mục còn lại nằm trong menu điều hướng có thể dùng hoàn toàn bằng bàn phím.
 - Không thay thứ tự thông tin giữa desktop và mobile.
 
@@ -202,7 +204,7 @@ flowchart TB
 | `PAGE-PUB-14` | Chi tiết đợt tuyển | `/recruitment/[slug]` | Trang tuyển thành viên | `FLOW-03`, `REC-02`, `REC-16` |
 | `PAGE-PUB-15` | Biểu mẫu ứng tuyển | `/recruitment/[slug]/apply` | Chi tiết đợt tuyển | `FLOW-04`, `REC-03` đến `REC-06`, `REC-14`, `DATA-01`, `DATA-07` |
 | `PAGE-PUB-16` | Tra cứu hoặc rút hồ sơ | `/recruitment/application-lookup` | Header tuyển thành viên, footer, email xác nhận | `FLOW-05`, `REC-07`, `REC-08`, `REC-13` |
-| `PAGE-PUB-17` | Tìm kiếm công khai | `/search` | Nút tìm kiếm trong header; từ khóa ở `?q=` | `FLOW-02`, `PUB-07` |
+| `PAGE-PUB-17` | Tìm kiếm công khai | `/search` | Ô tìm kiếm ở trang danh sách tin tức, sự kiện, dự án; từ khóa ở `?q=` | `FLOW-02`, `PUB-07` |
 | `PAGE-PUB-18` | Chính sách quyền riêng tư | `/privacy` | Footer và mọi điểm xin đồng ý | `DATA-01`, `DATA-05` đến `DATA-08` |
 
 ### 5.3. Cây trang công khai
@@ -854,19 +856,19 @@ Một họ màn hình có thể dùng chung component và layout trong Figma, nh
 
 ## 21. Checklist thống nhất Sitemap
 
-- [ ] Năm vùng và namespace phản ánh đúng cách APC vận hành.
-- [ ] Header, footer, sidebar và menu tài khoản có đúng nhãn/thứ tự.
-- [ ] Không thiếu trang cần thiết cho `FLOW-01` đến `FLOW-29`.
-- [ ] Không có trang quản lý task, giao việc, deadline, tiến độ hoặc source code.
-- [ ] Segment URL cố định dùng tiếng Anh, route công khai dễ đọc và route nội bộ không lộ dữ liệu cá nhân.
-- [ ] Quyền `OWN`, `SCOPE`, `ALL`, `DUAL` và `INCIDENT` khớp ma trận phân quyền.
-- [ ] `DEPARTMENT_MANAGER` không thấy dữ liệu ngoài Ban chuyên môn.
-- [ ] `TECH_ADMIN` không có thêm quyền nghiệp vụ chỉ vì có quyền kỹ thuật.
-- [ ] Trạng thái một lần, modal, wizard và hành động nhạy cảm được đặt ở đúng trang chủ quản.
-- [ ] Trang public được index và trang xác thực/nội bộ/quản trị được noindex đúng quy tắc.
-- [ ] Bề mặt GitHub, VPS, backup và monitoring ngoài Portal được phân biệt rõ với route web.
-- [ ] Tất cả sơ đồ Mermaid render thành công.
-- [ ] Product Owner ghi nhận phiên bản Sitemap dùng làm đầu vào wireframe.
+- [x] Năm vùng và namespace phản ánh đúng cách APC vận hành.
+- [x] Header, footer, sidebar và menu tài khoản có đúng nhãn/thứ tự.
+- [x] Không thiếu trang cần thiết cho `FLOW-01` đến `FLOW-29`.
+- [x] Không có trang quản lý task, giao việc, deadline, tiến độ hoặc source code.
+- [x] Segment URL cố định dùng tiếng Anh, route công khai dễ đọc và route nội bộ không lộ dữ liệu cá nhân.
+- [x] Quyền `OWN`, `SCOPE`, `ALL`, `DUAL` và `INCIDENT` khớp ma trận phân quyền.
+- [x] `DEPARTMENT_MANAGER` không thấy dữ liệu ngoài Ban chuyên môn.
+- [x] `TECH_ADMIN` không có thêm quyền nghiệp vụ chỉ vì có quyền kỹ thuật.
+- [x] Trạng thái một lần, modal, wizard và hành động nhạy cảm được đặt ở đúng trang chủ quản.
+- [x] Trang public được index và trang xác thực/nội bộ/quản trị được noindex đúng quy tắc.
+- [x] Bề mặt GitHub, VPS, backup và monitoring ngoài Portal được phân biệt rõ với route web.
+- [x] Tất cả sơ đồ Mermaid render thành công.
+- [x] Product Owner ghi nhận phiên bản Sitemap dùng làm đầu vào wireframe.
 
 ## 22. Quản lý thay đổi
 

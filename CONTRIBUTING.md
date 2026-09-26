@@ -1,16 +1,16 @@
-# Đóng góp cho APC Web Portal
+# Đóng góp cho APC Portal
 
 ## Quy trình
 
-1. Đồng bộ nhánh `main` và tạo nhánh ngắn theo một issue.
+1. Đồng bộ nhánh `main` và tạo nhánh cho một việc trong [phiếu việc](./docs/plan/README.md).
 2. Cài dependency bằng `pnpm install`; không dùng thêm npm/yarn lockfile.
-3. Giữ thay đổi đúng phạm vi issue và cập nhật tài liệu liên quan.
+3. Giữ thay đổi đúng phạm vi việc đó và cập nhật tài liệu liên quan.
 4. Chạy `pnpm check` trước khi push.
 5. Mở pull request, mô tả hành vi thay đổi, bằng chứng kiểm tra và phần chưa kiểm tra.
 
 ## Quy ước nhánh và commit
 
-Tên nhánh gợi ý: `feat/...`, `fix/...`, `docs/...`, `chore/...`.
+Tên nhánh: `<mã việc>-<mô tả ngắn>`, ví dụ `r1-trang-tuyen`. Việc ngoài phiếu dùng `fix/...`, `docs/...`, `chore/...`.
 
 Commit nên nhỏ, có mục đích rõ ràng, ví dụ:
 

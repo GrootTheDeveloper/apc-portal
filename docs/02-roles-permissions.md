@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.2 |
-| Trạng thái | Bản thảo để APC rà soát |
-| Ngày cập nhật | 05/09/2026 |
+| Phiên bản | 1.3 |
+| Trạng thái | Đã duyệt (27/09/2026) |
+| Ngày cập nhật | 27/09/2026 |
 | Sản phẩm | APC Portal |
 | Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC) |
 | Tài liệu liên quan | [Project Charter](./00-project-charter.md), [Product Requirements Document](./01-prd.md) |
@@ -16,8 +16,9 @@
 | 1.0 | Baseline hoàn chỉnh về vai trò, phạm vi, ma trận quyền, TOTP, audit và vận hành |
 | 1.1 | Làm rõ các quyền production chưa áp dụng trong giai đoạn local |
 | 1.2 | Bỏ hạng mục Thành tích khỏi ma trận nội dung (mục 8.4) và danh mục hành động nhạy cảm |
+| 1.3 | APC duyệt vai trò, phạm vi và ngưỡng tài khoản đặc quyền |
 
-> Các vai trò và ngưỡng tài khoản đặc quyền là đề xuất cần APC phê duyệt trước khi triển khai xác thực. Giai đoạn local hiện chưa tạo tài khoản thật hay cấp quyền production.
+> Vai trò và ngưỡng tài khoản đặc quyền đã được APC duyệt ngày 27/09/2026. Giai đoạn local chưa tạo tài khoản thật hay cấp quyền production.
 
 ## 1. Mục đích
 
