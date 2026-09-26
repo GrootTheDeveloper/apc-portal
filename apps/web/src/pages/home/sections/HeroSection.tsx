@@ -1,4 +1,4 @@
-import { Button } from './Button'
+import { Button } from '../../../components/Button'
 
 // chip: class màu literal cho ô icon (không nội suy) để Tailwind JIT nhận diện.
 const HERO_POINTS = [

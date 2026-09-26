@@ -1,4 +1,4 @@
-import { Eyebrow } from './Eyebrow'
+import { Eyebrow } from '../../../components/Eyebrow'
 
 // Class màu để literal (không nội suy) để Tailwind JIT nhận diện được.
 const NEWS = [

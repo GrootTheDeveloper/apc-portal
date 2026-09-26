@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 
-import { Button } from './home/sections/Button'
-import { Eyebrow } from './home/sections/Eyebrow'
+import { Button } from '../components/Button'
+import { Eyebrow } from '../components/Eyebrow'
 
 export function NotFound() {
   const navigate = useNavigate()
