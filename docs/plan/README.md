@@ -32,7 +32,7 @@ Deadline từng việc và trạng thái nằm trong **Google Sheet kế hoạch
 
 ## Cách làm một việc
 
-1. Chọn việc tiếp theo trong phiếu, ví dụ `R1`.
+1. Mở phiếu của mình, lấy việc chưa làm đầu tiên (làm từ trên xuống, hạn ghi cạnh tên việc), ví dụ `R1`.
 2. Tạo nhánh: `git switch -c r1-trang-tuyen`.
 3. Code (có thể dùng AI).
 4. Chạy thử đúng như dòng "Xong khi".

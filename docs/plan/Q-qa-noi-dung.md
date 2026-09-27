@@ -1,19 +1,27 @@
 # Kiểm thử & nội dung — Nguyễn Tiến Bảo
 
+Làm lần lượt từ trên xuống, hạn ghi ngay cạnh tên việc. Mỗi việc là 1 nhánh và 1 PR; mở PR xong là sang việc sau được, trừ khi việc sau cần code của việc trước thì chờ PR đó merge.
+
 ### Giai đoạn 1 (05/10 – 11/10)
-**Q1. Kịch bản kiểm tra.** Viết kịch bản cho giai đoạn 1 và 2 trong `docs/qa/`, mỗi bước dạng: tài khoản → thao tác → kết quả phải thấy.
-Xong khi: người không biết code cũng làm theo được.
+#### Q1. Kịch bản kiểm tra — hạn CN 11/10
+Viết kịch bản cho giai đoạn 1 và 2 trong `docs/qa/`, mỗi bước dạng: tài khoản → thao tác → kết quả phải thấy.
+
+**Xong khi:** người không biết code cũng làm theo được.
 
 ### Giai đoạn 2 (12/10 – 01/11)
-**Q2. Test tự động.** Viết test tự động cho các luồng: xem tin, nộp đơn tuyển, tra cứu đơn. Dùng `@playwright/test`.
+#### Q2. Test tự động — hạn CN 01/11
+Viết test tự động cho các luồng: xem tin, nộp đơn tuyển, tra cứu đơn. Dùng `@playwright/test`.
 
 ### Giai đoạn 3 (02/11 – 22/11)
-**Q3. Kiểm tra phần quản trị.** Viết kịch bản và test tự động cho đăng nhập, công bố bài viết, xét hồ sơ.
+#### Q3. Kiểm tra phần quản trị — hạn T5 12/11
+Viết kịch bản và test tự động cho đăng nhập, công bố bài viết, xét hồ sơ.
 
-**Q4. Nội dung thật.** Gom bài viết, dự án, số liệu CLB thật từ các ban và nhập qua trang quản trị.
+#### Q4. Nội dung thật — hạn CN 22/11
+Gom bài viết, dự án, số liệu CLB thật từ các ban và nhập qua trang quản trị.
 
 ### Liên tục (đến 29/11)
-**Q5. Cập nhật tài liệu.** Có trang mới hoặc thay đổi lớn thì cập nhật `docs/`.
+#### Q5. Cập nhật tài liệu — hạn CN 29/11
+Có trang mới hoặc thay đổi lớn thì cập nhật `docs/`.
 
 ### Lưu ý
 - Mỗi kịch bản có cả trường hợp bị chặn, ví dụ `MEMBER` mở `/admin`, Quản lý ban mở dữ liệu ban khác.

@@ -1,25 +1,35 @@
 # Sự kiện — Lê Đăng Nghĩa
 
-Làm cả API lẫn giao diện.
+Làm cả API lẫn giao diện. Làm lần lượt từ trên xuống, hạn ghi ngay cạnh tên việc. Mỗi việc là 1 nhánh và 1 PR; mở PR xong là sang việc sau được, trừ khi việc sau cần code của việc trước thì chờ PR đó merge.
 
 ### Giai đoạn 1 (05/10 – 11/10)
-**E1. Trang Sự kiện.** Làm `/events` và `/events/[slug]` với dữ liệu giả. Dùng lại mẫu của `EventsSection` ở trang chủ.
-Xong khi: phân biệt rõ sự kiện sắp diễn ra, đã hủy, đã kết thúc.
+#### E1. Trang Sự kiện — hạn CN 11/10
+Làm `/events` và `/events/[slug]` với dữ liệu giả. Dùng lại mẫu của `EventsSection` ở trang chủ.
+
+**Xong khi:** phân biệt rõ sự kiện sắp diễn ra, đã hủy, đã kết thúc.
 
 ### Giai đoạn 2 (12/10 – 01/11)
-**E2. Nối dữ liệu thật.** Thêm bảng đăng ký sự kiện (`EventRegistration`). Viết API trả các sự kiện đã công bố và cho trang lấy dữ liệu từ đó.
+#### E2. Nối dữ liệu thật — hạn T5 22/10
+Thêm bảng đăng ký sự kiện (`EventRegistration`). Viết API trả các sự kiện đã công bố và cho trang lấy dữ liệu từ đó.
 
-**E3. Khách đăng ký.** Làm form đăng ký ở `/events/[slug]/register` gồm họ tên, email, MSSV và ô đồng ý xử lý dữ liệu. Đăng ký xong nhận mã đăng ký và email xác nhận. Làm trang `/events/registration-lookup` (route tạm đã có) để tra cứu/hủy bằng email + mã. Giới hạn tần suất bằng `@fastify/rate-limit`.
-Xong khi: đăng ký trùng, hết chỗ hoặc quá hạn đều bị chặn, có thông báo rõ.
+#### E3. Khách đăng ký — hạn CN 01/11
+Làm form đăng ký ở `/events/[slug]/register` gồm họ tên, email, MSSV và ô đồng ý xử lý dữ liệu. Đăng ký xong nhận mã đăng ký và email xác nhận. Làm trang `/events/registration-lookup` (route tạm đã có) để tra cứu/hủy bằng email + mã. Giới hạn tần suất bằng `@fastify/rate-limit`.
+
+**Xong khi:** đăng ký trùng, hết chỗ hoặc quá hạn đều bị chặn, có thông báo rõ.
 
 ### Giai đoạn 3 (02/11 – 22/11)
-**E4. Quản trị sự kiện.** Làm `/admin/events`: tạo, sửa, công bố, hủy, lưu trữ sự kiện.
-Xong khi: Quản lý ban chỉ công bố được sự kiện nội bộ của ban mình; sự kiện công khai hoặc toàn câu lạc bộ do `BOARD` công bố.
+#### E4. Quản trị sự kiện — hạn CN 08/11
+Làm `/admin/events`: tạo, sửa, công bố, hủy, lưu trữ sự kiện.
 
-**E5. Thành viên đăng ký.** Làm `/portal/events` cho thành viên đăng ký sự kiện nội bộ.
+**Xong khi:** Quản lý ban chỉ công bố được sự kiện nội bộ của ban mình; sự kiện công khai hoặc toàn câu lạc bộ do `BOARD` công bố.
 
-**E6. Danh sách & điểm danh.** Xem danh sách đăng ký, xuất CSV, điểm danh (Chưa điểm danh / Có mặt / Vắng có phép / Vắng mặt).
-Xong khi: buổi đã điểm danh hiện trong lịch sử hoạt động của thành viên (trang T3 của Lương Huỳnh).
+#### E5. Thành viên đăng ký — hạn CN 15/11
+Làm `/portal/events` cho thành viên đăng ký sự kiện nội bộ.
+
+#### E6. Danh sách & điểm danh — hạn CN 22/11
+Xem danh sách đăng ký, xuất CSV, điểm danh (Chưa điểm danh / Có mặt / Vắng có phép / Vắng mặt).
+
+**Xong khi:** buổi đã điểm danh hiện trong lịch sử hoạt động của thành viên (trang T3 của Lương Huỳnh).
 
 ### Lưu ý
 - Chỉ nhận đăng ký khi sự kiện ở trạng thái Đã công bố và còn hạn.
