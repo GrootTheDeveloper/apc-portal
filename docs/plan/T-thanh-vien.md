@@ -2,13 +2,13 @@
 
 Làm cả API lẫn giao diện.
 
-### Giai đoạn 1
+### Giai đoạn 1 (05/10 – 11/10)
 **T1. Trang Về APC.** Làm trang `/about` (sứ mệnh, các ban, liên hệ) với dữ liệu giả.
 
-### Giai đoạn 2
+### Giai đoạn 2 (12/10 – 01/11)
 **T2. Nối dữ liệu thật.** Lưu thông tin APC (sứ mệnh, liên hệ, link chính thức) trong một bảng `SiteSetting` có cột JSON; các ban dùng bảng `Department` có sẵn. Viết API cho trang `/about` đọc dữ liệu đó.
 
-### Giai đoạn 3
+### Giai đoạn 3 (02/11 – 22/11)
 **T3. Trang của thành viên.** Làm `/portal` (trang chủ thành viên), `/portal/profile` (hồ sơ) và `/portal/activity-history` (lịch sử hoạt động).
 Xong khi: thành viên tự sửa được ảnh, email liên hệ, kỹ năng; không sửa được MSSV, ban, vai trò.
 

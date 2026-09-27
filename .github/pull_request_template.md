@@ -25,4 +25,4 @@ Mã việc: <!-- vd A1 --> · Phiếu: <!-- vd docs/plan/A-dang-nhap.md -->
 - [ ] Trang có đủ 4 trạng thái: đang tải / rỗng / lỗi / có dữ liệu
 - [ ] Có migration thì chỉ 1, tạo sau khi đã merge `main` mới nhất
 - [ ] Không có `.env`, mật khẩu, dữ liệu thật
-- [ ] Đã cập nhật trạng thái trong `APC-Portal-Ke-hoach-cong-viec.xlsx`
+- [ ] Đã cập nhật trạng thái và link PR trong Google Sheet kế hoạch

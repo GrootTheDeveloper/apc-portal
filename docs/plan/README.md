@@ -16,15 +16,19 @@
 
 Mỗi người làm cả dữ liệu, API và trang web cho mảng của mình.
 
-## Giai đoạn
+## Lịch
 
-1. **Khởi động:** đăng nhập, phân quyền, dữ liệu mẫu. Các trang khác làm với dữ liệu giả.
-2. **Website công khai:** tin tức, sự kiện, dự án, Về APC, nộp đơn tuyển, đăng ký sự kiện. Dùng dữ liệu thật.
-3. **Portal & quản trị:** trang cho thành viên và Ban Chủ nhiệm.
+| Mốc | Ngày | Nội dung |
+| --- | --- | --- |
+| Kickoff | T7 03/10 | Cài máy theo [Phát triển local](../07-local-development.md), đọc phiếu của mình |
+| Giai đoạn 1 | 05/10 – 11/10 | Đăng nhập, phân quyền, dữ liệu mẫu, email, upload. Các trang khác làm với dữ liệu giả |
+| Giai đoạn 2 | 12/10 – 01/11 | Website công khai dùng dữ liệu thật: tin tức, sự kiện, dự án, Về APC, nộp đơn tuyển, đăng ký sự kiện |
+| Giai đoạn 3 | 02/11 – 22/11 | Portal thành viên và trang quản trị |
+| Lên máy chủ | 23/11 – 29/11 | VPS, HTTPS, sao lưu; nhập nội dung thật |
 
-**Sau này:** đưa lên máy chủ thật.
+Demo vào Chủ nhật cuối mỗi giai đoạn: 11/10, 01/11, 22/11.
 
-Cuối mỗi giai đoạn có buổi demo.
+Deadline từng việc và trạng thái nằm trong **Google Sheet kế hoạch** (link ghim trong nhóm chat). Biết sẽ trễ thì chuyển việc sang `Blocked` và báo nhóm ngay.
 
 ## Cách làm một việc
 
@@ -34,7 +38,7 @@ Cuối mỗi giai đoạn có buổi demo.
 4. Chạy thử đúng như dòng "Xong khi".
 5. Chạy `pnpm check`, phải xanh.
 6. Mở Pull Request (điền theo mẫu có sẵn), kèm ảnh chụp màn hình, chờ 1 người review.
-7. Cập nhật trạng thái trong `APC-Portal-Ke-hoach-cong-viec.xlsx`.
+7. Cập nhật trạng thái và dán link PR vào Google Sheet kế hoạch.
 
 Kẹt quá 30 phút thì hỏi trong nhóm.
 

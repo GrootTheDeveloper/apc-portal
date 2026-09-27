@@ -2,17 +2,17 @@
 
 Làm cả API lẫn giao diện.
 
-### Giai đoạn 1
+### Giai đoạn 1 (05/10 – 11/10)
 **E1. Trang Sự kiện.** Làm `/events` và `/events/[slug]` với dữ liệu giả. Dùng lại mẫu của `EventsSection` ở trang chủ.
 Xong khi: phân biệt rõ sự kiện sắp diễn ra, đã hủy, đã kết thúc.
 
-### Giai đoạn 2
+### Giai đoạn 2 (12/10 – 01/11)
 **E2. Nối dữ liệu thật.** Thêm bảng đăng ký sự kiện (`EventRegistration`). Viết API trả các sự kiện đã công bố và cho trang lấy dữ liệu từ đó.
 
 **E3. Khách đăng ký.** Làm form đăng ký ở `/events/[slug]/register` gồm họ tên, email, MSSV và ô đồng ý xử lý dữ liệu. Đăng ký xong nhận mã đăng ký và email xác nhận. Làm trang `/events/registration-lookup` (route tạm đã có) để tra cứu/hủy bằng email + mã. Giới hạn tần suất bằng `@fastify/rate-limit`.
 Xong khi: đăng ký trùng, hết chỗ hoặc quá hạn đều bị chặn, có thông báo rõ.
 
-### Giai đoạn 3
+### Giai đoạn 3 (02/11 – 22/11)
 **E4. Quản trị sự kiện.** Làm `/admin/events`: tạo, sửa, công bố, hủy, lưu trữ sự kiện.
 Xong khi: Quản lý ban chỉ công bố được sự kiện nội bộ của ban mình; sự kiện công khai hoặc toàn câu lạc bộ do `BOARD` công bố.
 
