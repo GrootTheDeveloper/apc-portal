@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.0 |
-| Trạng thái | Đã áp dụng |
-| Ngày cập nhật | 27/08/2026 |
+| Phiên bản | 1.1 |
+| Trạng thái | Đã duyệt (27/09/2026) |
+| Ngày cập nhật | 27/09/2026 |
 
 ## 1. Yêu cầu
 
@@ -16,16 +16,17 @@
 ## 2. Cài lần đầu
 
 ```powershell
-git clone <repository-url>
-Set-Location apc-web-portal
+git clone https://github.com/GrootTheDeveloper/apc-portal.git
+Set-Location apc-portal
 corepack enable
 pnpm install
 Copy-Item .env.example .env
 pnpm infra:up
+pnpm --filter @apc/api db:migrate
 pnpm dev
 ```
 
-`pnpm infra:up` tự thử cả lệnh `docker compose` và `docker-compose` để tương thích máy thành viên.
+`pnpm infra:up` tự thử cả lệnh `docker compose` và `docker-compose` để tương thích máy thành viên. `db:migrate` tạo bảng trong PostgreSQL local; chạy lại mỗi khi `main` có migration mới. Muốn xem dữ liệu dạng bảng, chạy `pnpm --filter @apc/api db:studio` (mở Prisma Studio trên trình duyệt).
 
 ## 3. URL local
 
@@ -37,8 +38,8 @@ pnpm dev
 | PostgreSQL | localhost:5432 |
 | Mailpit UI | http://localhost:8025 |
 | Mailpit SMTP | localhost:1025 |
-| MinIO API | http://localhost:9000 |
-| MinIO Console | http://localhost:9001 |
+| Kho tệp S3 (SeaweedFS) | http://localhost:9000 |
+| Kho tệp – giao diện quản trị | http://localhost:9001 |
 
 ## 4. Quy trình hằng ngày
 
@@ -63,7 +64,7 @@ Lệnh `infra:down` không xóa volume. Không dùng `down -v` nếu chưa chủ
 
 ## 5. Cập nhật trang chủ
 
-Trang chủ hiện là các component React tại `apps/web/src/pages/home` (xem [06-architecture](06-architecture.md) mục 3), **không còn dùng file HTML import**. Muốn sửa nội dung/giao diện, chỉnh trực tiếp component tương ứng trong `sections/`, rồi chạy `pnpm check` và kiểm tra trực quan trang `/`.
+Trang chủ hiện là các component React tại `apps/web/src/pages/home` (xem [06-architecture](06-architecture.md) mục 3), **không còn dùng file HTML import**. Muốn sửa nội dung/giao diện, chỉnh trực tiếp component tương ứng trong `pages/home/sections/` (Navbar/Footer ở `src/layouts/`), rồi chạy `pnpm check` và kiểm tra trực quan trang `/`.
 
 Script `pnpm homepage:import` chỉ dùng khi cần **làm mới asset tham chiếu** từ `design-reference/homepage`; nó không nối vào giao diện đang chạy.
 

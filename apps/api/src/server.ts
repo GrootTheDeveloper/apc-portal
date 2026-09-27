@@ -1,7 +1,12 @@
-import 'dotenv/config'
+import { fileURLToPath } from 'node:url'
+
+import { config as loadEnvFile } from 'dotenv'
 
 import { buildApp } from './app.js'
 import { loadConfig } from './config.js'
+
+// .env nằm ở gốc repo (docs/07). Production truyền biến môi trường trực tiếp, không cần file.
+loadEnvFile({ path: fileURLToPath(new URL('../../../.env', import.meta.url)), quiet: true })
 
 const config = loadConfig()
 const app = buildApp(config)

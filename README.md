@@ -1,4 +1,4 @@
-# APC Web Portal
+# APC Portal
 
 Monorepo local-first cho website và cổng thông tin của Applied Programming Club (APC), Khoa Công Nghệ, UMT.
 
@@ -6,8 +6,8 @@ Monorepo local-first cho website và cổng thông tin của Applied Programming
 
 - Trang chủ theo bản thiết kế đã duyệt được khởi tạo tại route `/` của React/Vite.
 - API Node.js/Fastify có health check tại `/health`.
-- PostgreSQL, Mailpit và MinIO chạy local bằng Docker Compose.
-- Chưa có VPS, staging hoặc production. Các quyết định triển khai thật vẫn để mở.
+- PostgreSQL, Mailpit và SeaweedFS (lưu tệp qua S3 API) chạy local bằng Docker Compose.
+- Chưa dựng VPS, staging hoặc production; phương án đã chốt tại [docs/06-architecture.md](./docs/06-architecture.md) mục 5.
 
 ## Bắt đầu nhanh
 
@@ -26,14 +26,14 @@ pnpm dev
 | Website | http://localhost:5173 |
 | API health | http://localhost:3000/health |
 | Mailpit | http://localhost:8025 |
-| MinIO Console | http://localhost:9001 |
+| Kho tệp – giao diện quản trị | http://localhost:9001 |
 
 ## Lệnh chính
 
 ```powershell
 pnpm dev          # chạy web và API
 pnpm check        # lint, type-check, test và build
-pnpm infra:up     # bật PostgreSQL, Mailpit, MinIO
+pnpm infra:up     # bật PostgreSQL, Mailpit, SeaweedFS
 pnpm infra:down   # tắt hạ tầng local
 pnpm infra:logs   # xem log hạ tầng
 pnpm homepage:import # nhập lại bản thiết kế đã chốt

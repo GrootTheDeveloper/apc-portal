@@ -1,4 +1,4 @@
-import { Eyebrow } from './home/sections/Eyebrow'
+import { Eyebrow } from '../components/Eyebrow'
 
 /** Trang tạm cho route đã khai báo nhưng chưa dựng nội dung. Thay bằng trang thật ở các task sau. */
 export function Placeholder({ title }: { title: string }) {

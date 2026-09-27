@@ -12,6 +12,23 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Postgres cho test cần database; migration được áp lên DB trống ở mỗi PR.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: apc
+          POSTGRES_PASSWORD: apc_ci_only
+          POSTGRES_DB: apc_portal
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U apc"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://apc:apc_ci_only@localhost:5432/apc_portal
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,6 +46,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        run: pnpm --filter @apc/api db:deploy
 
       - name: Verify repository
         run: pnpm check

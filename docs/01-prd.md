@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.2 |
-| Trạng thái | Bản thảo để APC rà soát |
-| Ngày cập nhật | 05/09/2026 |
+| Phiên bản | 1.3 |
+| Trạng thái | Đã duyệt (27/09/2026) |
+| Ngày cập nhật | 27/09/2026 |
 | Sản phẩm | APC Portal |
 | Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC) |
 | Tài liệu nền tảng | [APC Portal - Project Charter](./00-project-charter.md) |
@@ -16,8 +16,9 @@
 | 1.0 | Baseline PRD hoàn chỉnh gồm mục tiêu, 29 luồng, yêu cầu, dữ liệu, bảo mật, vận hành và tiêu chí nghiệm thu MVP |
 | 1.1 | Liên kết baseline với giai đoạn local-first và tách cam kết production chưa được phê duyệt |
 | 1.2 | Bỏ hạng mục Thành tích (PRT-02 và mục 7.7 đổi thành "Dự án và sản phẩm"); cập nhật PUB-05, ORG-04, BR-20, FLOW-18 và bảng thực thể |
+| 1.3 | APC duyệt; cập nhật trạng thái triển khai |
 
-> Trạng thái triển khai ngày 27/08/2026: nền tảng local và trang chủ đang được xây dựng. Mọi yêu cầu VPS/staging/production là release gate tương lai và chỉ có hiệu lực sau khi APC chọn hạ tầng.
+> Trạng thái triển khai ngày 27/09/2026: đã có nền tảng local, trang chủ, router và database schema; các chức năng còn lại triển khai theo [docs/plan](./plan/README.md). Mọi yêu cầu VPS/staging/production là release gate, áp dụng khi dựng hạ tầng đã chốt tại [Kiến trúc mục 5](./06-architecture.md).
 
 ## 1. Mục đích tài liệu
 
@@ -332,8 +333,8 @@ Các luồng từ `FLOW-01` đến `FLOW-29` phải được mô tả chi tiết
 | MemberProfile | Thông tin cá nhân, học tập, kỹ năng, trạng thái thành viên và ảnh đại diện |
 | Role/Permission/UserRole | Vai trò, quyền, phạm vi, thời hạn và trạng thái hiệu lực |
 | Department | Ban chuyên môn, mô tả và đầu mối liên hệ |
-| RecruitmentRound | Thông tin đợt tuyển, thời gian, vị trí và trạng thái |
-| RecruitmentQuestion/Application | Câu hỏi theo đợt tuyển; dữ liệu ứng tuyển, mã hồ sơ, trạng thái, câu trả lời và ghi chú nội bộ |
+| RecruitmentRound | Thông tin đợt tuyển, thời gian, vị trí, trạng thái và danh sách câu hỏi bổ sung |
+| MembershipApplication | Dữ liệu ứng tuyển, mã hồ sơ, trạng thái, câu trả lời và ghi chú nội bộ |
 | Event | Thông tin sự kiện, phạm vi, sức chứa, thời gian đăng ký và trạng thái |
 | EventRegistration | Tài khoản hoặc thông tin người đăng ký, mã đăng ký, thời điểm, trạng thái đăng ký và điểm danh |
 | Post | Tin tức, thông báo, chuyên mục, nội dung, tác giả và trạng thái |

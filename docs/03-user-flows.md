@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.2 |
-| Trạng thái | Bản thảo để APC rà soát |
-| Ngày cập nhật | 05/09/2026 |
+| Phiên bản | 1.3 |
+| Trạng thái | Đã duyệt (27/09/2026) |
+| Ngày cập nhật | 27/09/2026 |
 | Sản phẩm | APC Portal |
 | Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC) |
 | Tài liệu liên quan | [Project Charter](./00-project-charter.md), [PRD](./01-prd.md), [Roles and Permissions](./02-roles-permissions.md) |
@@ -16,8 +16,9 @@
 | 1.0 | Baseline hoàn chỉnh gồm `FLOW-01` đến `FLOW-29`, nhánh lỗi, truy vết và sơ đồ tổ chức/vận hành |
 | 1.1 | Ghi nhận trang chủ là luồng được khởi tạo đầu tiên và các luồng production chưa triển khai |
 | 1.2 | Bỏ Thành tích khỏi FLOW-18 (đổi thành "Dự án và sản phẩm") và các sơ đồ/điều hướng liên quan |
+| 1.3 | APC duyệt; cập nhật trạng thái triển khai |
 
-> Hiện chỉ `FLOW-01` có giao diện baseline theo bản thiết kế đã duyệt. Các luồng còn lại là đặc tả để rà soát, không phải chức năng đã hoàn thành.
+> Hiện chỉ `FLOW-01` có giao diện baseline theo bản thiết kế đã duyệt. Các luồng còn lại là đặc tả đã duyệt, được triển khai theo [docs/plan](./plan/README.md).
 
 ## 1. Mục đích
 

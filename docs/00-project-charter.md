@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.2 |
-| Trạng thái | Bản thảo để APC rà soát |
-| Ngày cập nhật | 05/09/2026 |
+| Phiên bản | 1.3 |
+| Trạng thái | Đã duyệt (27/09/2026) |
+| Ngày cập nhật | 27/09/2026 |
 | Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC) |
 | Đơn vị | Câu lạc bộ Lập trình ứng dụng (APC), Khoa Công Nghệ, UMT |
 | Tên sản phẩm | APC Portal |
@@ -16,10 +16,11 @@
 | 1.0 | Baseline hoàn chỉnh về bối cảnh, mục tiêu, phạm vi MVP, nguyên tắc vận hành và ràng buộc triển khai |
 | 1.1 | Ghi nhận giai đoạn local-first; hạ tầng production chưa được chọn và cần quyết định riêng |
 | 1.2 | Bỏ hạng mục Thành tích khỏi phạm vi; đồng bộ với bản kế hoạch bàn giao (route công khai tiếng Anh, tuyển thành viên theo mô hình đợt tuyển) |
+| 1.3 | APC duyệt; cập nhật quy mô nhóm phát triển (9 thành viên) và vai trò Tech Lead |
 
 Tài liệu này xác lập định hướng sản phẩm, phạm vi MVP và các nguyên tắc triển khai của APC Portal.
 
-> Trạng thái triển khai ngày 27/08/2026: dự án chỉ chạy local. Các mô tả VPS, staging và production bên dưới là mục tiêu dự kiến, không phải hạ tầng đã mua hoặc quyết định đã phê duyệt.
+> Trạng thái triển khai ngày 27/09/2026: dự án chỉ chạy local. Hạ tầng production đã chốt tại [Kiến trúc mục 5](./06-architecture.md) nhưng chưa được dựng.
 
 ## 1. Bối cảnh
 
@@ -178,9 +179,9 @@ flowchart LR
 ## 11. Quản trị dự án
 
 - **Product Owner:** đại diện Ban Chủ nhiệm được phân công, chịu trách nhiệm chốt yêu cầu nghiệp vụ và thứ tự ưu tiên của sản phẩm.
-- **Nhóm phát triển:** 4 sinh viên, mỗi hạng mục có một người chịu trách nhiệm chính và ít nhất một người review.
+- **Nhóm phát triển:** 9 thành viên; mỗi người phụ trách một mảng và mỗi thay đổi có ít nhất một người review. Phân công tại [docs/plan](./plan/README.md).
 - **Người phê duyệt nghiệp vụ:** Product Owner và đại diện Ban Chủ nhiệm.
-- **Người phê duyệt kỹ thuật:** Tech Lead của nhóm phát triển.
+- **Người phê duyệt kỹ thuật:** Tech Lead (trưởng dự án) của nhóm phát triển.
 - Thay đổi phạm vi phải được ghi nhận trong issue, tài liệu yêu cầu hoặc ADR tương ứng.
 
 ## 12. Hiệu lực và quản lý tài liệu

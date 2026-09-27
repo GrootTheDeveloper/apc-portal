@@ -1,4 +1,4 @@
-import { Eyebrow } from './Eyebrow'
+import { Eyebrow } from '../../../components/Eyebrow'
 
 const PARTNERS = ['Đối tác 01', 'Đối tác 02', 'Đối tác 03', 'Đối tác 04', 'Đối tác 05']
 

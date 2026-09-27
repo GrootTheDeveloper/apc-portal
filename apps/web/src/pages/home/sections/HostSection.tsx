@@ -1,4 +1,4 @@
-import { Eyebrow } from './Eyebrow'
+import { Eyebrow } from '../../../components/Eyebrow'
 
 const CONTACTS = [
   { icon: 'person', title: 'ThS. Nguyễn Văn A', text: 'Giảng viên Cố vấn' },

@@ -1,5 +1,5 @@
-import { Button } from './Button'
-import { Eyebrow } from './Eyebrow'
+import { Button } from '../../../components/Button'
+import { Eyebrow } from '../../../components/Eyebrow'
 
 const UMTOJ_TAGS = ['React', 'Node.js', 'Docker']
 

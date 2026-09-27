@@ -13,7 +13,10 @@ const ACTIVITIES = [
 
 export function ActivitiesSection() {
   return (
-    <section className="w-full bg-black text-white relative overflow-hidden flex flex-col items-center justify-center">
+    <section
+      id="activities"
+      className="w-full scroll-mt-20 bg-black text-white relative overflow-hidden flex flex-col items-center justify-center"
+    >
       {/* Ảnh nền slider tự chạy */}
       <div className="absolute inset-0 z-0">
         {SLIDER_IMAGES.map((image) => (
