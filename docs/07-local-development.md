@@ -71,6 +71,8 @@ Script `pnpm homepage:import` chỉ dùng khi cần **làm mới asset tham chi�
 ## 6. Xử lý lỗi thường gặp
 
 - Không tìm thấy Compose: mở Docker Desktop, kiểm tra `docker compose version` hoặc `docker-compose version`.
-- Cổng 5432/9000 bị chiếm: dừng dịch vụ trùng cổng hoặc đổi mapping và cập nhật `.env`.
+- Cổng 5432 bị chiếm (máy có sẵn PostgreSQL hoặc container khác): trong `.env` đặt `POSTGRES_PORT=5433` và sửa `DATABASE_URL` thành `...@localhost:5433/apc_portal`, rồi chạy lại `pnpm infra:up`.
+- Prisma báo `Environment variable not found: DATABASE_URL`: chưa có file `.env` ở gốc repo; chạy `Copy-Item .env.example .env`.
+- Cổng 9000 bị chiếm: dừng dịch vụ trùng cổng.
 - Font/icon không hiện khi mất mạng: giao diện vẫn dùng font hệ thống; Material Symbols hiện cần kết nối Google Fonts.
 - Trang chủ lệch: kiểm tra token Tailwind trong `apps/web/tailwind.config.cjs`.

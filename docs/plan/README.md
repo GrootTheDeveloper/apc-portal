@@ -56,6 +56,7 @@ Kẹt quá 30 phút thì hỏi trong nhóm.
 | Phân trang danh sách | `pageQuery`, `pageArgs`, `toPage` trong `apps/api/src/lib/pagination.ts` |
 | Mã tra cứu ngẫu nhiên, slug | `publicCode()`, `slugify()` trong `apps/api/src/lib/ids.ts` |
 | Xem dữ liệu | `pnpm --filter @apc/api db:studio` |
+| Xem sơ đồ database | [apps/api/docs/erd-core-schema.md](../../apps/api/docs/erd-core-schema.md). Thêm bảng xong chạy `pnpm --filter @apc/api db:erd` |
 | Thư viện được cài | Danh sách ở [Kiến trúc](../06-architecture.md) mục 5.1 |
 
 ## Luật chung

@@ -14,7 +14,8 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:erd": "node scripts/erd.mjs"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",

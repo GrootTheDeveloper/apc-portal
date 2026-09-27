@@ -33,7 +33,7 @@ Nguồn sự thật nghiệp vụ: `docs/01-prd.md` (yêu cầu), `docs/02-roles
 - Tệp: dùng module `files` (S3 API). Không trả URL kho tệp trực tiếp cho tài liệu nội bộ.
 
 ## Quy ước DB
-- Sửa `src/db/schema.prisma` rồi `db:migrate` để **tạo migration mới**. Không bao giờ sửa migration đã merge.
+- Sửa `src/db/schema.prisma` rồi `db:migrate` để **tạo migration mới**, sau đó `db:erd` để cập nhật sơ đồ `apps/api/docs/erd-core-schema.md`. Không bao giờ sửa migration đã merge.
 - Mỗi PR tối đa 1 migration. Pull `main` ngay trước khi tạo migration.
 - `main` có migration mới sau khi bạn đã tạo migration: xóa thư mục migration của bạn, merge `main`, chạy lại `db:migrate`.
 - CI có Postgres và chạy `db:deploy` trước test, nên test được dùng database thật.
