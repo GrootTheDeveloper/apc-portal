@@ -10,7 +10,7 @@
 | Lê Đăng Nghĩa | Sự kiện | [E-su-kien.md](./E-su-kien.md) |
 | Phan Anh Khương | Tuyển thành viên | [R-tuyen-thanh-vien.md](./R-tuyen-thanh-vien.md) |
 | Lương Huỳnh | Thành viên & Về APC | [T-thanh-vien.md](./T-thanh-vien.md) |
-| Phạm Đăng Hoàng Thiên | Dữ liệu mẫu, tệp, tài liệu, tìm kiếm | [D-tep-tai-lieu.md](./D-tep-tai-lieu.md) |
+| Phạm Đăng Hoàng Thiên | Dữ liệu mẫu, tệp, tài liệu, tìm kiếm, nhập CSV | [D-tep-tai-lieu.md](./D-tep-tai-lieu.md) |
 | Đặng Phúc An Khang | Email & máy chủ | [O-email-ha-tang.md](./O-email-ha-tang.md) |
 | Nguyễn Tiến Bảo | Kiểm thử & nội dung | [Q-qa-noi-dung.md](./Q-qa-noi-dung.md) |
 

@@ -110,7 +110,7 @@ Các quyết định dưới đây thay cho danh sách "quyết định còn m�
 | `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner` | Lưu và tải tệp qua S3 API | D2, D4 |
 | `@fastify/multipart` | Nhận tệp upload | D2 |
 | `file-type` | Kiểm tra loại tệp theo nội dung | D2 |
-| `csv-parse`, `csv-stringify` | Nhập/xuất CSV | T6, R5, E6 |
+| `csv-parse`, `csv-stringify` | Nhập/xuất CSV | D5, R5, E6 |
 | `@playwright/test` | Test giao diện tự động | Q2 |
 
 Gói `@types/...` đi kèm các thư viện trên được cài luôn.
