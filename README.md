@@ -43,4 +43,4 @@ Không commit `.env`, dữ liệu volume Docker, `node_modules` hoặc thư mụ
 
 ## Tài liệu
 
-Bắt đầu tại [docs/README.md](./docs/README.md). Quy trình cài đặt chi tiết nằm trong [docs/07-local-development.md](./docs/07-local-development.md).
+Thành viên mới: đọc [docs/plan/bat-dau.md](./docs/plan/bat-dau.md) (cài máy, làm việc, mở PR). Tài liệu nghiệp vụ bắt đầu tại [docs/README.md](./docs/README.md). Quy trình cài đặt chi tiết nằm trong [docs/07-local-development.md](./docs/07-local-development.md).

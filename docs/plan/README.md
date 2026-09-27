@@ -1,5 +1,7 @@
 # Kế hoạch APC Portal
 
+> **Mới vào nhóm?** Đọc [Bắt đầu](./bat-dau.md) trước: cài máy, cách giao việc cho AI, mở PR, review, xử lý khi kẹt.
+
 ## Phân công
 
 | Người | Mảng | Phiếu |
@@ -32,13 +34,7 @@ Deadline từng việc và trạng thái nằm trong **Google Sheet kế hoạch
 
 ## Cách làm một việc
 
-1. Mở phiếu của mình, lấy việc chưa làm đầu tiên (làm từ trên xuống, hạn ghi cạnh tên việc), ví dụ `R1`.
-2. Tạo nhánh: `git switch -c r1-trang-tuyen`.
-3. Code (có thể dùng AI).
-4. Chạy thử đúng như dòng "Xong khi".
-5. Chạy `pnpm check`, phải xanh.
-6. Mở Pull Request (điền theo mẫu có sẵn), kèm ảnh chụp màn hình, chờ 1 người review.
-7. Cập nhật trạng thái và dán link PR vào Google Sheet kế hoạch.
+Tóm tắt: lấy việc chưa làm đầu tiên trong phiếu → tạo nhánh → giao cho AI → tự kiểm tra theo "Xong khi" → `pnpm check` → mở PR, chờ bạn cặp duyệt → cập nhật Sheet. Chi tiết từng lệnh ở [Bắt đầu](./bat-dau.md) mục 3.
 
 Kẹt quá 30 phút thì hỏi trong nhóm.
 
