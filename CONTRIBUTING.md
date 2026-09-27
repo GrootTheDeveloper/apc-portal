@@ -26,4 +26,4 @@ docs: clarify recruitment flow
 - Không dùng tên/ảnh đối tác, thành viên hoặc đơn vị chưa được phép công bố.
 - Thay đổi quyền hoặc dữ liệu phải có test cho trường hợp bị từ chối.
 - Migration đã merge không được sửa lịch sử; tạo migration mới.
-- Không thêm dependency, service hoặc abstraction nếu chưa có nhu cầu cụ thể.
+- Chỉ cài thư viện trong danh sách đã duyệt ([Kiến trúc](./docs/06-architecture.md) mục 5.1); thư viện khác phải hỏi người review.

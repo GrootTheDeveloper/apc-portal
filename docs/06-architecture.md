@@ -46,10 +46,10 @@ Route `/` do `apps/web/src/pages/home/HomePage.tsx` dựng, tách thành compone
 
 ```text
 apps/web/src/
-├─ components/            # Dùng chung mọi trang: Button.tsx, Eyebrow.tsx
+├─ components/            # Dùng chung mọi trang: Button, Eyebrow, AsyncState (4 trạng thái)
 ├─ layouts/               # RootLayout.tsx, Navbar.tsx, SiteFooter.tsx
-├─ hooks/useScrolled.ts   # Đổ bóng nav khi cuộn
-├─ lib/api.ts             # Gọi API (qua /api), lỗi thành ApiError
+├─ hooks/                 # useApi (tải dữ liệu cho trang), useScrolled (đổ bóng nav)
+├─ lib/                   # api.ts (gọi API qua /api), format.ts (ngày giờ Việt Nam)
 └─ pages/home/
    ├─ HomePage.tsx        # Các section của trang chủ
    ├─ home.css            # CSS cục bộ: chiều cao section, fade-up, slider nền
@@ -58,7 +58,7 @@ apps/web/src/
                           # EventsSection, NewsSection, PartnersSection, HostSection, JoinSection
 ```
 
-Phía API, phần dùng chung nằm ở `apps/api/src/`: `db/client.ts` (Prisma client), `lib/errors.ts` (lỗi `{ error, message }`), `lib/password.ts` (Argon2id).
+Phía API, phần dùng chung nằm ở `apps/api/src/`: `db/client.ts` (Prisma client), `lib/errors.ts` (lỗi `{ error, message }`), `lib/password.ts` (Argon2id), `lib/pagination.ts` (phân trang), `lib/ids.ts` (mã tra cứu, slug).
 
 Quy ước bắt buộc cho phần frontend về sau:
 

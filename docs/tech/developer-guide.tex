@@ -148,9 +148,10 @@ SeaweedFS & Lưu tệp/ảnh theo API tương thích S3 (S3 \code{:9000}, quản
 \code{apps/web/src/layouts/} & \code{RootLayout} = Navbar + \code{<Outlet/>} + Footer dùng chung. \\
 \code{apps/web/src/components/} & Component dùng chung mọi trang (\code{Button}, \code{Eyebrow}). \\
 \code{apps/web/src/lib/api.ts} & Hàm \code{api(...)} gọi API qua \code{/api}; lỗi thành \code{ApiError}. \\
+\code{apps/web/src/hooks/useApi.ts} & Tải dữ liệu cho trang; dùng với \code{<AsyncState>} để có đủ 4 trạng thái. \\
 \code{apps/web/src/App.tsx} & Khai báo router (danh sách route, xem mục~\ref{sec:routes}). \\
 \code{apps/api/src/app.ts} & Dựng Fastify, đăng ký CORS, bộ xử lý lỗi và route. Hiện có \code{/health}. \\
-\code{apps/api/src/lib/} & \code{errors.ts} (lỗi \code{\{ error, message \}}), \code{password.ts} (Argon2id). \\
+\code{apps/api/src/lib/} & \code{errors.ts} (lỗi \code{\{ error, message \}}), \code{password.ts} (Argon2id), \code{pagination.ts}, \code{ids.ts} (mã tra cứu, slug). \\
 \code{apps/api/src/db/client.ts} & Prisma client dùng chung (\code{db}). \\
 \code{apps/api/src/config.ts} & Nạp + kiểm biến môi trường bằng Zod. \\
 \code{apps/api/src/db/schema.prisma} & Định nghĩa dữ liệu (nguồn sự thật của DB). \\

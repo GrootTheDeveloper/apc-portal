@@ -33,7 +33,7 @@ Cuối mỗi giai đoạn có buổi demo.
 3. Code (có thể dùng AI).
 4. Chạy thử đúng như dòng "Xong khi".
 5. Chạy `pnpm check`, phải xanh.
-6. Mở Pull Request, kèm ảnh chụp màn hình, chờ 1 người review.
+6. Mở Pull Request (điền theo mẫu có sẵn), kèm ảnh chụp màn hình, chờ 1 người review.
 7. Cập nhật trạng thái trong `APC-Portal-Ke-hoach-cong-viec.xlsx`.
 
 Kẹt quá 30 phút thì hỏi trong nhóm.
@@ -44,9 +44,13 @@ Kẹt quá 30 phút thì hỏi trong nhóm.
 | --- | --- |
 | Nút, nhãn tiêu đề | `Button`, `Eyebrow` trong `apps/web/src/components/` |
 | Gọi API từ web | `api(...)` trong `apps/web/src/lib/api.ts` |
+| Tải dữ liệu cho trang + 4 trạng thái | `useApi(...)` trong `apps/web/src/hooks/useApi.ts` và `<AsyncState>` trong `apps/web/src/components/` |
+| Hiện ngày giờ (giờ Việt Nam) | `formatDate`, `formatDateTime` trong `apps/web/src/lib/format.ts` |
 | Đọc/ghi database | `db` trong `apps/api/src/db/client.ts` |
 | Trả lỗi 404, 403, 409… | `throw notFound()`, `forbidden()`, `conflict()` trong `apps/api/src/lib/errors.ts` |
 | Băm mật khẩu | `hashPassword`, `verifyPassword` trong `apps/api/src/lib/password.ts` |
+| Phân trang danh sách | `pageQuery`, `pageArgs`, `toPage` trong `apps/api/src/lib/pagination.ts` |
+| Mã tra cứu ngẫu nhiên, slug | `publicCode()`, `slugify()` trong `apps/api/src/lib/ids.ts` |
 | Xem dữ liệu | `pnpm --filter @apc/api db:studio` |
 | Thư viện được cài | Danh sách ở [Kiến trúc](../06-architecture.md) mục 5.1 |
 

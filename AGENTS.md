@@ -15,7 +15,9 @@ Nguồn sự thật nghiệp vụ: `docs/01-prd.md` (yêu cầu), `docs/02-roles
 
 ## Quy ước API (`apps/api`)
 - Mỗi mảng một thư mục: `src/modules/<mảng>/` gồm `routes.ts`, `service.ts`, `*.test.ts`. Đăng ký route trong `app.ts`.
-- Có sẵn, dùng lại, không viết bản khác: `db` trong `src/db/client.ts`; `notFound()`, `forbidden()`, `conflict()`… trong `src/lib/errors.ts`; `hashPassword`/`verifyPassword` trong `src/lib/password.ts`.
+- Có sẵn, dùng lại, không viết bản khác: `db` trong `src/db/client.ts`; `notFound()`, `forbidden()`, `conflict()`… trong `src/lib/errors.ts`; `hashPassword`/`verifyPassword` trong `src/lib/password.ts`; `pageQuery`/`pageArgs`/`toPage` trong `src/lib/pagination.ts`; `publicCode()`/`slugify()` trong `src/lib/ids.ts`.
+- Tra cứu bằng mã (mã hồ sơ, mã đăng ký) gửi qua body `POST`, không đặt mã hay email trong URL vì URL bị ghi log (OPS-11).
+- `@fastify/rate-limit` chỉ đăng ký 1 lần trong `app.ts` với `global: false`; route cần giới hạn tự khai báo `config.rateLimit`.
 - Nhóm route theo người gọi:
   - `/public/*` — không cần đăng nhập
   - `/auth/*` — đăng nhập/tài khoản
@@ -43,7 +45,8 @@ Nguồn sự thật nghiệp vụ: `docs/01-prd.md` (yêu cầu), `docs/02-roles
 ## Quy ước Web (`apps/web`)
 - Trang: `src/pages/<khu>/<trang>/`. Gọi API qua `api(...)` trong `src/lib/api.ts` (không `fetch` rải rác); lỗi là `ApiError` có `status`, `code`, `message`, `issues`.
 - Component dùng chung ở `src/components/` (`Button`, `Eyebrow`); Navbar/Footer ở `src/layouts/`. Card mẫu vẫn nằm trong `src/pages/home/sections/`; người dùng card đó trước thì chuyển nó sang `src/components/`.
-- Mọi trang có đủ 4 trạng thái: loading / empty / error / success.
+- Mọi trang có đủ 4 trạng thái: loading / empty / error / success. Dùng `useApi(...)` (`src/hooks/useApi.ts`) và `<AsyncState>` (`src/components/AsyncState.tsx`).
+- Ngày giờ hiển thị bằng `formatDate`/`formatDateTime` trong `src/lib/format.ts` (giờ Việt Nam), không tự `toLocaleString`.
 - Dữ liệu lặp khai báo mảng rồi `map`. Class Tailwind viết literal đầy đủ (không `text-${x}`).
 - Màu/chữ theo `DESIGN.md`; dùng lại component có sẵn trước khi tạo mới.
 - Route theo `docs/04-sitemap.md`, URL tiếng Anh.
