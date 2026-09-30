@@ -2,14 +2,15 @@
 
 ## Bối cảnh
 
-Mảng này bảo đảm sản phẩm chạy đúng tài liệu nghiệp vụ trước mỗi buổi demo và trước khi lên máy chủ. Công việc gồm bốn phần:
+Mảng này bảo đảm sản phẩm chạy đúng tài liệu nghiệp vụ trước mỗi buổi demo và trước khi lên máy chủ. Công việc gồm năm phần:
 
 1. **Kịch bản kiểm tra thủ công** — các bước bấm trên trình duyệt kèm kết quả phải thấy, để bất kỳ ai (kể cả người không biết code) làm theo và kết luận Đạt / Không đạt.
 2. **Test tự động giao diện** — dùng Playwright điều khiển trình duyệt chạy lại các kịch bản quan trọng bằng một lệnh.
 3. **Báo lỗi** — ghi lỗi tìm được thành GitHub Issue, giao đúng người phụ trách.
-4. **Nội dung thật** — gom bài viết, dự án, số liệu của CLB và nhập qua trang quản trị trước khi phát hành.
+4. **Kiểm thử tải** — đo Portal với 20 người dùng đồng thời trên staging trước khi phát hành.
+5. **Nội dung thật** — gom bài viết, dự án, số liệu của CLB trước khi phát hành; Ban Chủ nhiệm nhập qua trang quản trị ngay sau khi phát hành.
 
-Việc trong phiếu này không tạo bảng database hay API. Các file tạo ra nằm trong `docs/qa/` và `apps/web/e2e/`.
+Việc trong phiếu này không tạo bảng database hay API. Các file tạo ra nằm trong `docs/qa/`, `apps/web/e2e/`, `load/` và `docs/ops/load-test.md`.
 
 ## Phụ thuộc
 
@@ -21,7 +22,8 @@ Việc trong phiếu này không tạo bảng database hay API. Các file tạo 
 | Trang quản trị bài viết, xét hồ sơ | C3 (CN 08/11), R5 (T5 12/11) | Q3 |
 | Trang quản trị bài viết, dự án, thông tin APC | C3, C4 (CN 15/11), T4 (CN 08/11) | Q4 |
 | Secret TOTP của tài khoản mẫu | B3 (CN 01/11) | Q3 (đăng nhập `board` trong test) |
-| Production đã phát hành | O4, O5 | Q4 (nhập nội dung thật) |
+| Staging chạy được | O4 (T5 26/11) | Q6 |
+| Production đã phát hành | O7 (T4 02/12) | Q4 (nhập nội dung thật) |
 
 Người khác cần từ mảng này: kết quả chạy kịch bản trước mỗi demo và danh sách Issue lỗi.
 
@@ -62,7 +64,7 @@ Kịch bản viết từ phiếu việc và User Flow, **không cần chờ ch�
    | # | Thao tác | Kết quả phải thấy |
    | --- | --- | --- |
    | 1 | Mở http://localhost:5173/recruitment, bấm đợt tuyển đang mở | Trang chi tiết có nút **Ứng tuyển** |
-   | 2 | Bấm **Ứng tuyển**, điền email `ungvien1@example.com`, các trường khác hợp lệ, tick ô đồng ý, bấm **Nộp đơn** | Không tạo đơn mới; thông báo email đã nộp đơn trong đợt này, có link sang trang tra cứu |
+   | 2 | Bấm **Ứng tuyển**, điền email `ungvien1@example.com`, các trường khác hợp lệ, tick ô đồng ý, bấm **Nộp đơn** | Không tạo đơn mới; hiện câu chung "Không thể nộp đơn với thông tin này. Nếu đã nộp, vui lòng dùng trang tra cứu.", không nói email hay MSSV bị trùng (QĐ-1); dữ liệu đã nhập vẫn còn trên form |
    | 3 | Mở `db:studio`, bảng `membership_applications` | Vẫn chỉ có một đơn của email này |
 
    | Ngày chạy | Người chạy | Kết quả | Issue |
@@ -149,7 +151,7 @@ Kịch bản viết từ phiếu việc và User Flow, **không cần chờ ch�
 
 **Mục tiêu:** kịch bản thủ công cho toàn bộ phần quản trị và test tự động cho luồng trọng yếu, gồm cả trường hợp vượt quyền của mọi vai trò.
 
-**Cần có trước:** A2, B3, C3 đã merge. Các chức năng chưa merge (R5 hạn 12/11; D5, O3, B5 hạn 22/11): viết kịch bản trước theo phiếu, chạy và bổ sung test tự động ngay sau khi merge.
+**Cần có trước:** A2, B3, C3 đã merge. Các chức năng chưa merge (R5 hạn 12/11; D5, O3, B5, A6, O6 hạn 22/11; A7, B6, C6 hạn 25/11): viết kịch bản trước theo phiếu, chạy và bổ sung test tự động ngay sau khi merge.
 
 **Làm:**
 
@@ -163,7 +165,7 @@ Kịch bản viết từ phiếu việc và User Flow, **không cần chờ ch�
    - Tài liệu nội bộ: `member.b` không tải được tài liệu của Ban A kể cả khi có link; thay tệp giữ được bản cũ (AC-05).
    - Nhật ký: công bố bài, đổi trạng thái hồ sơ, khóa tài khoản đều tạo dòng nhật ký; trang nhật ký không có nút sửa, xóa (AC-06).
    - CSV: file có một dòng lỗi không nhập dòng nào; file xuất chỉ người tạo tải được (AC-08).
-   - Email: `manager.a` chỉ thấy email của Ban A; chỉ `board` gửi lại được (AC-09).
+   - Email: `manager.a` chỉ thấy email của Ban A, không gửi lại được; `board` gửi lại được; `techadmin` chỉ xem metadata và gửi lại khi nhập mã sự cố (AC-09).
 2. Viết test tự động `apps/web/e2e/quan-tri.spec.ts` cho: đăng nhập, công bố bài viết, `member.a` bị chặn ở `/admin`, xét một hồ sơ đến Đã chấp nhận.
 3. Đăng nhập trong test: tạo hàm dùng chung `login(page, username)` trong `apps/web/e2e/helpers.ts`, mật khẩu đọc từ biến `SEED_PASSWORD`. Tài khoản `board`, `techadmin` cần mã 2 lớp: sinh mã từ secret TOTP cố định của dữ liệu mẫu bằng `otpauth` (thư viện đã duyệt).
 
@@ -174,11 +176,38 @@ Kịch bản viết từ phiếu việc và User Flow, **không cần chờ ch�
 - [ ] Mỗi vai trò `MEMBER`, `DEPARTMENT_MANAGER`, `BOARD`, `TECH_ADMIN` có ít nhất một kịch bản bị chặn.
 - [ ] Có kịch bản cho AC-05, AC-06, AC-08, AC-09, AC-10.
 
-### Q4. Nội dung thật — hạn CN 22/11
+## Lên máy chủ (23/11 – 29/11)
+
+### Q6. Kiểm thử tải — hạn CN 29/11
+
+**Mục tiêu:** có bằng chứng Portal phục vụ tối thiểu 20 người dùng đồng thời trên staging (PERF-03, [PRD](../01-prd.md) §11 mục 15, AC-07); số liệu dùng để đặt ngưỡng cảnh báo (O5).
+
+**Cần có trước:** O4 (staging chạy được).
+
+**Làm:**
+
+1. Công cụ: k6 chạy bằng Docker (`docker run --rm -i grafana/k6 run - < load/portal.js`), theo [Kiến trúc](../06-architecture.md) mục 5 dòng 14. Không cài vào `package.json`.
+2. Kịch bản `load/portal.js` trong repo, mô phỏng 20 người dùng ảo trong 10 phút:
+   - 14 người xem trang công khai: trang chủ, danh sách và chi tiết tin tức, sự kiện, dự án, tìm kiếm.
+   - 4 người đăng nhập bằng tài khoản mẫu `member.*` của staging, mở dashboard, danh sách sự kiện, tài liệu.
+   - 2 người nộp đơn tuyển và đăng ký sự kiện công khai với dữ liệu giả.
+   - Nâng giới hạn tần suất của staging trong lúc chạy (biến cấu hình của Q2), đặt lại sau khi xong.
+3. Trong lúc chạy, `TECH_ADMIN` ghi số liệu Netdata: CPU, RAM, swap, số PID, I/O ổ đĩa, dung lượng lưu trữ.
+4. Ghi báo cáo `docs/ops/load-test.md`: ngày, tag image, kịch bản, thời gian phản hồi phân vị 95 của trang công khai và thao tác nghiệp vụ, tỷ lệ lỗi, số liệu tài nguyên, kết luận so với PERF-01 (2,5 giây), PERF-02 (3 giây), PERF-03. Báo Đặng Phúc An Khang để đặt ngưỡng cảnh báo.
+
+**Xong khi:**
+
+- [ ] Có `load/portal.js` chạy lại được bằng một lệnh.
+- [ ] `docs/ops/load-test.md` có đủ số liệu ở bước 4; tỷ lệ lỗi 0% ở 20 người dùng đồng thời.
+- [ ] Phân vị 95: trang công khai ≤ 2,5 giây, thao tác nghiệp vụ ≤ 3 giây. Không đạt thì mở Issue cho mảng liên quan và chạy lại sau khi sửa.
+
+## Phát hành (30/11 – 06/12)
+
+### Q4. Nội dung thật — hạn CN 06/12
 
 **Mục tiêu:** chuẩn bị đủ nội dung thật đã được duyệt; sau khi production phát hành, nội dung được Ban Chủ nhiệm đưa lên qua trang quản trị.
 
-**Cần có trước:** C3, C4, T4 đã merge. Nội dung thật chỉ nhập trên production sau khi phát hành ([QĐ-9](./README.md#8-điểm-cần-trưởng-dự-án-quyết-định)); không nhập nội dung thật trên máy local hay staging.
+**Cần có trước:** C3, C4, T4 đã merge. Nội dung thật chỉ nhập trên production sau khi phát hành (O7, T4 02/12; QĐ-9); không nhập nội dung thật trên máy local hay staging. Chuẩn bị Sheet xong trước CN 22/11.
 
 **Làm:**
 
@@ -202,7 +231,7 @@ Kịch bản viết từ phiếu việc và User Flow, **không cần chờ ch�
 **Xong khi:**
 
 - [ ] Sheet có đủ nội dung cho mọi trang công khai (trang chủ, Về APC, tin tức, dự án) trước CN 22/11.
-- [ ] Sau khi production phát hành, mọi trang công khai có nội dung thật, không còn nội dung mẫu.
+- [ ] Đến CN 06/12, mọi trang công khai trên production có nội dung thật, không còn nội dung mẫu.
 - [ ] Mọi dòng trong Sheet đã nhập có "Được phép công bố: Có" kèm người duyệt.
 - [ ] Không có tên, ảnh thành viên nào thiếu đồng ý công khai.
 - [ ] 4 chỉ số trang chủ đã được Ban Chủ nhiệm xác nhận.
@@ -256,7 +285,7 @@ Người phụ trách sửa lỗi trong PR có dòng `Fixes #<số issue>` trong
 
 ## Tài liệu
 
-- [PRD](../01-prd.md): mục 10.4 (UX-01), 11 mục 3, 12 (tiêu chí nghiệm thu AC-01 đến AC-06, AC-08 đến AC-10)
+- [PRD](../01-prd.md): mục 10.2 (PERF-01 đến PERF-03), 10.4 (UX-01), 11 mục 3 và 15, 12 (tiêu chí nghiệm thu AC-01 đến AC-10)
 - [User flow](../03-user-flows.md): FLOW-01 đến FLOW-21, mục 14 (trạng thái lỗi dùng chung)
 - [Vai trò & quyền](../02-roles-permissions.md): mục 13 (tiêu chí nghiệm thu phân quyền)
 - [Sitemap](../04-sitemap.md): mục 5.2, 6.1 (danh sách trang cần kiểm tra)

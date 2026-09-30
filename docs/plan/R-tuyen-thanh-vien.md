@@ -37,13 +37,14 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.1:
 | `requireAuth`, `requireRole`, `requireScope` | A1 (T5 08/10) | R2, R5, R6 |
 | `request.user` khi đã đăng nhập | A2 (CN 11/10) | R3 (chặn thành viên nộp đơn) |
 | `recordConsent(...)` | B2 (CN 11/10) | R3 |
-| `enqueueEmail(...)` | O1 (CN 11/10) | R3 |
-| Mẫu email xác nhận nộp đơn | O2 (CN 01/11) | R3 (dùng email tạm trước khi O2 merge) |
+| `enqueueEmail(...)` | O1 (CN 11/10) | R3, R4, R5 |
+| `startJob(...)` | O1 (CN 11/10) | R2 |
+| Mẫu email xác nhận nộp đơn, đổi trạng thái hồ sơ | O2 (CN 01/11) | R3, R4, R5 (dùng email tạm trước khi O2 merge) |
 | `audit(...)` | B1 (T5 08/10) | R2, R4, R5, R6 |
 | Khung trang admin | A3 (T5 22/10) | R2, R5 |
 | Kích hoạt tài khoản | A4 (CN 01/11) | R6 |
 | File xuất bảo vệ `createExport(...)` | D6 (CN 08/11) | R5 |
-| Hàm tạo tài khoản dùng chung | A5 (CN 22/11) | R6 |
+| Hàm tạo tài khoản dùng chung `createAccount(...)` | A5 (T5 12/11) | R6 |
 
 | Người khác cần | Việc | Hạn |
 | --- | --- | --- |
@@ -88,7 +89,7 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.1:
   - Tạo, sửa, mở, đóng, lưu trữ: chỉ `BOARD`. Tạo đợt và đổi trạng thái gọi `audit(...)`.
   - Đọc (`/admin/recruitment`, `/[id]`, `/[id]/preview`): `BOARD` mọi đợt; `DEPARTMENT_MANAGER` chỉ đọc đợt có hồ sơ nộp vào ban mình (`PAGE-MGT-REC-01`, `03`, `05`).
 - Kiểm tra (FLOW-06): `closesAt` sau `opensAt`, sai trả 422. Đóng sớm cần hộp xác nhận và dừng nhận đơn ngay.
-- Tác vụ định kỳ trong process API chuyển đợt `OPEN` đã qua `closesAt` sang `CLOSED` và lưu lại (REC-16).
+- Tác vụ `startJob('round-close', ...)` (O1) chuyển đợt `OPEN` đã qua `closesAt` sang `CLOSED` và lưu lại (REC-16). Đóng sớm thì đặt `closesAt` bằng thời điểm đóng, để `closesAt` luôn là thời điểm đợt thực sự đóng (B7 dùng để tính hạn lưu giữ).
 - Câu hỏi khi đợt đã có hồ sơ (REC-15): không đổi `type`, không xóa câu, không xóa lựa chọn đã có người chọn; chỉ ẩn (`hidden = true`) khỏi lượt nộp mới. Vi phạm trả 409.
 - API công khai: `GET /public/recruitment-rounds` (đợt `OPEN` và `CLOSED`), `GET /public/recruitment-rounds/:slug`.
 - Trang quản trị: `/admin/recruitment`, `/admin/recruitment/new`, `/admin/recruitment/[id]`, `/admin/recruitment/[id]/edit`, `/admin/recruitment/[id]/preview`.
@@ -122,7 +123,7 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.1:
   - Kiểm tra đợt `OPEN` và trong thời gian nhận đơn; ban mong muốn thuộc các ban của đợt; câu trả lời bắt buộc theo `questions`, bỏ qua câu `hidden`.
   - Người đã đăng nhập (`request.user` có giá trị) nhận 403.
   - Trong **một transaction**: tạo đơn `NEW` với `profileCode` sinh bằng `publicCode()`, gọi `recordConsent(...)`, gọi `enqueueEmail(...)`.
-  - Trùng email hoặc MSSV trong đợt: cách thông báo chờ [QĐ-1](./README.md#8-điểm-cần-trưởng-dự-án-quyết-định). Trong lúc chờ, trả 409 với câu chung "Không thể nộp đơn với thông tin này. Nếu đã nộp, vui lòng dùng trang tra cứu."
+  - Trùng email hoặc MSSV trong đợt (QĐ-1): không tạo hồ sơ, trả 409 với câu chung "Không thể nộp đơn với thông tin này. Nếu đã nộp, vui lòng dùng trang tra cứu." Câu này giống nhau cho trùng email, trùng MSSV hay trùng cả hai; không trả mã, trạng thái hay dữ liệu của hồ sơ đã có (SEC-05, SEC-08). Dữ liệu người dùng đã nhập vẫn giữ trên form.
   - Giới hạn tần suất theo cả email lẫn địa chỉ nguồn (SEC-05).
 - Màn hình thành công hiện **mã hồ sơ một lần** và hướng dẫn lưu lại.
 
@@ -148,7 +149,7 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.1:
 - Trang `/recruitment/application-lookup` (thay `Placeholder`, gắn `noindex, nofollow`).
 - API (mã gửi qua body):
   - `POST /public/applications/lookup` `{ email, code }` — trả mã hồ sơ, tên đợt, ban đăng ký, trạng thái, thời điểm cập nhật. **Không trả** ghi chú, đánh giá, người xét.
-  - `POST /public/applications/withdraw` `{ email, code }` — hộp xác nhận trước khi gửi; chỉ khi trạng thái `NEW`, `REVIEWING` hoặc `INTERVIEW`; trạng thái khác trả 409. Rút đơn gọi `audit(...)` (không ghi mã hồ sơ).
+  - `POST /public/applications/withdraw` `{ email, code }` — hộp xác nhận trước khi gửi; chỉ khi trạng thái `NEW`, `REVIEWING` hoặc `INTERVIEW`; trạng thái khác trả 409. Rút đơn gọi `audit(...)` (không ghi mã hồ sơ) và `enqueueEmail(...)` loại `application_status` (QĐ-7): người bị người khác rút đơn hộ biết ngay.
 - Sai email hoặc mã: một thông báo chung, không cho biết phần nào sai.
 - Giới hạn theo cả email lẫn địa chỉ nguồn: sai quá ngưỡng (hằng số trong code, mặc định 5 lần) trong 15 phút thì chặn 15 phút (429) (FLOW-05, SEC-05).
 
@@ -176,7 +177,7 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.1:
 - Đổi trạng thái đúng bảng chuyển; bước sai trả 409. Mỗi lần đổi ghi một dòng lịch sử kèm lý do, cập nhật `reviewedById`, `reviewedAt`. `BOARD` rút đơn thay ứng viên bắt buộc lý do.
 - Hai người cùng sửa một hồ sơ: người lưu sau nhận 409 (luật chung, STATE-09).
 - Xuất CSV trong phạm vi người xuất bằng `createExport(...)` (D6).
-- Email báo ứng viên khi đổi trạng thái: danh sách trạng thái cần báo chờ [QĐ-7](./README.md#8-điểm-cần-trưởng-dự-án-quyết-định).
+- Email báo ứng viên (QĐ-7, NTF-01): khi hồ sơ chuyển sang `INTERVIEW`, `ACCEPTED`, `REJECTED` hoặc `WITHDRAWN` (kể cả `BOARD` rút thay), gọi `enqueueEmail(...)` loại `application_status` trong cùng transaction. `NEW → REVIEWING` không gửi. Email chỉ nêu trạng thái mới và link trang tra cứu; không chứa mã hồ sơ, ghi chú, đánh giá.
 - Đổi trạng thái, chốt kết quả, xuất CSV gọi `audit(...)`.
 
 **Xong khi:**
@@ -187,12 +188,13 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.1:
 - [ ] Bước chuyển sai (ví dụ `NEW → ACCEPTED`) trả 409; mỗi bước đúng có một dòng lịch sử.
 - [ ] Ghi chú nội bộ không hiện khi ứng viên tra cứu.
 - [ ] File xuất chỉ chứa hồ sơ trong phạm vi người xuất, chỉ người đó tải được.
+- [ ] Chuyển `REVIEWING → INTERVIEW` tạo một email trong Mailpit; `NEW → REVIEWING` không tạo email.
 
 ### R6. Chuyển hồ sơ thành thành viên — hạn CN 22/11
 
 **Mục tiêu:** hồ sơ Đã chấp nhận tạo được hồ sơ và tài khoản thành viên mà không nhập lại dữ liệu (FLOW-08).
 
-**Cần có trước:** R5, A4. Dùng chung hàm tạo tài khoản với A5 (`apps/api/src/modules/accounts/service.ts`); việc nào làm trước thì tạo hàm, việc sau dùng lại.
+**Cần có trước:** R5, A5. Dùng `createAccount(...)` của A5 (`apps/api/src/modules/accounts/service.ts`), không viết bản khác.
 
 **Làm:**
 
@@ -218,7 +220,7 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.1:
 - Ghi chú và đánh giá của người xét không hiện cho ứng viên, kể cả trong API tra cứu (BR-07).
 - Thành viên đã đăng nhập không nộp đơn được.
 - Mã hồ sơ không ghi vào log hay audit.
-- Nằm ngoài phiếu này, xem [README kế hoạch](./README.md) mục 9: xác minh tăng cường cho form công khai (SEC-05), ẩn danh hồ sơ sau 12 tháng (DATA-05, PRD §10.5).
+- Bản phát hành đầu chặn lạm dụng form công khai bằng giới hạn tần suất (429). Bước xác minh tăng cường (captcha) và ẩn danh hồ sơ sau 12 tháng (DATA-05) thuộc giai đoạn sau phát hành, hạn CN 28/02/2027 ([PRD](../01-prd.md) §13.1).
 
 ## Tài liệu
 

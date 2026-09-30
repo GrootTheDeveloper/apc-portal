@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.3 |
-| Trạng thái | Đã duyệt (27/09/2026) |
-| Ngày cập nhật | 27/09/2026 |
+| Phiên bản | 1.4 |
+| Trạng thái | Đã duyệt (01/10/2026) |
+| Ngày cập nhật | 01/10/2026 |
 | Sản phẩm | APC Portal |
 | Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC) |
 | Tài liệu đầu vào | [PRD](./01-prd.md), [Roles and Permissions](./02-roles-permissions.md), [User Flows](./03-user-flows.md) |
@@ -17,6 +17,7 @@
 | 1.1 | Ánh xạ bản thiết kế trang chủ vào `/`; các route còn lại chưa được khởi tạo |
 | 1.2 | Bỏ trang Thành tích (PAGE-PUB-11/12, PAGE-MGT-PRT-05..08); nhãn header dùng "Gia nhập APC"; giữ segment URL cố định tiếng Anh |
 | 1.3 | APC duyệt; cập nhật trạng thái route đã khởi tạo |
+| 1.4 | Ghi nhận các trang thuộc giai đoạn sau lần phát hành đầu theo PRD mục 13.1 (`PAGE-MGT-DATA-03`, `PAGE-OPS-01` đến `PAGE-OPS-09`); `PAGE-MGT-ORG-01` gồm ngày kết thúc nhiệm kỳ |
 
 > Tại 27/09/2026: route `/` có giao diện hoàn chỉnh; `/about`, `/news`, `/events`, `/projects`, `/recruitment`, `/login`, `/admin` đã có khung trang tạm. Các route còn lại triển khai theo [docs/plan](./plan/README.md).
 
@@ -43,7 +44,7 @@ Sitemap không quy định màu sắc, typography, bố cục chi tiết hoặc 
 | Xác thực | `/account/*` và `/login` | Người được Ban Chủ nhiệm cấp tài khoản | Đăng nhập, kích hoạt tài khoản và xác thực hai bước |
 | Thành viên | `/portal/*` | Mọi tài khoản có vai trò nền `MEMBER` | Thông tin cá nhân, thông báo, sự kiện, tài liệu và dữ liệu được cấp quyền |
 | Quản trị nghiệp vụ | `/admin/*` | `DEPARTMENT_MANAGER`, `BOARD`; một số trang có bề mặt giới hạn cho `TECH_ADMIN` | Quản lý thông tin câu lạc bộ theo vai trò và phạm vi |
-| Vận hành kỹ thuật | `/admin/system/*` và công cụ ngoài Portal | `TECH_ADMIN`; `BOARD` chỉ đọc một số trạng thái | Monitoring, cảnh báo, incident, phiên bản, backup và cấu hình kỹ thuật |
+| Vận hành kỹ thuật | `/admin/system/*` và công cụ ngoài Portal | `TECH_ADMIN`; `BOARD` chỉ đọc một số trạng thái | Monitoring, cảnh báo, incident, phiên bản, backup và cấu hình kỹ thuật. Lần phát hành đầu chỉ dùng công cụ ngoài Portal; `/admin/system/*` làm sau (PRD mục 13.1) |
 
 Tất cả tài khoản có vai trò đặc quyền vẫn có vai trò nền `MEMBER`. Vì vậy `DEPARTMENT_MANAGER`, `BOARD` và `TECH_ADMIN` đều sử dụng được khu vực `/portal/*` cho dữ liệu của chính mình.
 
@@ -461,7 +462,7 @@ Xóa vật lý không có nút một bước. Quyết định của `BOARD` và 
 
 | Mã trang | Tên trang | Route chuẩn | Quyền | Truy vết |
 | --- | --- | --- | --- | --- |
-| `PAGE-MGT-ORG-01` | Thông tin APC | `/admin/organization/profile` | `BOARD` | `FLOW-24`, `ORG-01`, `ORG-05` |
+| `PAGE-MGT-ORG-01` | Thông tin APC | `/admin/organization/profile` | `BOARD` | `FLOW-24`, `ORG-01`, `ORG-05`, `RP-03` (ngày kết thúc nhiệm kỳ) |
 | `PAGE-MGT-ORG-02` | Danh sách Ban chuyên môn | `/admin/organization/departments` | `BOARD` | `FLOW-24`, `ORG-02`, `ORG-03`, `ORG-06` |
 | `PAGE-MGT-ORG-03` | Tạo Ban chuyên môn | `/admin/organization/departments/new` | `BOARD` | `FLOW-24`, `ORG-02`, `ORG-06` |
 | `PAGE-MGT-ORG-04` | Chỉnh sửa Ban chuyên môn | `/admin/organization/departments/[id]` | `BOARD` | `FLOW-24`, `ORG-02`, `ORG-03`, `ORG-06` |
@@ -489,6 +490,8 @@ Chỉ `BOARD` được yêu cầu gửi lại email nghiệp vụ thất bại t
 | `PAGE-MGT-DATA-03` | Retention và dry-run | `/admin/data-retention` | Xem và xác nhận nghiệp vụ | Xem tác động và thực hiện phần kỹ thuật | `FLOW-28`, `DATA-05`, `DATA-08`, `BR-13`, `RP-17` |
 
 Thực thi xóa hoặc ẩn danh theo lô là hành động `DUAL`, có dry-run, xác nhận ảnh hưởng, checkpoint và audit; không phải nút xóa trực tiếp trên danh sách.
+
+`PAGE-MGT-DATA-03` thuộc giai đoạn sau lần phát hành đầu ([PRD](./01-prd.md) mục 13.1); lần phát hành đầu chạy dry-run bằng tác vụ nền và không có route này.
 
 ### 8.11. Audit log
 
@@ -562,6 +565,8 @@ Cây trên thể hiện quan hệ thông tin, không cấp quyền theo quan h�
 `PAGE-OPS-06` và `PAGE-OPS-07` hiển thị trạng thái, bằng chứng và liên kết runbook. Restore, rollback, thay secrets hoặc deploy production vẫn được thực hiện qua quy trình kỹ thuật được kiểm soát, không qua một nút không có bước bảo vệ trong Portal.
 
 `PAGE-OPS-09` cho phép `BOARD` soạn, công bố và kết thúc thông báo ảnh hưởng người dùng dựa trên trạng thái do `TECH_ADMIN` cung cấp. Bật maintenance mode vẫn là thao tác kỹ thuật theo runbook; nội dung công khai được hiển thị qua `PAGE-SYS-02`.
+
+`PAGE-OPS-01` đến `PAGE-OPS-09` thuộc giai đoạn sau lần phát hành đầu ([PRD](./01-prd.md) mục 13.1). Lần phát hành đầu dùng các bề mặt ngoài Portal ở mục 9.2; menu Hệ thống (mục 10) chưa xuất hiện.
 
 ### 9.2. Bề mặt vận hành ngoài Portal
 
