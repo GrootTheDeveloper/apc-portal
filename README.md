@@ -11,13 +11,17 @@ Monorepo local-first cho website và cổng thông tin của Applied Programming
 
 ## Bắt đầu nhanh
 
-Yêu cầu: Git, Node.js 22+, pnpm 10 và Docker Desktop.
+Máy chưa có Git, Node.js 22, pnpm hoặc Docker Desktop: cài theo [docs/07-local-development.md](./docs/07-local-development.md) (hướng dẫn từng bước cho Windows và macOS, kèm bảng xử lý lỗi).
+
+Máy đã có đủ công cụ và Docker Desktop đang chạy:
 
 ```powershell
-corepack enable
-pnpm install
+git clone https://github.com/GrootTheDeveloper/apc-portal.git
+Set-Location apc-portal
 Copy-Item .env.example .env
+pnpm install
 pnpm infra:up
+pnpm --filter @apc/api db:migrate
 pnpm dev
 ```
 
@@ -43,4 +47,10 @@ Không commit `.env`, dữ liệu volume Docker, `node_modules` hoặc thư mụ
 
 ## Tài liệu
 
-Thành viên mới: đọc [docs/plan/bat-dau.md](./docs/plan/bat-dau.md) (cài máy, làm việc, mở PR). Tài liệu nghiệp vụ bắt đầu tại [docs/README.md](./docs/README.md). Quy trình cài đặt chi tiết nằm trong [docs/07-local-development.md](./docs/07-local-development.md).
+| Cần | Đọc |
+| --- | --- |
+| Thành viên mới vào nhóm | [docs/plan/bat-dau.md](./docs/plan/bat-dau.md) — khái niệm, cách làm một việc, mở PR, review |
+| Cài đặt và xử lý lỗi cài đặt | [docs/07-local-development.md](./docs/07-local-development.md) |
+| Phân công, lịch, phiếu việc | [docs/plan/README.md](./docs/plan/README.md) |
+| Quy ước viết code | [AGENTS.md](./AGENTS.md) |
+| Tài liệu nghiệp vụ | [docs/README.md](./docs/README.md) |
