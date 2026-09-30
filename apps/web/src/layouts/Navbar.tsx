@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 
+import { useAuth } from '../hooks/useAuth'
 import { useScrolled } from '../hooks/useScrolled'
 import { Button } from '../components/Button'
+import { ADMIN_ROLES, hasAnyRole } from '../lib/auth'
 
 export const UMTOJ_URL = 'https://sot.umtoj.edu.vn'
 
@@ -49,9 +51,51 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
+/** Nút tài khoản: chưa đăng nhập → Đăng nhập; đã đăng nhập → Portal, Quản trị (chỉ vai trò quản trị), Đăng xuất. */
+function AccountActions({ onNavigate, mobile = false }: { onNavigate?: () => void; mobile?: boolean }) {
+  const { status, user, logout } = useAuth()
+  const navigate = useNavigate()
+  const size = mobile ? 'w-full px-6 py-2 shadow-none' : 'px-6 py-2 shadow-none'
+  const go = (to: string) => {
+    onNavigate?.()
+    navigate(to)
+  }
+
+  if (status === 'loading') return null
+  if (!user) {
+    return (
+      <Button className={size} onClick={() => go('/login')}>
+        Đăng nhập
+      </Button>
+    )
+  }
+  return (
+    <>
+      {hasAnyRole(user, ADMIN_ROLES) && (
+        <Button variant="outline" className={size} onClick={() => go('/admin')}>
+          Quản trị
+        </Button>
+      )}
+      <Button className={size} onClick={() => go('/portal')}>
+        Portal
+      </Button>
+      <Button
+        variant="outline"
+        className={size}
+        onClick={async () => {
+          // Về trang công khai trước (FLOW-10), để route guard của trang đang mở không đẩy sang /login.
+          go('/')
+          await logout()
+        }}
+      >
+        Đăng xuất
+      </Button>
+    </>
+  )
+}
+
 export function Navbar() {
   const scrolled = useScrolled(20)
-  const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
 
@@ -66,9 +110,9 @@ export function Navbar() {
         <div className="hidden md:flex items-center gap-6">
           <NavItems />
         </div>
-        <Button className="hidden md:inline-flex px-6 py-2 shadow-none" onClick={() => navigate('/login')}>
-          Đăng nhập
-        </Button>
+        <div className="hidden md:flex items-center gap-3">
+          <AccountActions />
+        </div>
         <button
           className="md:hidden text-on-surface"
           aria-label={menuOpen ? 'Đóng menu' : 'Mở menu'}
@@ -82,15 +126,9 @@ export function Navbar() {
       {menuOpen && (
         <div id="mobile-menu" className="md:hidden flex flex-col items-start gap-4 px-gutter pb-6">
           <NavItems onNavigate={closeMenu} />
-          <Button
-            className="w-full px-6 py-2 shadow-none"
-            onClick={() => {
-              closeMenu()
-              navigate('/login')
-            }}
-          >
-            Đăng nhập
-          </Button>
+          <div className="flex w-full flex-col gap-3">
+            <AccountActions onNavigate={closeMenu} mobile />
+          </div>
         </div>
       )}
     </nav>
