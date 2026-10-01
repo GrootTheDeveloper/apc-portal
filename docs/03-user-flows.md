@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.3 |
-| Trạng thái | Đã duyệt (27/09/2026) |
-| Ngày cập nhật | 27/09/2026 |
+| Phiên bản | 1.4 |
+| Trạng thái | Đã duyệt (01/10/2026) |
+| Ngày cập nhật | 01/10/2026 |
 | Sản phẩm | APC Portal |
 | Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC) |
 | Tài liệu liên quan | [Project Charter](./00-project-charter.md), [PRD](./01-prd.md), [Roles and Permissions](./02-roles-permissions.md) |
@@ -17,6 +17,7 @@
 | 1.1 | Ghi nhận trang chủ là luồng được khởi tạo đầu tiên và các luồng production chưa triển khai |
 | 1.2 | Bỏ Thành tích khỏi FLOW-18 (đổi thành "Dự án và sản phẩm") và các sơ đồ/điều hướng liên quan |
 | 1.3 | APC duyệt; cập nhật trạng thái triển khai |
+| 1.4 | Theo PRD 1.4: khối trang chủ khi chưa chọn nội dung nổi bật (FLOW-01), thông báo trùng (FLOW-04, FLOW-14), email đổi trạng thái hồ sơ (FLOW-05, FLOW-07), Ngừng tham gia (FLOW-13), ngày kết thúc nhiệm kỳ (FLOW-24), lệch đồng hồ (FLOW-27) |
 
 > Hiện chỉ `FLOW-01` có giao diện baseline theo bản thiết kế đã duyệt. Các luồng còn lại là đặc tả đã duyệt, được triển khai theo [docs/plan](./plan/README.md).
 
@@ -148,7 +149,7 @@ flowchart TB
 
 **Nhánh thay thế và lỗi**
 
-- Khi chưa có nội dung nổi bật, hệ thống ẩn khối tương ứng mà không để khoảng trống lỗi.
+- Khi Ban Chủ nhiệm chưa chọn nội dung nổi bật cho một khối, khối hiển thị các mục mới nhất đang công khai; khi không có mục nào, hệ thống ẩn khối tương ứng mà không để khoảng trống lỗi.
 - Liên kết ngoài Portal được đánh dấu và mở bằng cơ chế an toàn.
 - Đường dẫn không tồn tại hiển thị trang 404 cùng lối quay về trang chủ.
 - Khi Portal bảo trì, hệ thống hiển thị trang bảo trì và không lộ thông tin kỹ thuật.
@@ -228,7 +229,7 @@ flowchart TB
 
 - Dữ liệu không hợp lệ: đánh dấu đúng trường lỗi và giữ lại dữ liệu đã nhập.
 - Chưa đồng ý xử lý dữ liệu: không cho nộp đơn.
-- Phát hiện trùng: không tạo hồ sơ mới và hướng dẫn dùng chức năng tra cứu.
+- Phát hiện trùng: không tạo hồ sơ mới; hiển thị một thông báo chung hướng dẫn dùng chức năng tra cứu, không nêu trường nào trùng và không trả dữ liệu của hồ sơ đã có; dữ liệu đã nhập được giữ lại.
 - Vượt ngưỡng gửi biểu mẫu hoặc có dấu hiệu tự động hóa: yêu cầu xác minh tăng cường hoặc trả `429` mà không làm mất dữ liệu người dùng đã nhập.
 - Email xác nhận gửi thất bại: hồ sơ vẫn được lưu; màn hình vẫn hiển thị mã và hệ thống ghi nhận để gửi lại.
 - Lỗi server trước khi lưu: không sinh mã hồ sơ và cho phép gửi lại an toàn.
@@ -251,7 +252,7 @@ flowchart TB
 3. Hệ thống hiển thị mã hồ sơ, đợt tuyển, ban đăng ký, trạng thái công khai và thời điểm cập nhật.
 4. Nếu hồ sơ chưa có kết quả cuối, hệ thống hiển thị tùy chọn Rút đơn.
 5. Ứng viên xác nhận rút đơn.
-6. Hệ thống chuyển trạng thái sang Đã rút và không cho tiếp tục xét tuyển.
+6. Hệ thống chuyển trạng thái sang Đã rút, không cho tiếp tục xét tuyển và đưa email thông báo Đã rút vào hàng đợi.
 
 **Nhánh thay thế và lỗi**
 
@@ -304,7 +305,7 @@ flowchart TB
 3. Người dùng mở hồ sơ, xem dữ liệu và ghi chú nội bộ.
 4. `DEPARTMENT_MANAGER` cập nhật trạng thái trung gian trong ban của mình.
 5. `BOARD` xem tổng hợp và chốt Đã chấp nhận hoặc Không chấp nhận.
-6. Hệ thống lưu người thay đổi, thời gian, trạng thái cũ/mới và lý do.
+6. Hệ thống lưu người thay đổi, thời gian, trạng thái cũ/mới và lý do; khi hồ sơ chuyển Mời phỏng vấn, Đã chấp nhận, Không chấp nhận hoặc Đã rút, hệ thống đưa email thông báo cho ứng viên vào hàng đợi.
 
 **Nhánh thay thế và lỗi**
 
@@ -513,7 +514,7 @@ flowchart TD
 - Quản lý ban mở thành viên ngoài ban: trả 404.
 - Không cho thành viên tự sửa vai trò hoặc trạng thái.
 - Sau khi production được phát hành, không cho ngừng hoạt động tài khoản nếu thao tác làm số `BOARD` hoặc `TECH_ADMIN` đang hoạt động thấp hơn hai ở vai trò tương ứng.
-- Khi thành viên ngừng hoạt động, hệ thống thu hồi phiên và quyền quản trị nhưng giữ lịch sử.
+- Khi thành viên chuyển Ngừng tham gia, trong cùng giao dịch tài khoản chuyển Ngừng hoạt động, hệ thống thu hồi mọi phiên và vai trò quản lý, đặc quyền nhưng giữ lịch sử. Chuyển Tạm ngưng không thay đổi tài khoản.
 
 ## 8. Sự kiện
 
@@ -547,7 +548,7 @@ flowchart TD
 
 - Chưa mở đăng ký, đã hết hạn, hết chỗ hoặc sai đối tượng: không tạo đăng ký và nêu rõ lý do.
 - Chưa đồng ý xử lý dữ liệu ở đăng ký công khai: không tạo đăng ký.
-- Đăng ký trùng: hiển thị trạng thái hiện có thay vì tạo bản ghi mới.
+- Đăng ký trùng: không tạo bản ghi mới. Thành viên đã đăng nhập thấy đăng ký hiện có của chính mình; người đăng ký công khai nhận một thông báo chung hướng dẫn dùng trang tra cứu, không nhận dữ liệu của đăng ký đã có.
 - Vượt ngưỡng gửi công khai hoặc có dấu hiệu tự động hóa: yêu cầu xác minh tăng cường hoặc trả `429` mà không tiết lộ đăng ký có tồn tại hay không.
 - Hủy sau thời hạn: từ chối và giữ đăng ký.
 - Sự kiện bị hủy: không nhận đăng ký mới; dữ liệu cũ vẫn được giữ.
@@ -896,7 +897,7 @@ flowchart TD
 **Luồng chính: thông tin chung**
 
 1. Ban Chủ nhiệm mở trang cấu hình và xem dữ liệu đang công bố.
-2. Người dùng sửa tên hiển thị, mô tả, sứ mệnh, email liên hệ và các liên kết chính thức.
+2. Người dùng sửa tên hiển thị, mô tả, sứ mệnh, email liên hệ, các liên kết chính thức và ngày kết thúc nhiệm kỳ hiện tại.
 3. Người dùng chọn tin tức, sự kiện và dự án nổi bật.
 4. Hệ thống kiểm tra URL, dữ liệu bắt buộc và quyền công khai của nội dung được chọn.
 5. Ban Chủ nhiệm xem trước và lưu.
@@ -1045,7 +1046,7 @@ sequenceDiagram
 - Trước production, Ban Chủ nhiệm và nhóm kỹ thuật bổ sung người kế nhiệm để đạt tối thiểu hai `BOARD` và hai `TECH_ADMIN` đang hoạt động.
 - Một tài khoản không thể đồng thời mang `BOARD` và `TECH_ADMIN`; yêu cầu vi phạm bị từ chối trước khi thay đổi quyền.
 - Không thể thiết lập TOTP nếu phiên xác thực quá cũ hoặc kết nối không dùng HTTPS.
-- Đồng hồ server lệch quá ngưỡng: tạm từ chối xác thực TOTP, tạo cảnh báo vận hành và không tự mở rộng cửa sổ chấp nhận mã.
+- Đồng hồ server mất đồng bộ hoặc lệch quá ngưỡng: hệ thống giám sát host tạo cảnh báo vận hành; `TECH_ADMIN` bật chế độ bảo trì theo runbook, tạm dừng xác thực TOTP cho đến khi đồng bộ lại; hệ thống không tự mở rộng cửa sổ chấp nhận mã.
 
 ```mermaid
 flowchart TD

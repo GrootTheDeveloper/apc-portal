@@ -19,8 +19,9 @@ Mảng này làm phần nền cho mọi API cần đăng nhập: hàm kiểm quy
 
 | Cần có | Từ việc | Dùng cho |
 | --- | --- | --- |
-| `audit(...)` | B1 (T5 08/10) | A1 (ghi log bị từ chối), A5 |
-| Xác thực 2 lớp, cờ `twoFactorVerified` | B3 (CN 01/11) | A1, A2, A5 |
+| `audit(...)` | B1 (T5 08/10) | A1 (ghi log bị từ chối), A5, A6, A7 |
+| Xác thực 2 lớp, cờ `twoFactorVerified` | B3 (CN 01/11) | A1, A2, A5, A6, A7 |
+| Ngày kết thúc nhiệm kỳ `termEndsAt` trong `SiteSetting` | T2 (T5 22/10), T4 (CN 08/11) | A6, A7 |
 
 | Người khác cần | Việc | Hạn |
 | --- | --- | --- |
@@ -28,7 +29,9 @@ Mảng này làm phần nền cho mọi API cần đăng nhập: hàm kiểm quy
 | Mọi trang `/portal`, `/admin`; R3 (chặn thành viên đã đăng nhập nộp đơn); B3 | A2 | CN 11/10 |
 | Mọi trang `/portal/*`, `/admin/*` | A3 | T5 22/10 |
 | R6 (tài khoản mới kích hoạt được) | A4 | CN 01/11 |
-| R6 (dùng chung hàm tạo tài khoản) | A5 | CN 22/11 |
+| R6 (hàm tạo tài khoản), T5 (hàm ngừng hoạt động tài khoản), A7, B6, O6 (trang `/admin/accounts`) | A5 | T5 12/11 |
+| B6 (khối khôi phục 2 lớp trên `/admin/access-control`) | A6 | CN 22/11 |
+| O7 (phát hành production) | A7 | T4 25/11 |
 
 ## Giai đoạn 1 (05/10 – 11/10)
 
@@ -119,7 +122,7 @@ Mảng này làm phần nền cho mọi API cần đăng nhập: hàm kiểm quy
 
 - `PortalLayout` và `AdminLayout` trong `apps/web/src/layouts/`, có breadcrumb theo Sitemap §15.2 (`Portal > Nhóm > Đối tượng`, `Quản trị > Phân hệ > Danh sách > Đối tượng`).
 - Menu khai báo trong **một mảng** duy nhất, mỗi mục gồm nhãn, đường dẫn, danh sách vai trò được thấy. Danh sách mục theo [Sitemap](../04-sitemap.md) mục 7.1 (thành viên) và mục 10 (quản trị); mục nào chưa có trang thì trỏ tới `Placeholder`. Một nhóm menu chỉ hiện khi người dùng có ít nhất một mục con hợp lệ.
-- Lối vào **Quản trị** chỉ hiện với `DEPARTMENT_MANAGER`, `BOARD`, `TECH_ADMIN`. Lối vào **Vận hành hệ thống** chỉ hiện với `TECH_ADMIN`.
+- Lối vào **Quản trị** chỉ hiện với `DEPARTMENT_MANAGER`, `BOARD`, `TECH_ADMIN`. Nhóm **Hệ thống** (Sitemap §9, `/admin/system/*`) và mục **Retention** (`/admin/data-retention`) không thuộc bản phát hành đầu ([PRD](../01-prd.md) §13.1): không thêm vào menu.
 - Bộ chặn route kiểm tra theo thứ tự Sitemap §11.1: phiên → trạng thái tài khoản → bắt buộc đổi mật khẩu (về `/account/activate`) → xác thực 2 lớp (về `/account/setup-two-factor` hoặc `/account/two-factor`) → vai trò (trang 403) → phạm vi (trang 404).
 - Trang 403 dùng chung (`PAGE-SYS-03`), dùng lại trang 404 có sẵn.
 - Trên điện thoại, menu thu gọn thành nút mở.
@@ -128,7 +131,7 @@ Mảng này làm phần nền cho mọi API cần đăng nhập: hàm kiểm quy
 
 - [ ] `member.a` không thấy menu Quản trị; mở thẳng `/admin` thấy trang 403.
 - [ ] `manager.a` thấy các mục quản trị theo Sitemap mục 10, không thấy mục chỉ dành cho `BOARD` (Tổ chức, Tài khoản).
-- [ ] `techadmin` thấy lối vào Vận hành hệ thống; `board` không thấy.
+- [ ] `techadmin` thấy Tài khoản, Phân quyền, Audit log, Email giao dịch; không thấy Tuyển thành viên, Thành viên, Sự kiện, Bài viết, Tổ chức.
 - [ ] Tài khoản `pending` mở bất kỳ trang `/portal/*` nào đều bị đưa về `/account/activate`.
 - [ ] Thêm một trang mới vào menu chỉ cần thêm một phần tử vào mảng.
 - [ ] Đã nhắn cả nhóm cách thêm trang vào layout và menu.
@@ -159,52 +162,114 @@ Mảng này làm phần nền cho mọi API cần đăng nhập: hàm kiểm quy
 
 ## Giai đoạn 3 (02/11 – 22/11)
 
-### A5. Quản lý tài khoản & vai trò — hạn CN 22/11
+### A5. Quản lý tài khoản — hạn T5 12/11
 
-**Mục tiêu:** Ban Chủ nhiệm tạo, khóa, mở khóa, ngừng hoạt động tài khoản, cấp lại mật khẩu tạm, gán và thu hồi vai trò mà không cần developer; `TECH_ADMIN` xử lý phần kỹ thuật theo đúng ma trận quyền.
+**Mục tiêu:** Ban Chủ nhiệm tạo, khóa, mở khóa, ngừng hoạt động tài khoản và cấp lại mật khẩu tạm mà không cần developer; `TECH_ADMIN` xử lý phần kỹ thuật theo đúng ma trận quyền.
 
 **Cần có trước:** A4, B1, B3.
 
 **Làm:**
 
-- Trang `/admin/accounts` (danh sách, tìm theo tên, lọc trạng thái), `/admin/accounts/[id]` (tab Trạng thái tài khoản, Phiên đăng nhập, Hành động bảo mật), `/admin/accounts/[id]/roles` (vai trò, phạm vi, ngày hiệu lực, ngày hết hạn, lý do, lịch sử thay đổi), `/admin/access-control` (hàng đợi quyết định gán/thu hồi `TECH_ADMIN`).
-- Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.2, §8.6:
+- Trang `/admin/accounts` (danh sách, tìm theo tên, lọc trạng thái), `/admin/accounts/[id]` (tab Trạng thái tài khoản, Phiên đăng nhập, Hành động bảo mật).
+- Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.2:
 
   | Hành động | `BOARD` | `TECH_ADMIN` |
   | --- | --- | --- |
   | Tạo tài khoản, cấp lại mật khẩu tạm, mở khóa, ngừng hoạt động | Được | Không |
-  | Khóa tài khoản | Được | Chỉ khi xử lý sự cố, bắt buộc ghi mã/mô tả sự cố trong lý do |
+  | Khóa tài khoản | Được | Chỉ theo quyền `INCIDENT`: kèm mã sự cố và lý do ([README kế hoạch](./README.md) mục 7.2) |
   | Thu hồi toàn bộ phiên của một tài khoản | Được | Được |
   | Xem trạng thái kỹ thuật (phiên, lần đăng nhập sai) | Không | Được |
-  | Gán/thu hồi `DEPARTMENT_MANAGER`, `BOARD`, đổi phạm vi ban | Được | Không |
-  | Gán/thu hồi `TECH_ADMIN` | Ghi quyết định | Thực hiện quyết định |
 
-- **Tạo tài khoản:** tên đăng nhập, email, họ tên, ban. Hệ thống sinh mật khẩu tạm ngẫu nhiên, **hiển thị một lần** cho `BOARD` (STATE-03), hết hạn sau 72 giờ; tài khoản ở `PENDING_ACTIVATION`, chỉ có vai trò nền `MEMBER` (RP-01). Đặt hàm tạo tài khoản ở `apps/api/src/modules/accounts/service.ts` để R6 dùng lại.
+- **Tạo tài khoản:** tên đăng nhập, email tài khoản, họ tên, ban. Hệ thống sinh mật khẩu tạm ngẫu nhiên, **hiển thị một lần** cho `BOARD` (STATE-03), hết hạn sau 72 giờ; tài khoản ở `PENDING_ACTIVATION`, chỉ có vai trò nền `MEMBER` (RP-01).
+- Hàm dùng chung trong `apps/api/src/modules/accounts/service.ts`:
+  - `createAccount(tx, {...})` — R6 và A7 dùng lại.
+  - `deactivateAccount(tx, userId, { reason })` — chuyển tài khoản `INACTIVE`, ghi `deactivatedAt` (trường mới, B7 dùng để tính hạn lưu giữ), thu hồi mọi phiên, chuyển mọi dòng `user_roles` đang `PENDING`/`ACTIVE` sang `REVOKED` (RP-09), ghi audit. T5 gọi hàm này khi thành viên chuyển Ngừng tham gia (QĐ-3).
 - **Khóa / mở khóa / cấp lại mật khẩu tạm / ngừng hoạt động** (FLOW-11): hộp xác nhận kèm **lý do bắt buộc**; chuyển trạng thái đúng sơ đồ tài khoản ([PRD](../01-prd.md) mục 9.2), bước sai trả 409.
   - Khóa, cấp lại mật khẩu tạm, ngừng hoạt động: thu hồi mọi phiên ngay.
   - Mở khóa: không khôi phục phiên cũ.
-  - Ngừng hoạt động: thu hồi thêm mọi vai trò quản lý và đặc quyền (RP-09).
-- **Gán vai trò** (FLOW-20): dòng `user_roles` có `reason`, `startsAt`, `grantedById`.
-  - `DEPARTMENT_MANAGER`: bắt buộc chọn ban; tạo ở `ACTIVE`.
-  - `BOARD`: bắt buộc `expiresAt` không muộn hơn ngày kết thúc nhiệm kỳ (RP-03; nơi lưu ngày này chờ [QĐ-6](./README.md#8-điểm-cần-trưởng-dự-án-quyết-định)). Tài khoản đã thiết lập 2 lớp thì `ACTIVE` ngay và thu hồi phiên cũ; chưa thiết lập thì `PENDING` cho đến khi xong B3.
-  - `TECH_ADMIN` (DUAL): `BOARD` ghi quyết định → quyết định hiện trong `/admin/access-control` → một `TECH_ADMIN` khác đang hoạt động bấm thực hiện. Audit ghi cả người quyết định và người thực hiện.
-  - Đổi ban của `DEPARTMENT_MANAGER`: thu hồi phạm vi cũ rồi cấp phạm vi mới trong **cùng một transaction** (RP-08).
-- **Thu hồi vai trò:** ghi `status = REVOKED`, `revokedAt`, `revokedById`, lý do; thu hồi các phiên của người đó.
-- **Ngưỡng tối thiểu** (RP-06, RP-07): không khóa, thu hồi, ngừng hoạt động nếu thao tác làm số `BOARD` (hoặc `TECH_ADMIN`) đang hoạt động dưới 2. Quy tắc này chỉ bật sau khi production phát hành: đọc từ biến cấu hình `ENFORCE_PRIVILEGED_MINIMUM` (thêm vào `.env.example`, mặc định `false` ở local); test bật biến này để kiểm tra.
+  - Ngừng hoạt động: gọi `deactivateAccount`.
+- **Ngưỡng tối thiểu** (RP-06, RP-07): không khóa hoặc ngừng hoạt động nếu thao tác làm số `BOARD` (hoặc `TECH_ADMIN`) đang hoạt động dưới 2. Quy tắc này chỉ bật sau khi production phát hành: đọc từ biến cấu hình `ENFORCE_PRIVILEGED_MINIMUM` (thêm vào `.env.example`, mặc định `false` ở local); test bật biến này để kiểm tra. Đặt hàm kiểm tra ngưỡng ở `accounts/service.ts` để A6 dùng lại.
 - Mọi thao tác trên gọi `audit(...)` kèm lý do.
 
 **Xong khi:**
 
 - [ ] Người bị khóa đang đăng nhập bị đăng xuất ngay ở request tiếp theo; mở khóa xong phải đăng nhập lại.
+- [ ] Ngừng hoạt động tài khoản thì mọi vai trò quản lý của tài khoản đó chuyển `REVOKED` và mọi phiên bị thu hồi.
+- [ ] Bật `ENFORCE_PRIVILEGED_MINIMUM`: khóa hoặc ngừng hoạt động làm số `BOARD` đang hoạt động dưới 2 trả 409.
+- [ ] Thiếu lý do khi khóa, mở khóa, cấp lại mật khẩu, ngừng hoạt động trả 422.
+- [ ] `techadmin` khóa tài khoản không kèm mã sự cố trả 422; kèm mã sự cố thì khóa được và nhật ký có `incidentId`.
+- [ ] Không ai khóa hoặc ngừng hoạt động tài khoản của chính mình (403).
+- [ ] Mật khẩu tạm không xuất hiện trong log, audit, email hay API sau lần hiển thị đầu.
+- [ ] `manager.a`, `member.a` mở `/admin/accounts` bị chặn; gọi API nhận 403. `techadmin` gọi API tạo tài khoản nhận 403.
+- [ ] Đã nhắn T5 và R6 cách dùng `createAccount`, `deactivateAccount`.
+
+### A6. Vai trò & phạm vi — hạn CN 22/11
+
+**Mục tiêu:** Ban Chủ nhiệm gán và thu hồi vai trò đúng quy trình; `TECH_ADMIN` thực hiện phần `DUAL`.
+
+**Cần có trước:** A5, T4 (ngày kết thúc nhiệm kỳ).
+
+**Làm:**
+
+- Trang `/admin/accounts/[id]/roles` (vai trò, phạm vi, ngày hiệu lực, ngày hết hạn, lý do, lịch sử thay đổi), `/admin/access-control` (hàng đợi quyết định gán/thu hồi `TECH_ADMIN`).
+- Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.6:
+
+  | Hành động | `BOARD` | `TECH_ADMIN` |
+  | --- | --- | --- |
+  | Gán/thu hồi `DEPARTMENT_MANAGER`, `BOARD`, đổi phạm vi ban | Được | Không |
+  | Gán/thu hồi `TECH_ADMIN` | Ghi quyết định | Thực hiện quyết định |
+
+- **Gán vai trò** (FLOW-20): dòng `user_roles` có `reason`, `startsAt`, `grantedById`.
+  - `DEPARTMENT_MANAGER`: bắt buộc chọn ban đang `ACTIVE`; tạo ở `ACTIVE`.
+  - `BOARD`, `TECH_ADMIN`: bắt buộc `expiresAt` không muộn hơn `SiteSetting.termEndsAt` (RP-03, QĐ-6). Chưa có `termEndsAt` thì trả 409 "Chưa cấu hình ngày kết thúc nhiệm kỳ". Tài khoản đã thiết lập 2 lớp thì `ACTIVE` ngay và thu hồi phiên cũ; chưa thiết lập thì `PENDING` cho đến khi xong B3.
+  - `TECH_ADMIN` (DUAL): `BOARD` ghi quyết định → quyết định hiện trong `/admin/access-control` → một `TECH_ADMIN` khác đang hoạt động bấm thực hiện. Audit ghi cả người quyết định và người thực hiện.
+  - Đổi ban của `DEPARTMENT_MANAGER`: thu hồi phạm vi cũ rồi cấp phạm vi mới trong **cùng một transaction** (RP-08).
+- **Thu hồi vai trò:** ghi `status = REVOKED`, `revokedAt`, `revokedById`, lý do; thu hồi các phiên của người đó. Áp ngưỡng tối thiểu của A5 khi thu hồi `BOARD`, `TECH_ADMIN`.
+- Mọi thao tác trên gọi `audit(...)` kèm lý do.
+- Tác vụ chuyển vai trò hết hạn sang `EXPIRED` và email cảnh báo 30/7 ngày thuộc O6; trang `/portal/account/roles` thuộc T3.
+
+**Xong khi:**
+
 - [ ] Không ai gán, thu hồi hoặc đổi vai trò của bản thân (API trả 403).
 - [ ] Gán `TECH_ADMIN` cho tài khoản đang có `BOARD` (kể cả dòng `PENDING`) và ngược lại trả 409.
 - [ ] Gán `TECH_ADMIN` chưa có hiệu lực cho đến khi một `TECH_ADMIN` khác thực hiện quyết định.
+- [ ] Gán `BOARD` với `expiresAt` sau `termEndsAt` trả 422; chưa có `termEndsAt` trả 409.
 - [ ] Đổi ban của quản lý: không có thời điểm nào người đó có quyền ở cả hai ban.
-- [ ] Ngừng hoạt động tài khoản thì mọi vai trò quản lý của tài khoản đó chuyển `REVOKED`.
-- [ ] Bật `ENFORCE_PRIVILEGED_MINIMUM`: thao tác làm số `BOARD` đang hoạt động dưới 2 trả 409.
-- [ ] Thiếu lý do khi khóa, mở khóa, cấp lại mật khẩu, ngừng hoạt động, gán, thu hồi trả 422.
-- [ ] Mật khẩu tạm không xuất hiện trong log, audit, email hay API sau lần hiển thị đầu.
-- [ ] `manager.a`, `member.a` mở `/admin/accounts` bị chặn; gọi API nhận 403. `techadmin` gọi API tạo tài khoản nhận 403.
+- [ ] Bật `ENFORCE_PRIVILEGED_MINIMUM`: thu hồi làm số `BOARD` đang hoạt động dưới 2 trả 409.
+- [ ] Thiếu lý do khi gán, thu hồi trả 422.
+- [ ] `manager.a` gọi API gán vai trò nhận 403; `techadmin` gọi API gán `BOARD` nhận 403.
+
+## Lên máy chủ (23/11 – 29/11)
+
+### A7. Lệnh bootstrap tài khoản đặc quyền đầu tiên — hạn T4 25/11
+
+**Mục tiêu:** production trống có được `BOARD` đầu tiên và `TECH_ADMIN` đầu tiên mà không cần tài khoản có sẵn (RP-15, [PRD](../01-prd.md) §11 mục 13, AC-RBAC-09).
+
+**Cần có trước:** A6, B3.
+
+**Làm:**
+
+- Script `apps/api/src/scripts/bootstrap.ts`, lệnh `pnpm --filter @apc/api bootstrap`. Chỉ chạy từ console VPS trong container API; **không có endpoint HTTP**.
+- Tham số: tên đăng nhập, email, họ tên của hai người và ngày kết thúc nhiệm kỳ. Hai người phải khác nhau (khác tên đăng nhập, khác email) (BR-21).
+- Script **dừng và không đổi gì** nếu database đã có dòng `user_roles` `BOARD` hoặc `TECH_ADMIN` ở trạng thái `ACTIVE`. Đây là cơ chế "không chạy lại sau khi hoàn tất" (FLOW-27: bootstrap chỉ bị vô hiệu khi hai người đã thiết lập bảo mật).
+- Đã có hai tài khoản bootstrap nhưng chưa ai `ACTIVE` (ví dụ mật khẩu tạm quá 72 giờ): script không tạo tài khoản mới, chỉ cấp lại mật khẩu tạm cho hai tài khoản đó và ghi audit.
+- Trong một transaction:
+  - Tạo hai tài khoản bằng `createAccount` (A5), `PENDING_ACTIVATION`.
+  - Tạo dòng `BOARD` và `TECH_ADMIN` ở `PENDING`, `expiresAt` = ngày kết thúc nhiệm kỳ, lý do `bootstrap`.
+  - Ghi `SiteSetting.termEndsAt` nếu đang trống.
+  - Gọi `audit({ service: 'bootstrap' }, ...)` (định danh dịch vụ, B1).
+- In hai mật khẩu tạm ra console **một lần**; không ghi vào log, file hay audit.
+- Hai người đăng nhập, đổi mật khẩu (A4), thiết lập 2 lớp (B3) thì vai trò chuyển `ACTIVE`. `BOARD` và `TECH_ADMIN` thứ hai được cấp qua A6 như bình thường.
+- Runbook `docs/ops/bootstrap.md`: thời điểm chạy (ngay sau lần triển khai production đầu tiên), lệnh, kiểm tra sau khi chạy.
+
+**Xong khi:**
+
+- [ ] Chạy trên database trống: tạo đúng hai tài khoản, in hai mật khẩu tạm; audit có dòng `service:bootstrap`, không chứa mật khẩu.
+- [ ] Chạy lại khi đã có vai trò đặc quyền `ACTIVE`: thoát với mã lỗi, database không đổi.
+- [ ] Chạy lại khi hai tài khoản bootstrap còn `PENDING_ACTIVATION`: không tạo tài khoản mới, in mật khẩu tạm mới.
+- [ ] Hai người trùng tên đăng nhập hoặc email: từ chối trước khi ghi.
+- [ ] Hai tài khoản kích hoạt và thiết lập 2 lớp xong thì vào được trang quản trị đúng vai trò.
+- [ ] Có test tự động cho bốn trường hợp đầu.
 
 ## Lưu ý
 
@@ -213,12 +278,11 @@ Mảng này làm phần nền cho mọi API cần đăng nhập: hàm kiểm quy
 - Đăng nhập sai chỉ báo "Sai tên đăng nhập hoặc mật khẩu", không cho biết tài khoản có tồn tại hay không.
 - `TECH_ADMIN` không xem được dữ liệu nghiệp vụ.
 - Không lưu mật khẩu hay token trong `localStorage`.
-- Nằm ngoài phiếu này, xem [README kế hoạch](./README.md) mục 9: lệnh bootstrap tài khoản đặc quyền đầu tiên, tác vụ hết hạn vai trò và cảnh báo 30/7 ngày, trang `/portal/account/roles`.
 
 ## Tài liệu
 
 - [Vai trò & quyền](../02-roles-permissions.md): đọc hết
-- [PRD](../01-prd.md): mục 7.3, 7.9, 9.2 (sơ đồ Tài khoản, Gán vai trò), 10.1 (SEC-03, SEC-05, SEC-06, SEC-08, SEC-11)
-- [User flow](../03-user-flows.md): FLOW-09, FLOW-10, FLOW-11, FLOW-20
+- [PRD](../01-prd.md): mục 7.3, 7.9, 9.2 (sơ đồ Tài khoản, Gán vai trò), 10.1 (SEC-03, SEC-05, SEC-06, SEC-08, SEC-11), 11 (mục 13)
+- [User flow](../03-user-flows.md): FLOW-09, FLOW-10, FLOW-11, FLOW-13, FLOW-20, FLOW-27 (nhánh bootstrap)
 - [Sitemap](../04-sitemap.md): mục 6, 7.1, 8.3, 10, 11, 13 (STATE-03, STATE-07, STATE-14)
 - [Kiến trúc](../06-architecture.md): mục 5 dòng 1–3

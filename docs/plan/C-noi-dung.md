@@ -33,6 +33,7 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.4:
 | --- | --- | --- |
 | D3 (tìm kiếm dùng lại card) | C1 | CN 11/10 |
 | Q3, Q4 (nhập nội dung thật) | C3, C4 | CN 08/11, CN 15/11 |
+| O4 (Nginx: trang bảo trì, `sitemap.xml`, `robots.txt`) | C6 | T4 25/11 |
 
 ## Giai đoạn 1 (05/10 – 11/10)
 
@@ -74,7 +75,7 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.4:
   - `GET /public/projects/:slug`
 - Chỉ trả trường cần hiển thị; không trả `authorId`, `publishedById` hay dữ liệu nội bộ.
 - Trang dùng `useApi(...)`; xóa file `mock.ts`.
-- `NewsSection`, `ProjectsSection` ở trang chủ lấy 3 mục mới nhất từ API; không có mục nào thì **ẩn khối**, không để khoảng trống (FLOW-01). Khi T4 có nội dung nổi bật, cách chọn mục theo [QĐ-4](./README.md#8-điểm-cần-trưởng-dự-án-quyết-định).
+- `NewsSection`, `ProjectsSection` ở trang chủ lấy 3 mục mới nhất từ API; không có mục nào đã công bố thì **ẩn khối**, không để khoảng trống (FLOW-01). Về sau T4 chuyển hai khối này sang `GET /public/home` (ưu tiên mục nổi bật, chưa chọn thì vẫn là mục mới nhất, QĐ-4); C2 không cần làm phần đó.
 - Trang chi tiết đặt title, description (theo `metaTitle`/`metaDescription`, không có thì dùng tiêu đề/tóm tắt), canonical URL và thẻ Open Graph (tiêu đề, mô tả, ảnh) (SEO-01, CMS-04).
 
 **Xong khi:**
@@ -130,7 +131,7 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.4:
 - Trang `/admin/content/projects`, `/new`, `/[id]`, `/[id]/preview`.
 - Trường theo PRT-01: loại, tên, mô tả, ảnh, công nghệ (danh sách), link sản phẩm, link mã nguồn (chỉ nhận `http`/`https`, sai thì 422), thành viên tham gia.
 - Form hiện **trạng thái đồng ý công khai** của từng thành viên được chọn (chỉ đọc; không đồng ý thay thành viên) (FLOW-18 bước 2, MEM-12).
-- Trang công khai chỉ hiện tên thành viên có `hasActiveConsent` mục đích `PUBLIC_NAME` cho dự án đó hoặc áp dụng chung; ảnh thành viên cần `PUBLIC_PHOTO` (PRT-04, BR-20).
+- Trang công khai chỉ hiện tên thành viên có `hasActiveConsent` mục đích `PUBLIC_NAME` cho dự án đó hoặc áp dụng chung; ảnh thành viên cần `PUBLIC_PHOTO` (PRT-04, BR-20). Ảnh phục vụ qua `GET /public/projects/:slug/members/:userId/avatar`: kiểm tra dự án đang công khai, người đó thuộc dự án và `hasActiveConsent(PUBLIC_PHOTO)` **ngay lúc tải**; thiếu điều kiện nào thì 404. Không đổi `visibility` của ảnh đại diện (D2).
 - Trạng thái: `DRAFT` (Ẩn), `PUBLISHED` (Công khai), `ARCHIVED`. Lưu mới luôn ở Ẩn. `DEPARTMENT_MANAGER` tạo, sửa dự án của ban mình; công bố, ẩn, lưu trữ chỉ `BOARD`.
 - Công bố, ẩn, lưu trữ gọi `audit(...)`.
 
@@ -164,6 +165,35 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.4:
 - [ ] `manager.a` chọn đối tượng `ALL` hoặc `ROLES` nhận 403.
 - [ ] Thông báo nội bộ không bao giờ xuất hiện ở `/news`.
 
+## Lên máy chủ (23/11 – 29/11)
+
+### C6. Trang hệ thống & SEO — hạn T4 25/11
+
+**Mục tiêu:** công cụ tìm kiếm đọc được `sitemap.xml`, `robots.txt`; người dùng gặp lỗi hệ thống thấy trang lỗi có mã tham chiếu; khi bảo trì thấy trang bảo trì (SEO-02, PUB-08, OPS-11, Sitemap §12).
+
+**Cần có trước:** C2, E2, R1.
+
+**Làm:**
+
+- **Mã tham chiếu (correlation ID)** trong `apps/api/src/app.ts` và `src/lib/errors.ts`:
+  - Mỗi request có mã ngẫu nhiên (`randomUUID()`); nhận header `x-request-id` do Nginx gửi nếu đúng dạng UUID, không thì tự sinh. Trả lại header `x-request-id` trong mọi phản hồi.
+  - Log của Fastify đã kèm mã này; thêm cấu hình `redact` bỏ header `cookie`, `authorization` khỏi log (OPS-11).
+  - Phản hồi 500 thêm trường `requestId`; `ApiError` ở web đọc trường này.
+- **Trang lỗi 500** (`PAGE-SYS-04`): `<AsyncState>` ở trạng thái lỗi 500 hiện "Mã tham chiếu: …" để người dùng gửi cho Ban Chủ nhiệm. Thêm error boundary cấp route cho lỗi giao diện, không hiện stack trace.
+- **Trang bảo trì** (`PAGE-SYS-02`): file tĩnh `apps/web/public/maintenance.html`, tự chứa CSS, không gọi API, theo màu và chữ của [DESIGN.md](../../DESIGN.md). Nginx trả file này với mã 503 khi bật chế độ bảo trì (O4).
+- **`sitemap.xml`** (`PAGE-SYS-05`): API `GET /public/sitemap.xml` sinh từ database, URL tuyệt đối theo `WEB_URL`. Gồm trang công khai cố định (`/`, `/about`, `/news`, `/events`, `/projects`, `/recruitment`, `/privacy`) và chi tiết tin tức, sự kiện, dự án đang công khai. Không gồm tìm kiếm, biểu mẫu, tra cứu, đăng nhập, portal, admin (Sitemap §16).
+- **`robots.txt`** (`PAGE-SYS-06`): API `GET /public/robots.txt` chặn `/login`, `/account`, `/portal`, `/admin`, trang xem trước, biểu mẫu và tra cứu (Sitemap §16; `/search` không chặn vì dùng `noindex, follow`); dòng `Sitemap:` trỏ tới `sitemap.xml`.
+- Nginx (O4) chuyển `/sitemap.xml`, `/robots.txt` tới hai API trên; local thêm vào proxy trong `apps/web/vite.config.ts`. Báo Đặng Phúc An Khang khi merge.
+
+**Xong khi:**
+
+- [ ] Mọi phản hồi API có header `x-request-id`; cùng mã đó có trong dòng log của request.
+- [ ] Log không chứa cookie phiên.
+- [ ] Gây lỗi 500 thử (route test) thì web hiện mã tham chiếu khớp với log.
+- [ ] `sitemap.xml` hợp lệ, có bài `PUBLISHED`, không có bài `DRAFT`/`ARCHIVED`, không có thông báo nội bộ.
+- [ ] `robots.txt` có đủ các đường dẫn bị chặn và dòng `Sitemap:`.
+- [ ] Mở `maintenance.html` trực tiếp hiển thị đúng ở 360 px, không lỗi khi API tắt.
+
 ## Lưu ý
 
 - Bài ở trạng thái Bản nháp hoặc Lưu trữ không hiện ra ngoài, kể cả khi gõ thẳng link (BR-11).
@@ -175,7 +205,7 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.4:
 
 ## Tài liệu
 
-- [PRD](../01-prd.md): mục 7.1, 7.6, 7.7, 9.2 (sơ đồ trạng thái Nội dung), 10.6 (SEO)
+- [PRD](../01-prd.md): mục 7.1, 7.6, 7.7, 9.2 (sơ đồ trạng thái Nội dung), 10.3 (OPS-11), 10.6 (SEO)
 - [User flow](../03-user-flows.md): FLOW-01, FLOW-02, FLOW-17, FLOW-18
-- [Sitemap](../04-sitemap.md): mục 5.2, 7.2 (`PAGE-MEM-02`, `PAGE-MEM-03`), 8.5, 8.6, 14, 15, 16
+- [Sitemap](../04-sitemap.md): mục 5.2, 7.2 (`PAGE-MEM-02`, `PAGE-MEM-03`), 8.5, 8.6, 12, 14, 15, 16
 - [Vai trò & quyền](../02-roles-permissions.md): mục 8.4, 8.7

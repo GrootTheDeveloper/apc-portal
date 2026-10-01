@@ -33,7 +33,8 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.3:
 | --- | --- | --- |
 | Dữ liệu mẫu | D1 (T5 08/10) | E2 |
 | `recordConsent(...)` | B2 (CN 11/10) | E3 |
-| `enqueueEmail(...)` | O1 (CN 11/10) | E3, E5 |
+| `enqueueEmail(...)` | O1 (CN 11/10) | E3, E4, E5 |
+| `startJob(...)` | O1 (CN 11/10) | E2 |
 | Mẫu email đăng ký, hủy đăng ký, hủy sự kiện | O2 (CN 01/11) | E3, E4, E5 (dùng email tạm trước khi O2 merge) |
 | `requireAuth`, `requireRole`, `requireScope` | A1 (T5 08/10) | E4, E5, E6 |
 | `audit(...)` | B1 (T5 08/10) | E4, E6 |
@@ -87,12 +88,12 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.3:
   - Bảng `EventRegistration`: sự kiện; **hoặc** thành viên (`userId`) **hoặc** thông tin khách (họ tên, email, MSSV); `registrationCode` (sinh bằng `publicCode()`, duy nhất); trạng thái `REGISTERED` / `CANCELLED`; điểm danh `NOT_MARKED` / `PRESENT` / `EXCUSED` / `ABSENT`; thời điểm đăng ký, hủy.
   - Ràng buộc duy nhất: (sự kiện, email khách) và (sự kiện, `userId`). Người đã hủy đăng ký lại thì **kích hoạt lại** dòng cũ (chuyển về `REGISTERED`), không tạo dòng mới.
   - Trường chốt điểm danh trên `Event` (thời điểm chốt, người chốt) cho E6.
-- Tác vụ định kỳ trong process API chuyển sự kiện `PUBLISHED` đã qua `endAt` sang `ENDED` và lưu lại, để về sau lưu trữ được.
+- Tác vụ `startJob('event-end', ...)` (O1) chuyển sự kiện `PUBLISHED` đã qua `endAt` sang `ENDED` và lưu lại, để về sau lưu trữ được.
 - Cập nhật dữ liệu mẫu D1 cho các trường mới và thêm sự kiện nội bộ Ban A, sự kiện toàn CLB (báo Phạm Đăng Hoàng Thiên, hoặc sửa `seed.ts` trong cùng PR và ghi lý do).
 - API trong `apps/api/src/modules/events/`:
   - `GET /public/events?page=&pageSize=&type=&month=` — sự kiện `audience = PUBLIC` ở `PUBLISHED`, `CANCELLED`, `ENDED`.
   - `GET /public/events/:slug`
-- Trang dùng `useApi(...)`, xóa `mock.ts`. `EventsSection` ở trang chủ lấy 3 sự kiện sắp diễn ra; không có thì ẩn khối (FLOW-01).
+- Trang dùng `useApi(...)`, xóa `mock.ts`. `EventsSection` ở trang chủ lấy 3 sự kiện sắp diễn ra; không có thì ẩn khối (FLOW-01). Về sau T4 chuyển khối này sang `GET /public/home` (ưu tiên sự kiện nổi bật, chưa chọn thì vẫn là sự kiện sắp diễn ra, QĐ-4); E2 không cần làm phần đó.
 - Trang chi tiết có title, description, canonical, Open Graph (SEO-01).
 
 **Xong khi:**
@@ -118,7 +119,7 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.3:
   - `POST /public/event-registrations/cancel` `{ email, code }`
 - Điều kiện nhận đăng ký (BR-08, FLOW-14): sự kiện `PUBLISHED`, trong khoảng `registrationOpensAt`–`registrationClosesAt`, `audience = PUBLIC`, `allowGuestRegistration = true`, còn chỗ. Không đạt thì từ chối và nêu lý do (chưa mở, hết hạn, hết chỗ, sự kiện không nhận khách, đã hủy).
 - Trong **một transaction**: khóa dòng sự kiện, đếm số đăng ký `REGISTERED`, tạo đăng ký, gọi `recordConsent(...)`, gọi `enqueueEmail(...)`. Hai người đăng ký cùng lúc không vượt sức chứa.
-- Đăng ký trùng email: cách thông báo chờ [QĐ-1](./README.md#8-điểm-cần-trưởng-dự-án-quyết-định). Trong lúc chờ, API trả 409 với câu chung "Không thể đăng ký với thông tin này. Nếu đã đăng ký, vui lòng dùng trang tra cứu."
+- Đăng ký trùng email (QĐ-1): API trả 409 với câu chung "Không thể đăng ký với thông tin này. Nếu đã đăng ký, vui lòng dùng trang tra cứu." Câu này giống nhau cho mọi trường hợp trùng, không trả mã, trạng thái hay bất kỳ dữ liệu nào của đăng ký đã có (SEC-05, SEC-08). Thành viên đã đăng nhập thì khác: thấy đăng ký hiện có của chính mình (E5).
 - Hủy được đến hết `registrationClosesAt`; hủy xong trạng thái `CANCELLED`, chỗ được trả lại, gửi email xác nhận hủy (NTF-01, AC-09).
 - Giới hạn tần suất theo cả email lẫn địa chỉ nguồn (SEC-05) cho ba route. Tra cứu sai 5 lần trong 15 phút thì chặn 15 phút (429), cùng quy tắc với R4.
 
@@ -128,6 +129,7 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.3:
 - [ ] Bị chặn, có thông báo lý do rõ ràng: hết chỗ, chưa mở đăng ký, quá hạn đăng ký, sự kiện đã hủy, sự kiện không nhận khách.
 - [ ] Chưa tick ô đồng ý thì không gửi được form, API cũng trả 422.
 - [ ] Tra cứu sai email hoặc sai mã chỉ báo một lỗi chung; sai lần thứ 6 trong 15 phút nhận 429.
+- [ ] Đăng ký lần hai cùng email nhận 409 với câu chung; phản hồi không chứa mã hay dữ liệu của đăng ký đầu (có test).
 - [ ] Hủy đăng ký tạo email xác nhận hủy; đăng ký lại sau khi hủy dùng lại dòng cũ.
 - [ ] Tắt Mailpit rồi đăng ký: lượt đăng ký vẫn lưu, màn hình vẫn hiện mã.
 - [ ] Test: hai request đăng ký đồng thời vào sự kiện còn 1 chỗ chỉ có một request thành công.
@@ -212,7 +214,7 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.3:
 - Gửi email lỗi thì lượt đăng ký vẫn được lưu (BR-17).
 - Chỉ người đăng ký và người quản lý sự kiện xem được thông tin đăng ký cá nhân (BR-09).
 - Mã đăng ký không ghi vào log hay audit.
-- Nằm ngoài phiếu này, xem [README kế hoạch](./README.md) mục 9: xác minh tăng cường cho form công khai (SEC-05), xóa thông tin liên hệ của đăng ký công khai sau 12 tháng (PRD §10.5).
+- Bản phát hành đầu chặn lạm dụng form công khai bằng giới hạn tần suất (429). Bước xác minh tăng cường (captcha) và xóa thông tin liên hệ của đăng ký công khai sau 12 tháng thuộc giai đoạn sau phát hành, hạn CN 28/02/2027 ([PRD](../01-prd.md) §13.1).
 
 ## Tài liệu
 

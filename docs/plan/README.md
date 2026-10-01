@@ -26,7 +26,9 @@ Mỗi người phụ trách trọn một mảng: bảng database, API và trang 
 | Giai đoạn 1 | 05/10 – 11/10 | Hàm dùng chung (phân quyền, nhật ký, đồng ý dữ liệu, email, upload), đăng nhập, dữ liệu mẫu. Các trang công khai dựng với dữ liệu giả |
 | Giai đoạn 2 | 12/10 – 01/11 | Website công khai dùng dữ liệu thật: tin tức, dự án, sự kiện, Về APC, tuyển thành viên, nộp đơn, đăng ký sự kiện, tìm kiếm |
 | Giai đoạn 3 | 02/11 – 22/11 | Portal thành viên và trang quản trị |
-| Lên máy chủ | 23/11 – 29/11 | VPS, HTTPS, sao lưu; nhập nội dung thật |
+| Lên máy chủ | 23/11 – 29/11 | Staging, hạ tầng production, sao lưu, diễn tập khôi phục, kiểm thử tải, bootstrap; đủ bằng chứng release gate |
+| Phát hành | 30/11 – 06/12 | T2 30/11 soát release gate; T4 02/12 phát hành production; Ban Chủ nhiệm nhập nội dung thật đến CN 06/12 |
+| Sau phát hành | 07/12/2026 – 28/02/2027 | Các hạng mục dời phạm vi ở [PRD](../01-prd.md) §13.1 |
 
 Demo vào Chủ nhật cuối mỗi giai đoạn: **11/10, 01/11, 22/11**. Mỗi người trình bày các việc đã merge trong giai đoạn, chạy trực tiếp trên máy.
 
@@ -58,16 +60,22 @@ Các việc dưới đây tạo ra thứ người khác dùng. Người phụ tr
 | Việc | Tạo ra | Hạn | Được dùng bởi |
 | --- | --- | --- | --- |
 | A1 | `requireAuth`, `requireRole`, `requireScope` | T5 08/10 | Mọi API `/portal/*`, `/admin/*` |
-| B1 | `audit(...)` | T5 08/10 | A1 (log từ chối), A5, B3, B5, C3, C4, D4, D5, D6, E4, E6, O3, R2, R4, R5, R6, T4, T5 |
+| B1 | `audit(...)`, kể cả định danh dịch vụ `audit({ service }, ...)` | T5 08/10 | A1 (log từ chối), A5–A7, B3–B7, C3, C4, D2, D4–D6, E4, E6, O1, O3, O6, R2, R4–R6, T4, T5 |
 | D1 | Dữ liệu mẫu `db:seed` và bộ tài khoản mẫu | T5 08/10 | Mọi người khi chạy thử; Q1–Q3 |
 | A2 | Đăng nhập, `/auth/me`, chặn trang khi chưa đăng nhập | CN 11/10 | Mọi trang `/portal`, `/admin` |
 | B2 | `recordConsent(...)`, `hasActiveConsent(...)`, trang `/privacy` | CN 11/10 | R3, E3, B5, C3, C4 |
 | D2 | Upload tệp qua S3 | CN 11/10 | C3, C4 (ảnh bài, ảnh dự án), E4 (ảnh bìa), T3 (ảnh đại diện), D4 |
-| O1 | `enqueueEmail(...)` | CN 11/10 | R3, E3, E5, O2 |
+| O1 | `enqueueEmail(...)`, `startJob(...)` cho tác vụ định kỳ | CN 11/10 | R3–R5, E3–E5, O2, O6 (email); B7, D2, D6, E2, R2, O6 (tác vụ định kỳ) |
+| T2 | Cột `SiteSetting.termEndsAt` | T5 22/10 | A6, A7 |
 | E2 | Bảng `EventRegistration` | T5 22/10 | E3, E5, E6, T3 (lịch sử hoạt động) |
 | A3 | Khung trang và menu `/portal`, `/admin` | T5 22/10 | Mọi trang `/portal/*`, `/admin/*` |
 | D6 | File xuất bảo vệ `createExport(...)` | CN 08/11 | R5, E6, D5, B5 |
-| T5 | Trang `/admin/members` | CN 15/11 | D5 (nút Xuất CSV) |
+| A5 | `createAccount(...)`, `deactivateAccount(...)`, trang `/admin/accounts` | T5 12/11 | R6, T5, A7, B6, O6 |
+| T5 | Trang `/admin/members` | CN 15/11 | D5 (nút Xuất CSV), B5 (yêu cầu chỉnh sửa) |
+| A6 | Gán vai trò, trang `/admin/access-control` | CN 22/11 | B6, A7 |
+| C6 | Trang bảo trì, `sitemap.xml`, `robots.txt`, `x-request-id` | T4 25/11 | O4 (Nginx) |
+| O4 | Staging | T5 26/11 | Q6 |
+| O7 | Production đã phát hành | T4 02/12 | Q4 |
 
 Việc cần một thứ chưa merge: dựng trước phần không phụ thuộc (giao diện với dữ liệu giả, test gán sẵn `request.user` giả), nối vào sau khi phần kia merge.
 
@@ -109,7 +117,7 @@ Dùng lại, không viết bản khác.
 - Không commit mật khẩu, file `.env` hay dữ liệu thật.
 - Không push thẳng lên `main`.
 - Mỗi PR tối đa một migration. `main` có migration mới hơn: xóa migration của nhánh, merge `main`, chạy lại `db:migrate`.
-- Tài liệu không rõ hoặc mâu thuẫn: hỏi trưởng dự án, không tự chọn. Các điểm đã biết nằm ở mục 8.
+- Tài liệu không rõ hoặc mâu thuẫn: hỏi trưởng dự án, không tự chọn. Các điểm đã chốt nằm ở mục 8.
 
 ### 7.2. Áp dụng cho mọi phiếu
 
@@ -130,42 +138,52 @@ Các quy tắc dưới đây lấy từ tài liệu đặc tả và áp dụng c
 | Lỗi 422 | Đánh dấu đúng trường, giữ nguyên dữ liệu đã nhập | ERR-422 |
 | Phạm vi | Lọc phạm vi ngay trong truy vấn. Ngoài phạm vi (không được biết bản ghi tồn tại): 404. Biết bản ghi nhưng thiếu quyền hành động: 403 | Vai trò & quyền §12 |
 | Mã tra cứu | Mã hồ sơ, mã đăng ký, email không đặt trên URL, không ghi vào log hay audit | OPS-11, SEC-09 |
-| File xuất | File chứa dữ liệu cá nhân tạo bằng `createExport(...)` (D6): chỉ người tạo tải được trong 24 giờ, tự xóa sau đó. Ô CSV bắt đầu bằng `=`, `+`, `-`, `@`, tab, CR thêm dấu `'` phía trước | RP-17, STATE-06, FLOW-25 |
+| File xuất | File chứa dữ liệu cá nhân tạo bằng `createExport(...)` (D6): chỉ người được chỉ định tải (mặc định là người tạo; yêu cầu xuất dữ liệu cá nhân thì là người yêu cầu) trong 24 giờ, tác vụ nền tự xóa sau đó. Ô CSV bắt đầu bằng `=`, `+`, `-`, `@`, tab, CR thêm dấu `'` phía trước | RP-17, STATE-06, FLOW-25 |
 | Ban lưu trữ | Ban `ARCHIVED` không nhận thành viên, sự kiện, tài liệu mới | ORG-06 |
 | Trạng thái | Chuyển trạng thái đúng sơ đồ PRD mục 9.2; bước sai trả 409 | BR-16 |
+| Quyền `INCIDENT` | Chỉ dùng khi có sự cố đã ghi trong sổ sự cố (O5): request kèm mã sự cố dạng `INC-YYYYMMDD-NN` và lý do; thiếu hoặc sai dạng thì 422. Mỗi lần dùng ghi `audit(...)` loại `SECURITY` với `incidentId` (B1). Sổ sự cố nằm ngoài hệ thống nên API chỉ kiểm tra dạng mã | Vai trò & quyền §7, §8.5–8.7 |
+| Tác vụ định kỳ | Dùng `startJob(...)` (O1), không tự viết `setInterval`; ghi nhật ký bằng `audit({ service: '<tên>' }, ...)` | Vai trò & quyền §12 mục 9 |
+| Email tới thành viên | Gửi tới `User.email` (email tài khoản), không gửi tới `contactEmail` | QĐ-8 |
 
-## 8. Điểm cần trưởng dự án quyết định
+## 8. Quyết định đã chốt (01/10/2026)
 
-Các điểm dưới đây tài liệu đặc tả mâu thuẫn hoặc chưa quy định. Việc liên quan làm phần còn lại trước; phần phụ thuộc quyết định chờ đến khi mục này ghi kết quả.
+Các điểm tài liệu đặc tả mâu thuẫn hoặc chưa quy định, trưởng dự án đã chốt. Charter, PRD, Vai trò & quyền, User Flow, Sitemap bản 1.4, Danh mục chức năng và Kiến trúc bản 1.3 đã sửa theo các quyết định này; phiếu ghi mã QĐ ở chỗ áp dụng.
 
-| Mã | Vấn đề | Nguồn | Việc bị ảnh hưởng | Kết quả |
+| Mã | Vấn đề | Quyết định | Lý do | Áp dụng |
 | --- | --- | --- | --- | --- |
-| QĐ-1 | Nộp đơn hoặc đăng ký sự kiện **trùng**: FLOW-04 hướng dẫn sang tra cứu, FLOW-14 hiển thị đăng ký hiện có; SEC-05, SEC-08 yêu cầu không làm lộ bản ghi đã tồn tại | FLOW-04, FLOW-14, SEC-05, SEC-08 | R3, E3 | Chờ |
-| QĐ-2 | Thành viên có được gửi yêu cầu **xóa** dữ liệu không: Vai trò & quyền §8.7 chỉ ghi xuất/chỉnh sửa; FLOW-28, DATA-06 có xóa | 02 §8.7, FLOW-28, DATA-06 | B5 | Chờ |
-| QĐ-3 | Thành viên chuyển **Ngừng tham gia** có tự thu hồi phiên và quyền quản trị không: MEM-11 ghi hai trạng thái độc lập; RP-09, FLOW-13 ghi thu hồi | MEM-11, RP-09, FLOW-13 | T5, A5 | Chờ |
-| QĐ-4 | Khối trang chủ khi Ban Chủ nhiệm **chưa chọn nội dung nổi bật**: ẩn khối (FLOW-01) hay hiện mục mới nhất | FLOW-01, ORG-04 | C2, E2, T4 | Chờ |
-| QĐ-5 | Công cụ **quét mã độc** cho tệp tải lên: bắt buộc theo đặc tả nhưng chưa có trong danh sách thư viện duyệt | SEC-15, FLOW-19, STATE-05 | D2, D4, T3 | Chờ |
-| QĐ-6 | Nơi lưu **ngày kết thúc nhiệm kỳ** để giới hạn ngày hết hạn vai trò đặc quyền | RP-03 | A5 | Chờ |
-| QĐ-7 | **Trạng thái hồ sơ nào** gửi email cho ứng viên ("thay đổi trạng thái cần thông báo") | NTF-01 | R5, O2 | Chờ |
-| QĐ-8 | "Email liên hệ" thành viên tự sửa là `User.email` (đang duy nhất, dùng cho tài khoản) hay trường riêng | MEM-03, PRD §10.5 | T3 | Chờ |
-| QĐ-9 | Phát hành production cần đạt release gate trước (diễn tập restore, kiểm thử tải) nên có thể muộn hơn 29/11; nội dung thật chỉ nhập sau khi phát hành | OPS-05, FLOW-22, PRD §13 | O4, O5, Q4 | Chờ |
+| QĐ-1 | Nộp đơn / đăng ký sự kiện **trùng**: FLOW-04, FLOW-14 hướng dẫn tra cứu hoặc hiện bản ghi; SEC-05, SEC-08 cấm làm lộ bản ghi | Trả 409 với **một câu chung** cho mọi trường hợp trùng, kèm hướng dẫn dùng trang tra cứu; không nêu trường nào trùng, không trả dữ liệu của bản ghi đã có. Thành viên đã đăng nhập vẫn thấy đăng ký của chính mình | Bảo mật ưu tiên hơn tiện lợi; người nộp thật đã có mã trong email xác nhận | R3, E3; PRD SEC-05; FLOW-04, FLOW-14 |
+| QĐ-2 | Thành viên có được yêu cầu **xóa** dữ liệu | Được. Ba loại yêu cầu: xuất, chỉnh sửa, xóa. `BOARD` quyết định; xóa được thực thi bằng ẩn danh trường tùy chọn của hồ sơ và thu hồi đồng ý công khai, giữ định danh tối thiểu | Khớp FLOW-28, DATA-06; không phá lịch sử (BR-13, RP-12) | B5; Vai trò & quyền §8.7 |
+| QĐ-3 | Chuyển **Ngừng tham gia** có thu hồi phiên, quyền không | Có. Ngừng tham gia ⇒ tài khoản Ngừng hoạt động, thu hồi mọi phiên và vai trò quản lý/đặc quyền trong cùng transaction. Tạm ngưng không đổi tài khoản | Người đã rời CLB không được giữ quyền truy cập tài liệu nội bộ (RP-09); hai trạng thái vẫn độc lập ở mọi trường hợp khác | A5, T5; PRD MEM-11; Vai trò & quyền RP-09; FLOW-13 |
+| QĐ-4 | Khối trang chủ khi **chưa chọn nội dung nổi bật** | Hiện mục mới nhất đang công khai; chỉ ẩn khối khi không có mục nào | Trang chủ không trống khi mới phát hành; Ban Chủ nhiệm không bắt buộc chọn tay | T4, C2, E2; FLOW-01 |
+| QĐ-5 | Công cụ **quét mã độc** (SEC-15) | ClamAV (`clamd`) chạy trong Compose, API gọi qua TCP bằng `node:net`. VPS nâng lên 4 GB RAM. Local, CI mặc định bỏ qua quét; production bắt buộc | Mã nguồn mở, không gửi tệp của thành viên ra dịch vụ ngoài, không thêm thư viện | D2, O4; Kiến trúc §5 dòng 6, 12 |
+| QĐ-6 | Nơi lưu **ngày kết thúc nhiệm kỳ** (RP-03) | Cột `SiteSetting.termEndsAt`, `BOARD` sửa ở trang Thông tin APC | Một nguồn duy nhất cho mọi vai trò đặc quyền | T2, T4, A6, A7; PRD §9; FLOW-24 |
+| QĐ-7 | **Trạng thái hồ sơ** nào gửi email (NTF-01) | Mời phỏng vấn, Đã chấp nhận, Không chấp nhận, Đã rút. Không gửi khi Mới → Đang xét | Chỉ báo khi ứng viên cần biết hoặc cần làm gì; báo Đã rút để phát hiện bị rút đơn hộ | R4, R5, O2; PRD NTF-01; FLOW-05, FLOW-07 |
+| QĐ-8 | "Email liên hệ" thành viên tự sửa | Trường riêng `contactEmail`. `email` là email tài khoản, chỉ `BOARD` sửa, dùng cho mọi email hệ thống | `email` duy nhất, dùng đối chiếu trùng và nhận email bảo mật; không để thành viên tự đổi | T3, T5; PRD MEM-02 đến MEM-04 |
+| QĐ-9 | Ngày phát hành production và nội dung thật | 23/11–29/11 dựng staging và làm đủ bằng chứng release gate; T4 **02/12** phát hành production (O7); Ban Chủ nhiệm nhập nội dung thật 02/12–06/12. Gate chưa đạt thì dời ngày, không bỏ điều kiện | PRD §13 yêu cầu diễn tập restore và kiểm thử tải trước phát hành | O4, O5, O7, Q4, Q6 |
 
-## 9. Yêu cầu đặc tả chưa có phiếu
+## 9. Yêu cầu đặc tả được giao thêm hoặc dời phạm vi
 
-Các yêu cầu dưới đây có trong tài liệu đặc tả nhưng chưa thuộc việc nào. Trưởng dự án giao người hoặc ghi quyết định dời phạm vi.
+Các yêu cầu trước đây chưa thuộc việc nào. Phần dời phạm vi được ghi nhận chính thức ở [PRD](../01-prd.md) §13.1 theo điều kiện phát hành PRD §13.
 
-| Yêu cầu | Nguồn |
-| --- | --- |
-| Lệnh bootstrap dùng một lần tạo `BOARD` và `TECH_ADMIN` đầu tiên từ console VPS | RP-15, PRD §11 mục 13, AC-RBAC-09 |
-| Tác vụ chuyển vai trò hết hạn sang `EXPIRED`; cảnh báo trước 30 ngày và 7 ngày (kèm email) | RP-03, ADM-08, NTF-01 |
-| Khôi phục TOTP cần hai người (`BOARD` xác nhận, `TECH_ADMIN` thực hiện) | RP-14, FLOW-27 |
-| Trang Vai trò và phạm vi của tôi `/portal/account/roles` | PAGE-MEM-17 |
-| Retention: dry-run, thực thi hai người, trang `/admin/data-retention`; xóa bản ghi email sau 90 ngày | DATA-05, DATA-08, PRD §10.5, PAGE-MGT-DATA-03 |
-| Thực thi ẩn danh/xóa dữ liệu theo yêu cầu, ghi trước/sau trong audit | FLOW-28 bước 5–6 |
-| Khu vận hành `/admin/system/*`, nhật ký incident, quyền `INCIDENT` của `TECH_ADMIN`/`BOARD` trên audit, email, tài liệu | PAGE-OPS-01 đến 09, AC-12 |
-| `sitemap.xml`, `robots.txt` | SEO-02, PAGE-SYS-05, PAGE-SYS-06 |
-| Trang lỗi 500 có mã tham chiếu, trang bảo trì 503; request/correlation ID trong log | PAGE-SYS-02, PAGE-SYS-04, PUB-08, OPS-11 |
-| Xác minh tăng cường (captcha hoặc tương đương) cho biểu mẫu công khai khi bất thường | SEC-05, FLOW-04, FLOW-14 |
-| Cảnh báo lệch đồng hồ server, tạm từ chối TOTP khi lệch | SEC-16, FLOW-27 |
-| Định danh dịch vụ riêng cho job nền (email worker, retention) | Vai trò & quyền §12 mục 9 |
-| Email cảnh báo vận hành | NTF-01 |
+| Yêu cầu | Nguồn | Xử lý | Người | Hạn |
+| --- | --- | --- | --- | --- |
+| Lệnh bootstrap `BOARD`, `TECH_ADMIN` đầu tiên | RP-15, PRD §11 mục 13, AC-RBAC-09 | A7 | Huỳnh Hoàn Phúc | T4 25/11 |
+| Vai trò hết hạn chuyển `EXPIRED`, email cảnh báo 30/7 ngày | RP-03, ADM-08, NTF-01 | O6 | Đặng Phúc An Khang | CN 22/11 |
+| Khôi phục 2 lớp bằng hai người | RP-14, FLOW-27 | B6 | Trương Phúc Minh | T4 25/11 |
+| Trang `/portal/account/roles` | PAGE-MEM-17 | T3 | Lương Huỳnh | CN 01/11 |
+| Yêu cầu xóa dữ liệu: ẩn danh hồ sơ thành viên | FLOW-28 bước 6 | B5 | Trương Phúc Minh | CN 22/11 |
+| Yêu cầu xóa dữ liệu: ẩn danh hồ sơ ứng tuyển, đăng ký sự kiện, tệp của người yêu cầu | DATA-06, FLOW-28 bước 6 | **Dời** sang sau phát hành (PRD §13.1), làm cùng thực thi retention | Trương Phúc Minh | CN 28/02/2027 |
+| Quyền `INCIDENT` trên nhật ký, email, metadata tài liệu | Vai trò & quyền §8.5–8.7 | B4, O3, D4 theo luật chung mục 7.2 | Trương Phúc Minh, Đặng Phúc An Khang, Phạm Đăng Hoàng Thiên | Theo hạn từng việc |
+| Định danh dịch vụ cho tác vụ nền | Vai trò & quyền §12 mục 9 | B1 (`audit({ service })`), O1 (`startJob`) | Trương Phúc Minh, Đặng Phúc An Khang | T5 08/10, CN 11/10 |
+| `sitemap.xml`, `robots.txt`, trang 500 có mã tham chiếu, trang bảo trì, correlation ID | SEO-02, PAGE-SYS-02, 04–06, OPS-11 | C6 (phần ứng dụng), O4 (Nginx) | Nguyễn Gia Bảo, Đặng Phúc An Khang | T4 25/11, T5 26/11 |
+| Cảnh báo lệch đồng hồ | SEC-16, FLOW-27 | O4 (`chrony`), O5 (cảnh báo Netdata) | Đặng Phúc An Khang | CN 29/11 |
+| Email cảnh báo vận hành | NTF-01 | O5 (Netdata, UptimeRobot) | Đặng Phúc An Khang | CN 29/11 |
+| Sổ sự cố | FLOW-29, AC-12 | Dạng mã sự cố ở luật chung mục 7.2; sổ ở O5 (Google Sheet riêng, ngoài repo) | Đặng Phúc An Khang | CN 29/11 |
+| Chạy thử retention, báo cáo dry-run | PRD §13, DATA-08 | B7 | Trương Phúc Minh | CN 29/11 |
+| Kiểm thử tải 20 người dùng | PERF-03, PRD §11 mục 15 | Q6 (chuyển từ O5) | Nguyễn Tiến Bảo | CN 29/11 |
+| Phát hành production lần đầu | FLOW-22, PRD §13 | O7 | Đặng Phúc An Khang | T4 02/12 |
+| Thực thi retention (xóa/ẩn danh theo lô, `DUAL`), trang `/admin/data-retention`, xóa bản ghi email sau 90 ngày, xóa vật lý tệp `DUAL` | DATA-05, DATA-08, PRD §10.5, PAGE-MGT-DATA-03, Vai trò & quyền §8.5 | **Dời** sang sau phát hành (PRD §13.1) | Trương Phúc Minh | CN 28/02/2027 |
+| Khu vận hành `/admin/system/*` trong Portal | PAGE-OPS-01 đến 09 | **Dời** sang sau phát hành; bản đầu dùng UptimeRobot, Netdata, GitHub Actions, sổ sự cố | Đặng Phúc An Khang | CN 28/02/2027 |
+| Xác minh tăng cường (captcha) cho form công khai | SEC-05 | **Dời** sang sau phát hành; bản đầu trả 429 theo ngưỡng (FLOW-04, FLOW-14 cho phép). Có dấu hiệu lạm dụng thì làm ngay | Phan Anh Khương, Lê Đăng Nghĩa | CN 28/02/2027 |
+
+Phân bổ lại khối lượng: A5 cũ tách thành A5 (tài khoản) và A6 (vai trò); tác vụ hết hạn vai trò chuyển sang O6; kiểm thử tải chuyển từ O5 sang Q6; nhập nội dung thật (Q4) dời sau ngày phát hành.
