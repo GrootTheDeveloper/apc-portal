@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 
 import type { Role } from '../../db/generated/enums.js'
-import { forbidden, notFound, unauthenticated } from '../../lib/errors.js'
+import { type AppError, forbidden, notFound, unauthenticated } from '../../lib/errors.js'
 
 // Phân quyền dùng chung cho mọi API (docs/02 mục 12). Không tự viết kiểm quyền riêng trong module.
 //
@@ -16,9 +16,11 @@ import { forbidden, notFound, unauthenticated } from '../../lib/errors.js'
 //
 // Trong handler: `const user = currentUser(request)`. Danh sách: `where: { ...departmentScope(user) }`.
 
-/** Vai trò lưu trong bảng user_roles. MEMBER là vai trò nền, không lưu (RP-01). */
-export type ManagedRole = Exclude<Role, 'MEMBER'>
-export type RoleGrant = { role: ManagedRole; departmentId: string | null }
+/**
+ * `roles` luôn có `{ role: 'MEMBER', departmentId: <ban của người dùng> }` (RP-01, MEMBER không lưu trong database),
+ * cộng các dòng user_roles đang hiệu lực. Cách tính nằm ở `loadAuthUser` (service.ts).
+ */
+export type RoleGrant = { role: Role; departmentId: string | null }
 export type AuthUser = { id: string; departmentId: string | null; roles: RoleGrant[] }
 
 declare module 'fastify' {
@@ -32,15 +34,23 @@ export function registerAuth(app: FastifyInstance) {
   app.decorateRequest('user', null)
 }
 
+/**
+ * Request bị từ chối 401/403 phải ghi audit loại SECURITY (FLOW-20).
+ * TODO(B1): khi `audit(...)` của B1 merge, gọi audit ở đây; tạm thời chỉ ghi log kỹ thuật.
+ */
+function denied(request: FastifyRequest, error: AppError): AppError {
+  request.log.warn({ userId: request.user?.id ?? null, route: request.routeOptions.url, status: error.statusCode }, 'auth denied')
+  return error
+}
+
 /** Người đang đăng nhập, hoặc ném 401. Dùng trong handler sau `requireAuth`/`requireRole`. */
 export function currentUser(request: FastifyRequest): AuthUser {
-  if (!request.user) throw unauthenticated()
+  if (!request.user) throw denied(request, unauthenticated())
   return request.user
 }
 
-/** Mọi tài khoản đã đăng nhập đều có MEMBER; các vai trò khác lấy từ user_roles đang hiệu lực. */
 export function hasRole(user: AuthUser, role: Role): boolean {
-  return role === 'MEMBER' || user.roles.some((grant) => grant.role === role)
+  return user.roles.some((grant) => grant.role === role)
 }
 
 /**
@@ -77,7 +87,7 @@ export async function requireAuth(request: FastifyRequest) {
 export function requireRole(...roles: [Role, ...Role[]]) {
   return async function requireRoleHandler(request: FastifyRequest) {
     const user = currentUser(request)
-    if (!roles.some((role) => hasRole(user, role))) throw forbidden()
+    if (!roles.some((role) => hasRole(user, role))) throw denied(request, forbidden())
   }
 }
 

@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.3 |
-| Trạng thái | Đã duyệt (27/09/2026) |
-| Ngày cập nhật | 27/09/2026 |
+| Phiên bản | 1.4 |
+| Trạng thái | Đã duyệt (01/10/2026) |
+| Ngày cập nhật | 01/10/2026 |
 | Sản phẩm | APC Portal |
 | Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC) |
 | Tài liệu nền tảng | [APC Portal - Project Charter](./00-project-charter.md) |
@@ -17,6 +17,7 @@
 | 1.1 | Liên kết baseline với giai đoạn local-first và tách cam kết production chưa được phê duyệt |
 | 1.2 | Bỏ hạng mục Thành tích (PRT-02 và mục 7.7 đổi thành "Dự án và sản phẩm"); cập nhật PUB-05, ORG-04, BR-20, FLOW-18 và bảng thực thể |
 | 1.3 | APC duyệt; cập nhật trạng thái triển khai |
+| 1.4 | Chốt các điểm mâu thuẫn QĐ-1 đến QĐ-9 ([kế hoạch](./plan/README.md) mục 8): làm rõ MEM-02 đến MEM-04, MEM-11, ORG-04, NTF-01, SEC-05; `SiteSetting` lưu ngày kết thúc nhiệm kỳ; thêm mục 13.1 về phạm vi lần phát hành đầu |
 
 > Trạng thái triển khai ngày 27/09/2026: đã có nền tảng local, trang chủ, router và database schema; các chức năng còn lại triển khai theo [docs/plan](./plan/README.md). Mọi yêu cầu VPS/staging/production là release gate, áp dụng khi dựng hạ tầng đã chốt tại [Kiến trúc mục 5](./06-architecture.md).
 
@@ -201,16 +202,16 @@ Các luồng từ `FLOW-01` đến `FLOW-29` phải được mô tả chi tiết
 | Mã | Yêu cầu | Mức ưu tiên |
 | --- | --- | --- |
 | MEM-01 | Dashboard hiển thị thông báo mới, sự kiện sắp tới, đăng ký gần đây và tài liệu mới được cấp quyền | Bắt buộc |
-| MEM-02 | Hồ sơ gồm họ tên, ảnh đại diện, email, mã số sinh viên, khoa/ngành, niên khóa, kỹ năng, lĩnh vực quan tâm, ban và vai trò | Bắt buộc |
-| MEM-03 | Thành viên chỉnh sửa ảnh đại diện, email liên hệ, kỹ năng và lĩnh vực quan tâm | Bắt buộc |
-| MEM-04 | Chỉ Ban Chủ nhiệm được sửa mã số sinh viên, ban, vai trò và trạng thái thành viên | Bắt buộc |
+| MEM-02 | Hồ sơ gồm họ tên, ảnh đại diện, email tài khoản, email liên hệ, mã số sinh viên, khoa/ngành, niên khóa, kỹ năng, lĩnh vực quan tâm, ban và vai trò | Bắt buộc |
+| MEM-03 | Thành viên chỉnh sửa ảnh đại diện, email liên hệ, kỹ năng và lĩnh vực quan tâm; email liên hệ là trường riêng, không thay email tài khoản dùng để nhận email hệ thống | Bắt buộc |
+| MEM-04 | Chỉ Ban Chủ nhiệm được sửa mã số sinh viên, email tài khoản, ban, vai trò và trạng thái thành viên | Bắt buộc |
 | MEM-05 | Thành viên xem lịch sử hoạt động và trạng thái tham gia của chính mình | Bắt buộc |
 | MEM-06 | Danh sách thành viên nội bộ chỉ hiển thị thông tin phù hợp với quyền của người xem | Bắt buộc |
 | MEM-07 | Danh sách quản trị hỗ trợ tìm kiếm, lọc theo ban/vai trò/trạng thái và phân trang | Bắt buộc |
 | MEM-08 | Ban Chủ nhiệm nhập thành viên hiện hữu từ CSV bằng bước kiểm tra trước, báo lỗi theo dòng và chỉ ghi dữ liệu khi toàn bộ lô hợp lệ | Bắt buộc |
 | MEM-09 | Ban Chủ nhiệm xuất danh sách thành viên theo phạm vi dữ liệu được phép; thao tác xuất được ghi audit log | Bắt buộc |
 | MEM-10 | Danh bạ nội bộ mặc định chỉ hiển thị họ tên, ảnh đại diện, ban, vai trò, kỹ năng và lĩnh vực quan tâm; không hiển thị mã số sinh viên, email hoặc số điện thoại | Bắt buộc |
-| MEM-11 | Trạng thái thành viên gồm Đang hoạt động, Tạm ngưng và Ngừng tham gia; trạng thái thành viên độc lập với trạng thái đăng nhập của tài khoản | Bắt buộc |
+| MEM-11 | Trạng thái thành viên gồm Đang hoạt động, Tạm ngưng và Ngừng tham gia; trạng thái thành viên độc lập với trạng thái đăng nhập của tài khoản, trừ khi chuyển Ngừng tham gia: tài khoản chuyển Ngừng hoạt động, mọi phiên và vai trò quản lý, đặc quyền bị thu hồi (`RP-09`) | Bắt buộc |
 | MEM-12 | Thành viên xem, cấp hoặc thu hồi sự đồng ý công khai tên, hình ảnh hay thông tin cá nhân theo từng mục đích/đối tượng; người quản lý nội dung chỉ xem trạng thái hiệu lực và không được đồng ý thay thành viên | Bắt buộc |
 
 ### 7.5. Sự kiện và hoạt động
@@ -285,7 +286,7 @@ Các luồng từ `FLOW-01` đến `FLOW-29` phải được mô tả chi tiết
 | ORG-01 | Ban Chủ nhiệm quản lý tên, mô tả, sứ mệnh, thông tin liên hệ và liên kết chính thức của APC | Bắt buộc |
 | ORG-02 | Ban Chủ nhiệm tạo, sửa, sắp xếp và lưu trữ Ban chuyên môn với tên, mô tả và đầu mối liên hệ | Bắt buộc |
 | ORG-03 | Không được lưu trữ một Ban chuyên môn còn thành viên hoạt động; thành viên phải được chuyển ban hoặc cập nhật trạng thái trước | Bắt buộc |
-| ORG-04 | Ban Chủ nhiệm chọn tin tức, sự kiện và dự án nổi bật trên trang chủ | Bắt buộc |
+| ORG-04 | Ban Chủ nhiệm chọn tin tức, sự kiện và dự án nổi bật trên trang chủ; khối chưa được chọn hiển thị các mục mới nhất đang công khai | Bắt buộc |
 | ORG-05 | Thay đổi thông tin liên hệ, cơ cấu và nội dung nổi bật được ghi audit log | Bắt buộc |
 | ORG-06 | Ban chuyên môn có trạng thái Đang hoạt động hoặc Lưu trữ; ban lưu trữ không nhận thành viên, sự kiện hoặc tài liệu mới | Bắt buộc |
 
@@ -293,7 +294,7 @@ Các luồng từ `FLOW-01` đến `FLOW-29` phải được mô tả chi tiết
 
 | Mã | Yêu cầu | Mức ưu tiên |
 | --- | --- | --- |
-| NTF-01 | Hệ thống gửi email giao dịch cho xác nhận ứng tuyển, thay đổi trạng thái cần thông báo, đăng ký/hủy sự kiện, vai trò đặc quyền sắp hết hạn và cảnh báo vận hành | Bắt buộc |
+| NTF-01 | Hệ thống gửi email giao dịch cho xác nhận ứng tuyển, hồ sơ chuyển Mời phỏng vấn, Đã chấp nhận, Không chấp nhận hoặc Đã rút, đăng ký/hủy sự kiện, sự kiện bị hủy, vai trò đặc quyền sắp hết hạn và cảnh báo vận hành | Bắt buộc |
 | NTF-02 | Email được đưa vào hàng đợi, có trạng thái Chờ gửi, Đang gửi, Chờ thử lại, Đã gửi hoặc Gửi lỗi; việc thử lại có giới hạn và thời điểm chạy kế tiếp | Bắt buộc |
 | NTF-03 | Lỗi gửi email không rollback giao dịch nghiệp vụ đã thành công; hệ thống hiển thị kết quả nghiệp vụ và ghi nhận email cần gửi lại | Bắt buộc |
 | NTF-04 | Quản lý Ban chuyên môn xem trạng thái email nghiệp vụ trong phạm vi ban, Ban Chủ nhiệm xem toàn bộ; Quản trị viên kỹ thuật xem lỗi nhà cung cấp mà không đọc nội dung nhạy cảm không cần thiết | Bắt buộc |
@@ -330,7 +331,7 @@ Các luồng từ `FLOW-01` đến `FLOW-29` phải được mô tả chi tiết
 | Thực thể | Nội dung chính |
 | --- | --- |
 | User | Tên đăng nhập, mật khẩu đã băm, trạng thái, thời điểm đổi mật khẩu và phiên đăng nhập |
-| MemberProfile | Thông tin cá nhân, học tập, kỹ năng, trạng thái thành viên và ảnh đại diện |
+| MemberProfile | Thông tin cá nhân, email liên hệ, học tập, kỹ năng, trạng thái thành viên và ảnh đại diện |
 | Role/Permission/UserRole | Vai trò, quyền, phạm vi, thời hạn và trạng thái hiệu lực |
 | Department | Ban chuyên môn, mô tả và đầu mối liên hệ |
 | RecruitmentRound | Thông tin đợt tuyển, thời gian, vị trí, trạng thái và danh sách câu hỏi bổ sung |
@@ -340,7 +341,7 @@ Các luồng từ `FLOW-01` đến `FLOW-29` phải được mô tả chi tiết
 | Post | Tin tức, thông báo, chuyên mục, nội dung, tác giả và trạng thái |
 | Project | Dự án, sản phẩm và dữ liệu trình bày công khai |
 | Document/DocumentVersion | Metadata, quyền truy cập và lịch sử các phiên bản tệp |
-| SiteSetting | Thông tin APC, liên hệ, liên kết chính thức và cấu hình nội dung nổi bật |
+| SiteSetting | Thông tin APC, liên hệ, liên kết chính thức, ngày kết thúc nhiệm kỳ hiện tại và cấu hình nội dung nổi bật |
 | ConsentRecord | Chủ thể, mục đích, phiên bản nội dung đồng ý, thời gian và trạng thái hiệu lực |
 | NotificationDelivery | Loại email, người nhận, trạng thái gửi, số lần thử và lỗi đã làm sạch dữ liệu nhạy cảm |
 | DataRequest | Yêu cầu xuất, chỉnh sửa, ẩn danh hoặc xóa dữ liệu cá nhân và lịch sử xử lý |
@@ -505,7 +506,7 @@ stateDiagram-v2
 | SEC-02 | Mật khẩu được băm bằng Argon2id với cấu hình tối thiểu `m=19456 KiB, t=2, p=1`, có salt riêng; tham số phải được benchmark trên production và không ghi mật khẩu vào log |
 | SEC-03 | Cookie phiên đăng nhập sử dụng Secure, HttpOnly và SameSite |
 | SEC-04 | Hệ thống đáp ứng các kiểm soát áp dụng được của OWASP ASVS 5.0.0 Level 1, gồm chống CSRF, XSS, injection, upload nguy hiểm và truy cập trái phép |
-| SEC-05 | Đăng nhập và biểu mẫu công khai được giới hạn theo định danh cùng địa chỉ nguồn; đăng nhập sai 5 lần liên tiếp áp dụng thời gian chờ 15 phút, còn ứng tuyển/đăng ký sự kiện dùng ngưỡng cấu hình và bước xác minh tăng cường khi bất thường; không khóa vĩnh viễn tài khoản hoặc làm lộ bản ghi đã tồn tại |
+| SEC-05 | Đăng nhập và biểu mẫu công khai được giới hạn theo định danh cùng địa chỉ nguồn; đăng nhập sai 5 lần liên tiếp áp dụng thời gian chờ 15 phút, còn ứng tuyển/đăng ký sự kiện dùng ngưỡng cấu hình và bước xác minh tăng cường khi bất thường; không khóa vĩnh viễn tài khoản hoặc làm lộ bản ghi đã tồn tại: thông báo trùng dùng một câu chung, không nêu trường nào trùng và không trả dữ liệu của bản ghi đã có |
 | SEC-06 | Phiên đăng nhập hết hạn sau 8 giờ không hoạt động; đổi hoặc đặt lại mật khẩu làm mất hiệu lực các phiên cũ |
 | SEC-07 | Secrets chỉ được cung cấp qua biến môi trường hoặc secret store, không commit vào Git |
 | SEC-08 | Thông báo lỗi đăng nhập và tra cứu hồ sơ không tiết lộ tài khoản hoặc email có tồn tại hay không |
@@ -700,19 +701,21 @@ Việc xóa hoặc ẩn danh dữ liệu được áp dụng ngay trên hệ th�
 - Tác vụ retention ẩn danh hoặc xóa đúng bản ghi hết hạn và không tác động bản ghi chưa hết hạn.
 - Việc chỉnh sửa, xuất, ẩn danh và xóa dữ liệu được ghi audit log.
 - Dữ liệu công khai của thành viên bị ẩn khi bản ghi đồng ý không còn hiệu lực.
+- Lần phát hành đầu nghiệm thu tác vụ retention theo phạm vi ở mục 13.1.
 
 ### AC-12. Monitoring và xử lý sự cố
 
 - Health check, CPU, RAM, swap, PID, dung lượng/disk I/O, clock drift, TLS, lỗi HTTP, hàng đợi worker và backup có ngưỡng cảnh báo.
 - Cảnh báo chứa đủ thông tin định vị dịch vụ nhưng không chứa dữ liệu nhạy cảm.
 - Quản trị viên kỹ thuật thực hiện được runbook và ghi incident từ lúc phát hiện đến khi đóng.
+- Lần phát hành đầu ghi incident theo phạm vi ở mục 13.1.
 
 ## 13. Điều kiện phát hành production
 
 MVP chỉ được phát hành production khi đáp ứng đầy đủ các điều kiện sau:
 
-- Toàn bộ yêu cầu mức **Bắt buộc** đã hoàn thành hoặc có quyết định thay đổi phạm vi được ghi nhận.
-- Các tiêu chí nghiệm thu từ `AC-01` đến `AC-12` đều đạt.
+- Toàn bộ yêu cầu mức **Bắt buộc** đã hoàn thành hoặc có quyết định thay đổi phạm vi được ghi nhận (mục 13.1).
+- Các tiêu chí nghiệm thu từ `AC-01` đến `AC-12` đều đạt, theo phạm vi đã điều chỉnh ở mục 13.1.
 - Không còn lỗi mức nghiêm trọng hoặc lỗi làm gián đoạn luồng nghiệp vụ chính.
 - Migration database đã được kiểm thử trên staging với dữ liệu mẫu tương đương.
 - Backup, restore và rollback đã được diễn tập.
@@ -725,6 +728,17 @@ MVP chỉ được phát hành production khi đáp ứng đầy đủ các đi�
 - Retention job đã được chạy thử trên dữ liệu staging và có báo cáo dry-run.
 - Tài khoản quản trị mặc định đã bị vô hiệu hóa hoặc thay toàn bộ thông tin xác thực.
 - Tài liệu triển khai, vận hành và bàn giao đã được cập nhật.
+
+### 13.1. Phạm vi lần phát hành đầu
+
+Quyết định thay đổi phạm vi ngày 01/10/2026. Lý do: các hạng mục dưới đây không cần cho vận hành trong ba tháng đầu, vì dữ liệu sớm nhất đến hạn xử lý theo chính sách lưu giữ (bản ghi email 90 ngày) rơi vào đầu tháng 3/2027; bản phát hành đầu có biện pháp thay thế giữ nguyên mục tiêu bảo mật. Các yêu cầu còn lại mức **Bắt buộc** không thay đổi. Người phụ trách và việc cụ thể ghi ở [kế hoạch](./plan/README.md) mục 9.
+
+| Hạng mục | Yêu cầu | Lần phát hành đầu | Hạn hoàn thành đầy đủ |
+| --- | --- | --- | --- |
+| Thực thi retention theo lô có xác nhận `DUAL`, trang Retention và dry-run (`PAGE-MGT-DATA-03`), xóa bản ghi email sau 90 ngày, xóa vật lý tệp `DUAL` | `DATA-05`, `DATA-08`, mục 10.5, `FLOW-28` (retention định kỳ) | Tác vụ dry-run chạy hằng ngày, chỉ đếm bản ghi hết hạn theo từng nhóm, không sửa dữ liệu, ghi audit tổng hợp; có báo cáo dry-run trên staging. File export tự xóa sau 24 giờ (`DATA-09`) giữ nguyên. `AC-11` gạch 2 nghiệm thu trên dry-run: đếm đúng bản ghi hết hạn, không đếm bản ghi chưa hết hạn | 28/02/2027 |
+| Ẩn danh/xóa theo yêu cầu dữ liệu đối với hồ sơ ứng tuyển, đăng ký sự kiện và tệp | `DATA-06`, `FLOW-28` bước 6 | Yêu cầu xóa của thành viên được thực thi bằng ẩn danh các trường tùy chọn của hồ sơ thành viên và thu hồi mọi đồng ý công khai, có audit; dữ liệu còn lại được xử lý khi retention thực thi | 28/02/2027 |
+| Khu vận hành trong Portal (`PAGE-OPS-01` đến `PAGE-OPS-09`) | `FLOW-22`, `FLOW-29`, `AC-12` | Theo dõi và cảnh báo bằng công cụ ngoài Portal (UptimeRobot, Netdata, GitHub Actions); chế độ bảo trì bật qua reverse proxy; incident ghi trong sổ sự cố riêng của `TECH_ADMIN` và `BOARD`, không lưu trong repository. `AC-12` gạch 3 nghiệm thu trên sổ sự cố | 28/02/2027 |
+| Bước xác minh tăng cường cho biểu mẫu công khai | `SEC-05` | Giới hạn tần suất theo định danh và địa chỉ nguồn, vượt ngưỡng trả `429` (`FLOW-04`, `FLOW-14` cho phép). Có dấu hiệu lạm dụng thì triển khai ngay | 28/02/2027 |
 
 ## 14. Ngoài phạm vi MVP
 

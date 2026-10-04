@@ -9,6 +9,7 @@ import { loadAuthUser } from './service.js'
 const tag = randomUUID().slice(0, 8)
 const DAY = 24 * 60 * 60 * 1000
 const now = new Date()
+const VERIFIED = { twoFactorVerified: true }
 const createdUserIds: string[] = []
 const createdDepartmentIds: string[] = []
 
@@ -49,9 +50,13 @@ afterAll(async () => {
 })
 
 describe('loadAuthUser', () => {
-  it('returns a plain MEMBER with no stored roles', async () => {
+  it('always gives MEMBER with the user department, even with no stored roles', async () => {
     const user = await createUser('member', { departmentId: deptA.id })
-    expect(await loadAuthUser(user.id, now)).toEqual({ id: user.id, departmentId: deptA.id, roles: [] })
+    expect(await loadAuthUser(user.id, VERIFIED, now)).toEqual({
+      id: user.id,
+      departmentId: deptA.id,
+      roles: [{ role: 'MEMBER', departmentId: deptA.id }],
+    })
   })
 
   it('keeps only ACTIVE, started and not-expired rows from user_roles', async () => {
@@ -67,10 +72,13 @@ describe('loadAuthUser', () => {
       ],
     })
 
-    expect(await loadAuthUser(user.id, now)).toEqual({
+    expect(await loadAuthUser(user.id, VERIFIED, now)).toEqual({
       id: user.id,
       departmentId: deptA.id,
-      roles: [{ role: 'DEPARTMENT_MANAGER', departmentId: deptA.id }],
+      roles: [
+        { role: 'MEMBER', departmentId: deptA.id },
+        { role: 'DEPARTMENT_MANAGER', departmentId: deptA.id },
+      ],
     })
   })
 
@@ -84,16 +92,38 @@ describe('loadAuthUser', () => {
       ],
     })
 
-    const authUser = await loadAuthUser(user.id, now)
-    expect(authUser?.roles).toHaveLength(2)
-    expect(authUser?.roles.map((grant) => grant.departmentId).sort()).toEqual([deptA.id, deptB.id].sort())
+    const authUser = await loadAuthUser(user.id, VERIFIED, now)
+    const managed = authUser?.roles.filter((grant) => grant.role === 'DEPARTMENT_MANAGER') ?? []
+    expect(managed.map((grant) => grant.departmentId).sort()).toEqual([deptA.id, deptB.id].sort())
+  })
+
+  it('drops BOARD and TECH_ADMIN while the session has not passed two-factor (RP-13)', async () => {
+    const board = await createUser('board')
+    const tech = await createUser('tech')
+    const base = { reason: 'test', startsAt: new Date(now.getTime() - DAY), status: 'ACTIVE' as const }
+    await db.userRole.createMany({
+      data: [
+        { ...base, userId: board.id, role: 'BOARD' },
+        { ...base, userId: tech.id, role: 'TECH_ADMIN' },
+      ],
+    })
+
+    for (const user of [board, tech]) {
+      const unverified = await loadAuthUser(user.id, { twoFactorVerified: false }, now)
+      expect(unverified?.roles.map((grant) => grant.role)).toEqual(['MEMBER'])
+    }
+    expect((await loadAuthUser(board.id, VERIFIED, now))?.roles.map((grant) => grant.role)).toEqual(['MEMBER', 'BOARD'])
+    expect((await loadAuthUser(tech.id, VERIFIED, now))?.roles.map((grant) => grant.role)).toEqual([
+      'MEMBER',
+      'TECH_ADMIN',
+    ])
   })
 
   it('rejects locked or inactive accounts and unknown ids', async () => {
     const locked = await createUser('locked', { status: 'LOCKED' })
     const inactive = await createUser('inactive', { status: 'INACTIVE' })
-    expect(await loadAuthUser(locked.id, now)).toBeNull()
-    expect(await loadAuthUser(inactive.id, now)).toBeNull()
-    expect(await loadAuthUser('khong-ton-tai', now)).toBeNull()
+    expect(await loadAuthUser(locked.id, VERIFIED, now)).toBeNull()
+    expect(await loadAuthUser(inactive.id, VERIFIED, now)).toBeNull()
+    expect(await loadAuthUser('khong-ton-tai', VERIFIED, now)).toBeNull()
   })
 })

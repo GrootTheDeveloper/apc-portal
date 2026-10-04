@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.3 |
-| Trạng thái | Đã duyệt (27/09/2026) |
-| Ngày cập nhật | 27/09/2026 |
+| Phiên bản | 1.4 |
+| Trạng thái | Đã duyệt (01/10/2026) |
+| Ngày cập nhật | 01/10/2026 |
 | Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC), Khoa Công Nghệ, UMT |
 | Giai đoạn hiện tại | Phát triển local; hạ tầng production đã chốt, chưa dựng |
 
@@ -34,7 +34,7 @@
 
 ## 3. Trạng thái và nguồn sự thật
 
-- Charter, PRD, Roles, User Flows và Sitemap đã được APC duyệt ngày 27/09/2026. Thay đổi sau này ghi vào bảng lịch sử phiên bản của từng tài liệu.
+- Charter, PRD, Roles, User Flows và Sitemap đã được APC duyệt ngày 27/09/2026; bản 1.4 ngày 01/10/2026 chốt các điểm mâu thuẫn QĐ-1 đến QĐ-9 ([kế hoạch](./plan/README.md) mục 8) và phạm vi lần phát hành đầu ([PRD](./01-prd.md) mục 13.1). Thay đổi sau này ghi vào bảng lịch sử phiên bản của từng tài liệu.
 - Feature Catalog quyết định thứ tự triển khai, không thay thế quy tắc nghiệp vụ trong PRD.
 - Architecture mô tả những gì repository đang áp dụng và các quyết định kỹ thuật đã chốt (mục 5).
 - Mã đang chạy và kết quả kiểm tra là bằng chứng thực thi; nội dung mẫu trong thiết kế không phải dữ liệu tổ chức đã xác nhận.

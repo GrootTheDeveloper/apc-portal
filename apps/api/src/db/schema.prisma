@@ -26,7 +26,7 @@ enum AccountStatus {
   INACTIVE
 }
 
-// Trạng thái thành viên CLB — độc lập với AccountStatus (MEM-11)
+// Trạng thái thành viên CLB — độc lập với AccountStatus, trừ LEFT: chuyển LEFT thì tài khoản INACTIVE (MEM-11, RP-09)
 enum MemberStatus {
   ACTIVE
   PAUSED
@@ -136,7 +136,7 @@ model User {
 
   departmentId String? // Ban đang hoạt động; khác phạm vi quản lý trong user_roles
   department   Department?  @relation(fields: [departmentId], references: [id])
-  memberStatus MemberStatus @default(ACTIVE) // MEM-11, độc lập AccountStatus
+  memberStatus MemberStatus @default(ACTIVE) // MEM-11: độc lập AccountStatus, trừ LEFT kéo theo INACTIVE
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

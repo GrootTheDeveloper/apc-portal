@@ -2,12 +2,12 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.2 |
-| Trạng thái | Đã duyệt (27/09/2026) |
-| Ngày cập nhật | 27/09/2026 |
+| Phiên bản | 1.3 |
+| Trạng thái | Đã duyệt (01/10/2026) |
+| Ngày cập nhật | 01/10/2026 |
 | Phạm vi | Chia giai đoạn triển khai từ trang chủ đến Portal MVP |
 
-Tài liệu này là backlog mức tính năng. Quy tắc nghiệp vụ chi tiết vẫn nằm trong [PRD](./01-prd.md), [Roles and Permissions](./02-roles-permissions.md) và [User Flows](./03-user-flows.md). Phân công và thứ tự làm nằm trong [docs/plan](./plan/README.md): P0 ứng với Giai đoạn 1, P1 với Giai đoạn 2, P2 với Giai đoạn 3.
+Tài liệu này là backlog mức tính năng. Quy tắc nghiệp vụ chi tiết vẫn nằm trong [PRD](./01-prd.md), [Roles and Permissions](./02-roles-permissions.md) và [User Flows](./03-user-flows.md). Phân công và thứ tự làm nằm trong [docs/plan](./plan/README.md): P0 ứng với Giai đoạn 1, P1 với Giai đoạn 2, P2 với Giai đoạn 3, P3 với Lên máy chủ và Phát hành.
 
 ## 1. P0 - Nền tảng và trang chủ
 
@@ -42,14 +42,23 @@ Hero trang chủ hiển thị dải 4 chỉ số CLB dạng placeholder (số m�
 - Phân quyền `MEMBER`, `DEPARTMENT_MANAGER`, `BOARD`, `TECH_ADMIN`.
 - Audit log cho hành động nhạy cảm.
 
-## 4. Chưa cam kết trong giai đoạn local
+## 4. P3 - Lên máy chủ và phát hành
 
-- Dựng VPS, domain, TLS và production (phương án đã chốt tại [Kiến trúc](./06-architecture.md) mục 5).
+- Staging và production trên VPS, domain, TLS, header bảo mật (phương án đã chốt tại [Kiến trúc](./06-architecture.md) mục 5).
+- Sao lưu, diễn tập khôi phục, theo dõi và cảnh báo, kiểm thử tải.
+- Lệnh bootstrap tài khoản đặc quyền đầu tiên; phát hành production T4 02/12/2026.
+
+## 5. Sau lần phát hành đầu (đến 28/02/2027)
+
+Các hạng mục dời phạm vi theo [PRD](./01-prd.md) mục 13.1: thực thi retention và trang Retention, ẩn danh/xóa dữ liệu ngoài hồ sơ thành viên, khu vận hành `/admin/system/*`, bước xác minh tăng cường cho biểu mẫu công khai.
+
+## 6. Chưa cam kết
+
 - Tích hợp tài khoản UMT hoặc đăng nhập một lần.
 - Ứng dụng di động riêng.
 - Quản lý task, deadline, source code hoặc thay thế UMTOJ.
 - Tích hợp tên đối tác khi APC chưa cung cấp dữ liệu được phép công bố.
 
-## 5. Quy tắc đưa chức năng vào triển khai
+## 7. Quy tắc đưa chức năng vào triển khai
 
 Một chức năng chỉ chuyển sang `Ready for development` khi có chủ sở hữu nghiệp vụ, dữ liệu đầu vào, quyền truy cập, trạng thái lỗi và tiêu chí nghiệm thu. Không coi nội dung mẫu trong bản thiết kế là dữ liệu thật.
