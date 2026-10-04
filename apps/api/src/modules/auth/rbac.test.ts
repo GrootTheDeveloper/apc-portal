@@ -13,19 +13,28 @@ import {
 } from './rbac.js'
 
 // A1: gán sẵn request.user giả qua header, chưa cần đăng nhập thật (docs/plan/A-dang-nhap.md).
+// Mỗi user giả có đúng hình dạng loadAuthUser trả về: luôn có MEMBER kèm ban của người dùng.
+const member = (departmentId: string | null) => ({ role: 'MEMBER', departmentId }) as const
 const USERS = {
-  member: { id: 'u-member', departmentId: 'dept-a', roles: [] },
-  managerA: { id: 'u-manager-a', departmentId: 'dept-a', roles: [{ role: 'DEPARTMENT_MANAGER', departmentId: 'dept-a' }] },
+  member: { id: 'u-member', departmentId: 'dept-a', roles: [member('dept-a')] },
+  managerA: {
+    id: 'u-manager-a',
+    departmentId: 'dept-a',
+    roles: [member('dept-a'), { role: 'DEPARTMENT_MANAGER', departmentId: 'dept-a' }],
+  },
   managerAB: {
     id: 'u-manager-ab',
     departmentId: 'dept-a',
     roles: [
+      member('dept-a'),
       { role: 'DEPARTMENT_MANAGER', departmentId: 'dept-a' },
       { role: 'DEPARTMENT_MANAGER', departmentId: 'dept-b' },
     ],
   },
-  board: { id: 'u-board', departmentId: null, roles: [{ role: 'BOARD', departmentId: null }] },
-  techAdmin: { id: 'u-tech', departmentId: 'dept-a', roles: [{ role: 'TECH_ADMIN', departmentId: null }] },
+  board: { id: 'u-board', departmentId: null, roles: [member(null), { role: 'BOARD', departmentId: null }] },
+  // BOARD có dòng user_roles ACTIVE nhưng phiên chưa nhập mã 2 lớp: loadAuthUser đã bỏ BOARD (RP-13).
+  boardNo2fa: { id: 'u-board-no-2fa', departmentId: null, roles: [member(null)] },
+  techAdmin: { id: 'u-tech', departmentId: 'dept-a', roles: [member('dept-a'), { role: 'TECH_ADMIN', departmentId: null }] },
 } satisfies Record<string, AuthUser>
 type UserKey = keyof typeof USERS
 
@@ -54,6 +63,12 @@ beforeAll(async () => {
         requireScope(async ({ id }) => DOCUMENTS[id] ?? null),
       ],
     },
+    async (request) => ({ id: (request.params as { id: string }).id }),
+  )
+  // Route chỉ kiểm phạm vi (không giới hạn vai trò): MEMBER và TECH_ADMIN vẫn không đọc được dữ liệu nghiệp vụ.
+  app.get(
+    '/portal/documents/:id',
+    { preHandler: requireScope(async ({ id }) => DOCUMENTS[id] ?? null) },
     async (request) => ({ id: (request.params as { id: string }).id }),
   )
   await app.ready()
@@ -85,6 +100,7 @@ describe('requireRole', () => {
     ['/admin/board-only', 'managerA', 403],
     ['/admin/board-only', 'techAdmin', 403],
     ['/admin/board-only', 'board', 200],
+    ['/admin/board-only', 'boardNo2fa', 403],
     ['/admin/tech-only', 'board', 403],
     ['/admin/tech-only', 'techAdmin', 200],
   ] as const)('GET %s as %s → %i', async (url, user, status) => {
@@ -113,6 +129,16 @@ describe('requireScope', () => {
   ] as const)('%s opening %s → %i', async (user, id, status) => {
     const response = await call(`/admin/documents/${id}`, user)
     expect(response.statusCode).toBe(status)
+  })
+
+  it.each([
+    [undefined, 401],
+    ['member', 404],
+    ['techAdmin', 404],
+    ['managerA', 200],
+    ['board', 200],
+  ] as const)('scope-only route: %s reading a department record → %i', async (user, status) => {
+    expect((await call('/portal/documents/doc-a', user)).statusCode).toBe(status)
   })
 
   it('answers out-of-scope exactly like a missing document, so existence is not leaked', async () => {
