@@ -78,7 +78,13 @@ describe('POST /auth/login', () => {
 
     expect(response.statusCode).toBe(200)
     const body = response.json()
-    expect(body).toMatchObject({ id: user.id, username: user.username, roles: [], mustChangePassword: false })
+    expect(body).toMatchObject({
+      id: user.id,
+      username: user.username,
+      status: 'ACTIVE',
+      roles: [{ role: 'MEMBER', departmentId: null }],
+      mustChangePassword: false,
+    })
     expect(JSON.stringify(body)).not.toContain('argon2')
 
     const cookie = response.cookies.find((item) => item.name === SESSION_COOKIE)
@@ -108,10 +114,11 @@ describe('POST /auth/login', () => {
     for (let attempt = 1; attempt <= 5; attempt++) {
       expect((await login(user.username, `sai-mat-khau-lan-${attempt}`)).statusCode).toBe(401)
     }
-    // Đúng mật khẩu vẫn bị chặn trong thời gian chờ.
+    // Đúng mật khẩu vẫn bị chặn trong thời gian chờ, và trả lời y hệt sai mật khẩu (SEC-08).
     const blocked = await login(user.username, PASSWORD)
-    expect(blocked.statusCode).toBe(429)
-    expect(blocked.json().error).toBe('rate_limited')
+    expect(blocked.statusCode).toBe(401)
+    expect(blocked.json()).toEqual({ error: 'unauthenticated', message: 'Sai tên đăng nhập hoặc mật khẩu.' })
+    expect(sessionToken(blocked)).toBeUndefined()
 
     const locked = await db.user.findUniqueOrThrow({ where: { id: user.id } })
     expect(locked.lockoutUntil!.getTime() - Date.now()).toBeGreaterThan(14 * 60 * 1000)
@@ -120,12 +127,6 @@ describe('POST /auth/login', () => {
     await db.user.update({ where: { id: user.id }, data: { lockoutUntil: new Date(Date.now() - 1000) } })
     expect((await login(user.username, PASSWORD)).statusCode).toBe(200)
     expect((await db.user.findUniqueOrThrow({ where: { id: user.id } })).failedLoginAttempts).toBe(0)
-  })
-
-  it('also makes unknown usernames wait, so the lockout does not reveal which accounts exist', async () => {
-    const username = `ma-${tag}`
-    for (let attempt = 1; attempt <= 5; attempt++) expect((await login(username, PASSWORD)).statusCode).toBe(401)
-    expect((await login(username, PASSWORD)).statusCode).toBe(429)
   })
 
   it('refuses locked and inactive accounts with the generic message', async () => {
@@ -151,6 +152,12 @@ describe('POST /auth/login', () => {
 
     const empty = await app.inject({ method: 'POST', url: '/auth/login', payload: {}, headers: { origin: ORIGIN } })
     expect(empty.statusCode).toBe(422)
+
+    // Mọi POST/PUT/PATCH/DELETE đều phải có Origin đúng, kể cả khi có phiên hợp lệ.
+    const token = sessionToken(await login(user.username, PASSWORD))
+    const logout = await app.inject({ method: 'POST', url: '/auth/logout', cookies: { [SESSION_COOKIE]: token ?? '' } })
+    expect(logout.statusCode).toBe(403)
+    expect((await me(token)).statusCode).toBe(200)
   })
 
   it('limits login attempts per IP address', async () => {
@@ -174,7 +181,22 @@ describe('GET /auth/me', () => {
 
     const response = await me(token)
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toMatchObject({ id: user.id, roles: [{ role: 'BOARD', departmentId: null }] })
+    expect(response.json()).toMatchObject({
+      id: user.id,
+      username: user.username,
+      status: 'ACTIVE',
+      mustChangePassword: false,
+      roles: [
+        { role: 'MEMBER', departmentId: null },
+        { role: 'BOARD', departmentId: null },
+      ],
+    })
+    // Tạm đến B3: phiên mới coi như đã qua 2 lớp.
+    expect((await db.session.findFirstOrThrow({ where: { userId: user.id } })).twoFactorVerified).toBe(true)
+
+    // Phiên chưa qua 2 lớp thì mất BOARD (RP-13).
+    await db.session.updateMany({ where: { userId: user.id }, data: { twoFactorVerified: false } })
+    expect((await me(token)).json().roles).toEqual([{ role: 'MEMBER', departmentId: null }])
     await db.userRole.deleteMany({ where: { userId: user.id } })
   })
 

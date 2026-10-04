@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { db } from '../../db/client.js'
-import { rateLimited, unauthenticated } from '../../lib/errors.js'
+import { unauthenticated } from '../../lib/errors.js'
 import { hashPassword, verifyPassword } from '../../lib/password.js'
 import type { AuthUser, RoleGrant } from './rbac.js'
 
@@ -65,33 +65,20 @@ export const loginSchema = z.object({
 export const MAX_FAILED_LOGINS = 5
 export const LOCKOUT_MS = 15 * 60 * 1000
 
+// Sai tên đăng nhập, sai mật khẩu, tài khoản đang bị chặn tạm thời, bị khóa: cùng một phản hồi (SEC-08).
 const invalidCredentials = () => unauthenticated('Sai tên đăng nhập hoặc mật khẩu.')
-const tooManyAttempts = () => rateLimited('Bạn đã nhập sai quá nhiều lần. Vui lòng thử lại sau 15 phút.')
-
-// Tên đăng nhập không tồn tại cũng bị chờ 15 phút như tài khoản thật, để không lộ tài khoản nào có thật (SEC-05).
-// Lưu trong bộ nhớ vì API chạy 1 process (docs/06 mục 5, quyết định 6).
-const unknownUserFailures = new Map<string, { count: number; lockoutUntil: number }>()
-
-function recordUnknownFailure(username: string, now: number) {
-  if (unknownUserFailures.size > 10_000) unknownUserFailures.clear()
-  const entry = unknownUserFailures.get(username) ?? { count: 0, lockoutUntil: 0 }
-  entry.count += 1
-  if (entry.count >= MAX_FAILED_LOGINS) {
-    entry.count = 0
-    entry.lockoutUntil = now + LOCKOUT_MS
-  }
-  unknownUserFailures.set(username, entry)
-}
 
 // Băm giả để thời gian trả lời khi sai tên đăng nhập giống khi sai mật khẩu.
 let dummyHash: Promise<string> | undefined
 const getDummyHash = () => (dummyHash ??= hashPassword('mat-khau-gia-de-can-bang-thoi-gian'))
 
-/** Kiểm tra mật khẩu và trả về id tài khoản. Mọi lỗi đăng nhập chỉ báo chung một thông báo. */
+/**
+ * Kiểm tra mật khẩu và trả về id tài khoản (SEC-05, SEC-08). Sai 5 lần liên tiếp thì chặn 15 phút;
+ * trong lúc bị chặn, đúng mật khẩu vẫn nhận cùng câu "Sai tên đăng nhập hoặc mật khẩu".
+ */
 export async function verifyLogin(input: z.infer<typeof loginSchema>, now = new Date()) {
-  const username = input.username
   const user = await db.user.findUnique({
-    where: { username },
+    where: { username: input.username },
     select: {
       id: true,
       passwordHash: true,
@@ -103,14 +90,15 @@ export async function verifyLogin(input: z.infer<typeof loginSchema>, now = new 
   })
 
   if (!user) {
-    const entry = unknownUserFailures.get(username)
-    if (entry && entry.lockoutUntil > now.getTime()) throw tooManyAttempts()
+    // Vẫn băm để thời gian phản hồi giống khi tài khoản tồn tại.
     await verifyPassword(await getDummyHash(), input.password)
-    recordUnknownFailure(username, now.getTime())
     throw invalidCredentials()
   }
 
-  if (user.lockoutUntil && user.lockoutUntil > now) throw tooManyAttempts()
+  if (user.lockoutUntil && user.lockoutUntil > now) {
+    await verifyPassword(await getDummyHash(), input.password)
+    throw invalidCredentials()
+  }
 
   if (!(await verifyPassword(user.passwordHash, input.password))) {
     const { failedLoginAttempts } = await db.user.update({
@@ -142,7 +130,7 @@ export async function verifyLogin(input: z.infer<typeof loginSchema>, now = new 
 export async function getMe(user: AuthUser) {
   const profile = await db.user.findUniqueOrThrow({
     where: { id: user.id },
-    select: { username: true, fullName: true, mustChangePassword: true },
+    select: { username: true, fullName: true, status: true, mustChangePassword: true },
   })
   return { id: user.id, departmentId: user.departmentId, roles: user.roles, ...profile }
 }

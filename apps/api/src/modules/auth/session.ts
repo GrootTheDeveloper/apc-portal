@@ -28,7 +28,15 @@ export const hashToken = (token: string) => createHash('sha256').update(token).d
 export async function createSession(userId: string, meta: { ipAddress: string; userAgent: string | undefined }) {
   const token = randomBytes(32).toString('base64url')
   await db.session.create({
-    data: { userId, tokenHash: hashToken(token), ipAddress: meta.ipAddress, userAgent: meta.userAgent ?? null },
+    data: {
+      userId,
+      tokenHash: hashToken(token),
+      ipAddress: meta.ipAddress,
+      userAgent: meta.userAgent ?? null,
+      // TODO(B3): tạm coi mọi phiên đã qua 2 lớp để tài khoản BOARD mẫu dùng được trang quản trị khi phát triển.
+      // B3 đổi thành false và chỉ bật sau khi người dùng nhập đúng mã 2 lớp (docs/plan/A-dang-nhap.md, A2).
+      twoFactorVerified: true,
+    },
   })
   return token
 }
@@ -37,13 +45,13 @@ export async function createSession(userId: string, meta: { ipAddress: string; u
 export async function findActiveSession(token: string, now = new Date()) {
   const session = await db.session.findUnique({
     where: { tokenHash: hashToken(token) },
-    select: { id: true, userId: true, revokedAt: true, lastActiveAt: true },
+    select: { id: true, userId: true, revokedAt: true, lastActiveAt: true, twoFactorVerified: true },
   })
   if (!session || session.revokedAt) return null
   const idleMs = now.getTime() - session.lastActiveAt.getTime()
   if (idleMs > SESSION_IDLE_MS) return null
   if (idleMs > TOUCH_AFTER_MS) await db.session.update({ where: { id: session.id }, data: { lastActiveAt: now } })
-  return { id: session.id, userId: session.userId }
+  return { id: session.id, userId: session.userId, twoFactorVerified: session.twoFactorVerified }
 }
 
 export async function revokeSession(sessionId: string) {
@@ -62,15 +70,15 @@ const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
 /**
  * Gắn `request.user` từ cookie `apc_session` cho mọi request, và chặn CSRF (docs/06 mục 5, quyết định 2):
- * request thay đổi dữ liệu đi kèm phiên (hoặc gọi /auth/*) phải có header Origin trùng WEB_URL.
+ * mọi request POST/PUT/PATCH/DELETE phải có header Origin trùng WEB_URL, nếu không trả 403.
  */
 export function registerSession(app: FastifyInstance, config: AppConfig) {
   app.decorateRequest('sessionId', null)
 
   app.addHook('onRequest', async (request) => {
-    if (!UNSAFE_METHODS.has(request.method)) return
-    const usesSession = request.url.startsWith('/auth/') || (request.headers.cookie ?? '').includes(`${SESSION_COOKIE}=`)
-    if (usesSession && request.headers.origin !== config.WEB_URL) throw forbidden('Yêu cầu không hợp lệ.')
+    if (UNSAFE_METHODS.has(request.method) && request.headers.origin !== config.WEB_URL) {
+      throw forbidden('Yêu cầu không hợp lệ.')
+    }
   })
 
   // preHandler chạy sau onRequest của @fastify/cookie nên request.cookies đã có sẵn.
@@ -79,7 +87,7 @@ export function registerSession(app: FastifyInstance, config: AppConfig) {
     if (!token) return
 
     const session = await findActiveSession(token)
-    const user = session ? await loadAuthUser(session.userId) : null
+    const user = session ? await loadAuthUser(session.userId, session) : null
     if (!session || !user) {
       // Tài khoản bị khóa/ngừng hoạt động: thu hồi luôn phiên cũ (docs/02 mục 12.5).
       if (session) await revokeSession(session.id)

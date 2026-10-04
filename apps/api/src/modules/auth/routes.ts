@@ -15,7 +15,8 @@ export function authRoutes(config: AppConfig) {
       async (request, reply) => {
         const input = loginSchema.parse(request.body)
         const userId = await verifyLogin(input)
-        const user = await loadAuthUser(userId)
+        // Phiên mới tạo đang tạm đặt twoFactorVerified = true (xem createSession, TODO B3).
+        const user = await loadAuthUser(userId, { twoFactorVerified: true })
         if (!user) throw unauthenticated()
 
         // Đăng nhập lại trên cùng trình duyệt: bỏ phiên cũ trước khi cấp phiên mới.

@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest'
 import { ADMIN_ROLES, hasAnyRole, hasRole, type Me, type RoleGrant } from './auth'
 import { ADMIN_MENU, PORTAL_MENU, visibleMenu } from './menu'
 
+// Giống /auth/me: luôn có MEMBER kèm ban của người dùng.
 const person = (roles: RoleGrant[]): Me => ({
   id: 'u',
   username: 'u',
   fullName: 'Người dùng',
+  status: 'ACTIVE',
   departmentId: 'dept-a',
-  roles,
+  roles: [{ role: 'MEMBER', departmentId: 'dept-a' }, ...roles],
   mustChangePassword: false,
 })
 
@@ -49,16 +51,19 @@ describe('menu by role (sitemap mục 10)', () => {
       'Tài liệu',
       'Email giao dịch',
     ])
+    expect(labels(manager)).not.toContain('Tổ chức')
+    expect(labels(manager)).not.toContain('Tài khoản')
   })
 
-  it('shows the board every admin menu', () => {
+  it('shows the board every admin menu, without the post-launch System and Retention groups', () => {
     expect(labels(board)).toEqual(ADMIN_MENU.map((item) => item.label))
+    for (const later of ['Hệ thống', 'Lưu giữ dữ liệu']) expect(labels(board)).not.toContain(later)
   })
 
   it('keeps TECH_ADMIN out of business data menus', () => {
     const techMenu = labels(tech)
-    expect(techMenu).toEqual(['Tổng quan quản trị', 'Tài khoản', 'Phân quyền', 'Lưu giữ dữ liệu', 'Audit log', 'Hệ thống'])
-    for (const business of ['Tuyển thành viên', 'Thành viên', 'Sự kiện', 'Tài liệu', 'Dữ liệu cá nhân']) {
+    expect(techMenu).toEqual(['Tổng quan quản trị', 'Tài khoản', 'Phân quyền', 'Email giao dịch', 'Audit log'])
+    for (const business of ['Tuyển thành viên', 'Thành viên', 'Sự kiện', 'Bài viết và thông báo', 'Tổ chức', 'Tài liệu']) {
       expect(techMenu).not.toContain(business)
     }
   })

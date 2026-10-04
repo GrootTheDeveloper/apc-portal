@@ -1,8 +1,9 @@
 import { hasAnyRole, type Me, type Role } from './auth'
 
 // Menu portal và quản trị theo vai trò — sửa đúng một chỗ này khi thêm trang (A3).
-// Route theo docs/04-sitemap.md mục 7, 8, 9; vai trò theo mục 10. Mục chỉ hiện khi người dùng có
-// ít nhất một vai trò trong `roles`. Quyền chỉ dùng khi xử lý sự cố (INCIDENT) không đưa vào menu mặc định.
+// Route theo docs/04-sitemap.md mục 7, 8; vai trò theo mục 10. Mục chỉ hiện khi người dùng có
+// ít nhất một vai trò trong `roles`. Nhóm Hệ thống (/admin/system/*) và Retention (/admin/data-retention)
+// không thuộc bản phát hành đầu (PRD mục 13.1) nên không có trong menu.
 
 export type MenuItem = { label: string; to: string; roles: readonly Role[] }
 
@@ -30,11 +31,9 @@ export const ADMIN_MENU: readonly MenuItem[] = [
   { label: 'Dự án và sản phẩm', to: '/admin/content/projects', roles: MANAGER_OR_BOARD },
   { label: 'Tài liệu', to: '/admin/documents', roles: MANAGER_OR_BOARD },
   { label: 'Tổ chức', to: '/admin/organization/profile', roles: ['BOARD'] },
-  { label: 'Email giao dịch', to: '/admin/email-deliveries', roles: MANAGER_OR_BOARD },
+  { label: 'Email giao dịch', to: '/admin/email-deliveries', roles: ['DEPARTMENT_MANAGER', 'BOARD', 'TECH_ADMIN'] },
   { label: 'Dữ liệu cá nhân', to: '/admin/data-requests', roles: ['BOARD'] },
-  { label: 'Lưu giữ dữ liệu', to: '/admin/data-retention', roles: BOARD_OR_TECH },
   { label: 'Audit log', to: '/admin/audit-logs', roles: BOARD_OR_TECH },
-  { label: 'Hệ thống', to: '/admin/system', roles: BOARD_OR_TECH },
 ]
 
 export function visibleMenu(menu: readonly MenuItem[], user: Me | null): MenuItem[] {

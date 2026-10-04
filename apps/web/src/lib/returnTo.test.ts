@@ -5,7 +5,8 @@ import { DEFAULT_AFTER_LOGIN, loginUrl, safeReturnTo } from './returnTo'
 describe('safeReturnTo', () => {
   it('keeps internal paths with their query string', () => {
     expect(safeReturnTo('/admin')).toBe('/admin')
-    expect(safeReturnTo('/portal/events?page=2')).toBe('/portal/events?page=2')
+    expect(safeReturnTo('/portal')).toBe('/portal')
+    expect(safeReturnTo('/news?page=2')).toBe('/news?page=2')
   })
 
   it('falls back to /portal for missing, external or tricky values (no open redirect)', () => {
@@ -21,6 +22,8 @@ describe('safeReturnTo', () => {
       'javascript:alert(1)',
       '/login',
       '/login?returnTo=/admin',
+      '/khong-ton-tai',
+      '/admin/../../evil',
     ]) {
       expect(safeReturnTo(value)).toBe(DEFAULT_AFTER_LOGIN)
     }
