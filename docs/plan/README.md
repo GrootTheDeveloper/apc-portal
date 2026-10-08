@@ -92,6 +92,8 @@ Dùng lại, không viết bản khác.
 | Mẫu card tin tức, sự kiện, dự án | `NewsSection`, `EventsSection`, `ProjectsSection` trong `apps/web/src/pages/home/sections/`. Người dùng lại đầu tiên chuyển card sang `apps/web/src/components/` |
 | Đọc, ghi database | `db` trong `apps/api/src/db/client.ts` |
 | Trả lỗi 401, 403, 404, 409, 429 | `throw unauthenticated()`, `forbidden()`, `notFound()`, `conflict()`, `rateLimited()` trong `apps/api/src/lib/errors.ts` |
+| Chặn quyền ở API | `requireAuth`, `requireRole(...)`, `requireScope(...)`, `currentUser(request)`, `departmentScope(user)` (lọc danh sách theo ban) trong `apps/api/src/modules/auth/rbac.ts`; ví dụ ở đầu file |
+| Người đang đăng nhập ở web | `useAuth()` trong `apps/web/src/hooks/useAuth.ts`; chặn route bằng `<RequireAuth roles={...}>` trong `apps/web/src/components/RequireAuth.tsx` |
 | Băm và kiểm tra mật khẩu | `hashPassword`, `verifyPassword` trong `apps/api/src/lib/password.ts` |
 | Phân trang danh sách | `pageQuery`, `pageArgs`, `toPage` trong `apps/api/src/lib/pagination.ts` |
 | Mã tra cứu ngẫu nhiên, slug | `publicCode()`, `slugify()` trong `apps/api/src/lib/ids.ts` |

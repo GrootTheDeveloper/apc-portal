@@ -44,10 +44,12 @@ Mảng này làm các phần bảo vệ dữ liệu dùng chung cho cả hệ th
 - `metadata` chỉ chứa tên trường đã thay đổi và giá trị đã tối thiểu hóa (Vai trò & quyền §11). Làm sạch **đệ quy** trước khi lưu: bỏ mọi khóa có tên chứa `password`, `token`, `secret`, `totp`, `recovery`, `code`, và các khóa chứa nội dung biểu mẫu (`answers`, `content`, `body`) (SEC-09).
 - Khai báo danh sách tên `action` trong một hằng số trong cùng file, theo nhóm ở [Vai trò & quyền](../02-roles-permissions.md) mục 11.
 - Không có hàm hay API sửa, xóa nhật ký.
+- Nối với A1: hàm `denied(...)` trong `apps/api/src/modules/auth/rbac.ts` đang để sẵn `TODO(B1)`. Thay bằng `audit(...)` loại `SECURITY`, `result = FAILURE` cho request bị từ chối 401/403 (FLOW-20). Sửa đúng chỗ đó, báo Phúc trong PR.
 
 **Xong khi:**
 
 - [ ] Test: gọi `audit(...)` tạo đúng một dòng với đủ trường.
+- [ ] Gọi route `requireRole('BOARD')` bằng tài khoản `MEMBER` tạo một dòng `SECURITY` / `FAILURE`.
 - [ ] Test: `metadata` chứa `password`, `profileCode` hoặc `answers` (kể cả lồng trong object con) thì các khóa đó không có trong dòng đã lưu.
 - [ ] Test: `audit(...)` thành công trong transaction bị rollback thì không còn dòng nhật ký; dòng `FAILURE` ghi ngoài transaction vẫn còn.
 - [ ] Test: `audit({ service: 'test-job' }, ...)` lưu `actorType = SERVICE`, `actorId` rỗng.
