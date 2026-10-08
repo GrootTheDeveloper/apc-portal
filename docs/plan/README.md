@@ -106,8 +106,9 @@ Dùng lại, không viết bản khác.
 | Phần | Trạng thái |
 | --- | --- |
 | Trang chủ `/` | Hoàn chỉnh giao diện, dùng nội dung mẫu |
-| Router và layout công khai | Có Navbar, Footer; các route `/about`, `/news`, `/events`, `/projects`, `/recruitment`, `/recruitment/application-lookup`, `/events/registration-lookup`, `/privacy`, `/login`, `/admin` đang là trang tạm (`Placeholder`) |
-| API | Có `/health`, bộ xử lý lỗi chung, cấu hình đọc từ `.env` |
+| Router và layout công khai | Có Navbar, Footer; các route `/about`, `/news`, `/events`, `/projects`, `/recruitment`, `/recruitment/application-lookup`, `/events/registration-lookup`, `/privacy`, `/account/activate` đang là trang tạm (`Placeholder`) |
+| Đăng nhập (A1, A2 — xong 09/10) | Trang `/login`; `/portal`, `/admin` chặn bằng `<RequireAuth>` và đang là trang tạm liệt kê menu theo vai trò (layout thật ở A3). Navbar hiện Đăng nhập hoặc Portal/Quản trị/Đăng xuất |
+| API | Có `/health`, bộ xử lý lỗi chung, cấu hình đọc từ `.env`; `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`; phân quyền `requireAuth`/`requireRole`/`requireScope`; chặn CSRF theo `Origin` cho mọi request ghi |
 | Database | Có bảng `users`, `user_roles`, `sessions`, `departments`, `posts`, `events`, `projects`, `recruitment_rounds`, `membership_applications` |
 | CI | Chạy `pnpm check` trên mỗi PR; nhánh `main` được bảo vệ, cần 1 Approve |
 
