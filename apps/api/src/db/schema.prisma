@@ -84,6 +84,30 @@ enum RecruitmentRoundStatus {
   ARCHIVED
 }
 
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  EXPORT
+  IMPORT
+  GRANT_ROLE
+  REVOKE_ROLE
+  STATUS_CHANGE
+}
+
+enum ResourceType {
+  USER
+  POST
+  EVENT
+  PROJECT
+  MEMBERSHIP_APPLICATION
+  DEPARTMENT
+  RECRUITMENT_ROUND
+  SYSTEM
+}
+
 // MODELS — TỔ CHỨC
 
 model Department {
@@ -145,6 +169,7 @@ model User {
   grantedRoles UserRole[] @relation("RoleGrantor")
   revokedRoles UserRole[] @relation("RoleRevoker")
   sessions     Session[]
+  auditLogs    AuditLog[]
 
   authoredPosts  Post[] @relation("PostAuthor")
   publishedPosts Post[] @relation("PostPublisher")
@@ -359,4 +384,29 @@ model MembershipApplication {
   @@index([applicantEmail])
   @@index([recruitmentRoundId])
   @@map("membership_applications")
+}
+
+// MODELS — KIỂM TOÁN (AUDIT)
+
+model AuditLog {
+  id           String       @id @default(cuid())
+  actorId      String?
+  actor        User?        @relation(fields: [actorId], references: [id])
+  actorRole    Role?
+  action       AuditAction
+  resourceType ResourceType
+  resourceId   String?
+  ipAddress    String?
+  userAgent    String?
+  isSuccess    Boolean
+  reason       String?
+  details      Json?
+  
+  createdAt    DateTime     @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }

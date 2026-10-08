@@ -28,6 +28,7 @@ erDiagram
   membership_applications }o--|o departments : "desiredDepartment"
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
+  audit_logs }o--|o users : "actor"
 ```
 
 ## Chi tiết từng bảng
@@ -183,6 +184,20 @@ erDiagram
     DateTime submittedAt
     DateTime updatedAt
   }
+  audit_logs {
+    String id PK
+    String actorId FK "tùy chọn"
+    Role actorRole "tùy chọn. MEMBER / DEPARTMENT_MANAGER / BOARD / TECH_ADMIN"
+    AuditAction action "CREATE / UPDATE / DELETE / LOGIN / LOGOUT / EXPORT / IMPORT / GRANT_ROLE / REVOKE_ROLE / STATUS_CHANGE"
+    ResourceType resourceType "USER / POST / EVENT / PROJECT / MEMBERSHIP_APPLICATION / DEPARTMENT / RECRUITMENT_ROUND / SYSTEM"
+    String resourceId "tùy chọn"
+    String ipAddress "tùy chọn"
+    String userAgent "tùy chọn"
+    Boolean isSuccess
+    String reason "tùy chọn"
+    Json details "tùy chọn"
+    DateTime createdAt
+  }
 
   users }o--|o departments : "department"
   user_roles }o--|| users : "user"
@@ -202,6 +217,7 @@ erDiagram
   membership_applications }o--|o departments : "desiredDepartment"
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
+  audit_logs }o--|o users : "actor"
 ```
 
 ## Giá trị trạng thái (enum)
@@ -218,3 +234,5 @@ erDiagram
 | `RoleAssignmentStatus` | `PENDING`, `ACTIVE`, `EXPIRED`, `REVOKED` |
 | `EventStatus` | `DRAFT`, `PUBLISHED`, `CANCELLED`, `ENDED`, `ARCHIVED` |
 | `RecruitmentRoundStatus` | `DRAFT`, `OPEN`, `CLOSED`, `ARCHIVED` |
+| `AuditAction` | `CREATE`, `UPDATE`, `DELETE`, `LOGIN`, `LOGOUT`, `EXPORT`, `IMPORT`, `GRANT_ROLE`, `REVOKE_ROLE`, `STATUS_CHANGE` |
+| `ResourceType` | `USER`, `POST`, `EVENT`, `PROJECT`, `MEMBERSHIP_APPLICATION`, `DEPARTMENT`, `RECRUITMENT_ROUND`, `SYSTEM` |
