@@ -126,6 +126,8 @@ Mảng này làm phần nền cho mọi API cần đăng nhập: hàm kiểm quy
 - Bộ chặn route kiểm tra theo thứ tự Sitemap §11.1: phiên → trạng thái tài khoản → bắt buộc đổi mật khẩu (về `/account/activate`) → xác thực 2 lớp (về `/account/setup-two-factor` hoặc `/account/two-factor`) → vai trò (trang 403) → phạm vi (trang 404).
 - Trang 403 dùng chung (`PAGE-SYS-03`), dùng lại trang 404 có sẵn.
 - Trên điện thoại, menu thu gọn thành nút mở.
+- Phiên hết hạn hoặc bị thu hồi khi đang dùng: request nào nhận 401 thì `AuthProvider` chuyển về trạng thái chưa đăng nhập và đưa về `/login?returnTo=<trang đang mở>`. Xử lý ở một chỗ (`AuthProvider` hoặc `api(...)`), không rải ở từng trang.
+- Gom danh sách route của web về một chỗ để router và `RETURN_TO_ROUTES` (`apps/web/src/lib/returnTo.ts`, A2) dùng chung; thêm route mới không phải khai báo ở hai nơi.
 
 **Xong khi:**
 
@@ -134,6 +136,8 @@ Mảng này làm phần nền cho mọi API cần đăng nhập: hàm kiểm quy
 - [ ] `techadmin` thấy Tài khoản, Phân quyền, Audit log, Email giao dịch; không thấy Tuyển thành viên, Thành viên, Sự kiện, Bài viết, Tổ chức.
 - [ ] Tài khoản `pending` mở bất kỳ trang `/portal/*` nào đều bị đưa về `/account/activate`.
 - [ ] Thêm một trang mới vào menu chỉ cần thêm một phần tử vào mảng.
+- [ ] Đăng xuất ở một tab, thao tác tiếp ở tab khác thì về `/login`; đăng nhập lại quay về đúng trang đang mở.
+- [ ] Thêm route mới chỉ khai báo một chỗ; `returnTo` tới route đó vẫn được chấp nhận.
 - [ ] Đã nhắn cả nhóm cách thêm trang vào layout và menu.
 
 ### A4. Kích hoạt tài khoản & đổi mật khẩu — hạn CN 01/11
