@@ -1,5 +1,5 @@
-import { AuditAction, ResourceType } from '../../db/generated/index.js'
-import type { Role } from '../../db/generated/index.js'
+import { AuditAction, ResourceType } from '../../db/generated/client.js'
+import type { Role } from '../../db/generated/client.js'
 import { db } from '../../db/client.js'
 
 export type AuditParams = {
@@ -39,17 +39,17 @@ export async function audit(params: AuditParams) {
 
   return await db.auditLog.create({
     data: {
-      actorId: params.actorId,
-      actorRole: params.actorRole,
+      actorId: params.actorId ?? null,
+      actorRole: params.actorRole ?? null,
       action: params.action,
       resourceType: params.resourceType,
-      resourceId: params.resourceId,
-      ipAddress: params.ipAddress,
-      userAgent: params.userAgent,
+      resourceId: params.resourceId ?? null,
+      ipAddress: params.ipAddress ?? null,
+      userAgent: params.userAgent ?? null,
       isSuccess: params.isSuccess,
-      reason: params.reason,
+      reason: params.reason ?? null,
       // Prisma requires either a valid JSON or undefined/null for Json? field
-      details: maskedDetails !== undefined ? maskedDetails : undefined,
+      ...(maskedDetails !== undefined ? { details: maskedDetails } : {}),
     }
   })
 }
