@@ -28,6 +28,7 @@ erDiagram
   membership_applications }o--|o departments : "desiredDepartment"
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
+  consent_records }o--|o users : "user"
 ```
 
 ## Chi tiết từng bảng
@@ -183,6 +184,16 @@ erDiagram
     DateTime submittedAt
     DateTime updatedAt
   }
+  consent_records {
+    String id PK
+    String email "Email của người đồng ý (bắt buộc)"
+    String userId FK "tùy chọn. Gắn với User nếu đã có tài khoản"
+    String purpose "Mục đích (vd: MEMBERSHIP_APPLICATION, EVENT_REGISTRATION)"
+    String privacyVersion "Phiên bản chính sách lúc đồng ý (vd: v1.0)"
+    String ipAddress "tùy chọn"
+    String userAgent "tùy chọn"
+    DateTime createdAt
+  }
 
   users }o--|o departments : "department"
   user_roles }o--|| users : "user"
@@ -202,6 +213,7 @@ erDiagram
   membership_applications }o--|o departments : "desiredDepartment"
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
+  consent_records }o--|o users : "user"
 ```
 
 ## Giá trị trạng thái (enum)

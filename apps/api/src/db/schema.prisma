@@ -145,6 +145,7 @@ model User {
   grantedRoles UserRole[] @relation("RoleGrantor")
   revokedRoles UserRole[] @relation("RoleRevoker")
   sessions     Session[]
+  consentRecords ConsentRecord[]
 
   authoredPosts  Post[] @relation("PostAuthor")
   publishedPosts Post[] @relation("PostPublisher")
@@ -359,4 +360,23 @@ model MembershipApplication {
   @@index([applicantEmail])
   @@index([recruitmentRoundId])
   @@map("membership_applications")
+}
+
+// MODELS — QUYỀN RIÊNG TƯ (PRIVACY)
+
+model ConsentRecord {
+  id             String   @id @default(cuid())
+  email          String   // Email của người đồng ý (bắt buộc)
+  userId         String?  // Gắn với User nếu đã có tài khoản
+  user           User?    @relation(fields: [userId], references: [id])
+  purpose        String   // Mục đích (vd: MEMBERSHIP_APPLICATION, EVENT_REGISTRATION)
+  privacyVersion String   // Phiên bản chính sách lúc đồng ý (vd: v1.0)
+  ipAddress      String?
+  userAgent      String?
+  
+  createdAt      DateTime @default(now())
+
+  @@index([email])
+  @@index([userId])
+  @@map("consent_records")
 }
