@@ -6,6 +6,7 @@ import { RootLayout } from './layouts/RootLayout'
 import { ADMIN_ROLES } from './lib/auth'
 import { ADMIN_MENU, PORTAL_MENU } from './lib/menu'
 import { LoginPage } from './pages/auth/login/LoginPage'
+import { AboutPage } from './pages/about/AboutPage'
 import { HomePage } from './pages/home/HomePage'
 import { MenuPlaceholder } from './pages/MenuPlaceholder'
 import { NotFound } from './pages/NotFound'
@@ -17,7 +18,7 @@ const router = createBrowserRouter([
     element: <RootLayout />,
     children: [
       { index: true, element: <HomePage /> },
-      { path: 'about', element: <Placeholder title="Về APC" /> },
+      { path: 'about', element: <AboutPage /> },
       { path: 'news', element: <Placeholder title="Tin tức" /> },
       { path: 'events', element: <Placeholder title="Sự kiện" /> },
       { path: 'projects', element: <Placeholder title="Dự án" /> },
