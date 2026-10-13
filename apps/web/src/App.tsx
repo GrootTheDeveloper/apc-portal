@@ -10,6 +10,8 @@ import { HomePage } from './pages/home/HomePage'
 import { MenuPlaceholder } from './pages/MenuPlaceholder'
 import { NotFound } from './pages/NotFound'
 import { Placeholder } from './pages/Placeholder'
+import { RecruitmentListPage } from './pages/recruitment/list/RecruitmentListPage'
+import { RecruitmentDetailPage } from './pages/recruitment/detail/RecruitmentDetailPage'
 
 const router = createBrowserRouter([
   {
@@ -21,7 +23,8 @@ const router = createBrowserRouter([
       { path: 'news', element: <Placeholder title="Tin tức" /> },
       { path: 'events', element: <Placeholder title="Sự kiện" /> },
       { path: 'projects', element: <Placeholder title="Dự án" /> },
-      { path: 'recruitment', element: <Placeholder title="Gia nhập APC" /> },
+      { path: 'recruitment', element: <RecruitmentListPage /> },
+      { path: 'recruitment/:slug', element: <RecruitmentDetailPage /> },
       { path: 'recruitment/application-lookup', element: <Placeholder title="Tra cứu hồ sơ ứng tuyển" /> },
       { path: 'events/registration-lookup', element: <Placeholder title="Tra cứu đăng ký sự kiện" /> },
       { path: 'privacy', element: <Placeholder title="Chính sách quyền riêng tư" /> },
