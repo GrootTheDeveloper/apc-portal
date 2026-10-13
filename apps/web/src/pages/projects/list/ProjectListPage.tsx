@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
@@ -6,16 +5,11 @@ import { Button } from '../../../components/Button'
 import { Eyebrow } from '../../../components/Eyebrow'
 import { Pagination } from '../../../components/Pagination'
 import { ProjectCard } from '../../../components/ProjectCard'
-import { ApiError, type Page } from '../../../lib/api'
+import { useMockAbout } from '../../../hooks/useMockAbout'
 import { getProjectList, PROJECT_TYPES, type ProjectItem } from './mock'
+import type { Page } from '../../../lib/api'
 
 const PAGE_SIZE = 12
-
-type Result = {
-  key: string | null
-  data?: Page<ProjectItem>
-  error?: ApiError
-}
 
 /** Trang danh sách dự án (hỗ trợ phân trang, lọc theo thể loại, đủ 5 trạng thái) */
 export function ProjectListPage() {
@@ -25,46 +19,10 @@ export function ProjectListPage() {
   const pageParam = searchParams.get('page')
   const currentPage = Math.max(1, parseInt(pageParam || '1', 10) || 1)
 
-  const [attempt, setAttempt] = useState(0)
-  const [result, setResult] = useState<Result>({ key: null })
-
-  const key = `${attempt}:${currentPage}:${currentType ?? ''}`
-
-  useEffect(() => {
-    let cancelled = false
-
-    getProjectList({
-      page: currentPage,
-      pageSize: PAGE_SIZE,
-      type: currentType,
-    })
-      .then((res) => {
-        if (!cancelled) {
-          setResult({ key, data: res })
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setResult({
-            key,
-            error:
-              err instanceof ApiError
-                ? err
-                : new ApiError(500, 'unknown', 'Đã có lỗi xảy ra. Vui lòng thử lại.'),
-          })
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [currentPage, currentType, key])
-
-  const loading = result.key !== key
-  const error = loading ? undefined : result.error
-  const data = loading ? undefined : result.data
-
-  const reload = () => setAttempt((count) => count + 1)
+  const { data, loading, error, reload } = useMockAbout<Page<ProjectItem>>(
+    () => getProjectList({ page: currentPage, pageSize: PAGE_SIZE, type: currentType }),
+    [currentPage, currentType],
+  )
 
   const handleTypeChange = (type?: string) => {
     const nextParams = new URLSearchParams(searchParams)

@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
 import { Breadcrumb } from '../../../components/Breadcrumb'
-import { ApiError } from '../../../lib/api'
+import { useMockAbout } from '../../../hooks/useMockAbout'
 import { NotFound } from '../../NotFound'
 import { getProjectDetail, type ProjectItem, type ProjectType } from '../list/mock'
 
@@ -20,61 +19,26 @@ function getTypeColorClass(type: ProjectType): string {
   }
 }
 
-type Result = {
-  key: string | null
-  item?: ProjectItem | null
-  error?: ApiError
-}
-
 /** Trang chi tiết dự án */
 export function ProjectDetailPage() {
   const { slug } = useParams<{ slug: string }>()
 
-  const [attempt, setAttempt] = useState(0)
-  const [result, setResult] = useState<Result>({ key: null })
-
-  const key = slug ? `${attempt}:${slug}` : null
-
-  useEffect(() => {
-    if (!slug || !key) return
-    let cancelled = false
-
-    getProjectDetail(slug)
-      .then((res) => {
-        if (!cancelled) {
-          setResult({ key, item: res })
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setResult({
-            key,
-            error:
-              err instanceof ApiError
-                ? err
-                : new ApiError(500, 'unknown', 'Đã có lỗi xảy ra. Vui lòng thử lại.'),
-          })
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [slug, key])
+  const { data, loading, error, reload } = useMockAbout<ProjectItem | null>(
+    () => (slug ? getProjectDetail(slug) : Promise.resolve(null)),
+    [slug],
+  )
 
   if (!slug) {
     return <NotFound />
   }
 
-  const loading = key !== null && result.key !== key
-  const error = loading ? undefined : result.error
-  const item = loading ? undefined : result.item
-
-  const reload = () => setAttempt((count) => count + 1)
-
-  if (!loading && !error && item === null) {
+  // data là null nghĩa là slug hợp lệ nhưng không tìm thấy dự án.
+  if (!loading && !error && data === null) {
     return <NotFound />
   }
+
+  // Alias để dùng tên quen thuộc trong JSX bên dưới.
+  const item = data
 
   const typeColorClass = item ? getTypeColorClass(item.type) : 'text-apc-blue'
 
