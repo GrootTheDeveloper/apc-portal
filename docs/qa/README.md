@@ -6,11 +6,17 @@
 - Chạy ứng dụng: pnpm dev
 
 ## 2. Bảng tài khoản mẫu
-*(Tham khảo thông tin tài khoản mẫu từ phiếu D - mục D1)*
+| Vai trò / Trạng thái | Tên đăng nhập (Email) | Mật khẩu mẫu | Ghi chú |
+| --- | --- | --- | --- |
+| Admin hệ thống | admin@example.com | `Password123!` | Toàn quyền quản trị hệ thống |
+| Ban quản trị (Board) | board.active@example.com | `Password123!` | Quản lý sự kiện, bài viết, đơn tuyển |
+| Thành viên (Member) | member.a@example.com | `Password123!` | Thành viên CLB bình thường |
+| Chờ duyệt (Pending) | member.pending@example.com | `Password123!` | Tài khoản đang chờ duyệt / kích hoạt |
+| Khóa / Inactive | member.locked@example.com | `Password123!` | Tài khoản bị khóa / không hoạt động |
 
 ## 3. Cách báo lỗi
 - Tạo GitHub Issue mới tại tab **Issues** của repository với tiêu đề kèm mã kịch bản (ví dụ: [KB-02-03] Mô tả lỗi).
-- Gắn nhãn ug và assign đúng người phụ trách mảng.
+- Gắn nhãn **bug** và assign đúng người phụ trách mảng.
 - Lỗi bảo mật tuyệt đối **không** mở Issue công khai mà nhắn trực tiếp cho trưởng dự án.
 
 ## 4. Mục lục các file kịch bản

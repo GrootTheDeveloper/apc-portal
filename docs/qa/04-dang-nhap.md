@@ -60,7 +60,35 @@
 
 ---
 
-### KB-04-05. Kiểm tra giới hạn độ dài mật khẩu mới
+### KB-04-05. Kiểm tra điều hướng khi chưa đăng nhập (Protected Routes)
+- Chức năng: A2 · Luồng: FLOW-15
+- Tài khoản: không đăng nhập
+
+| # | Thao tác | Kết quả phải thấy |
+| --- | --- | --- |
+| 1 | Chưa đăng nhập nhưng nhập trực tiếp đường dẫn `/portal` hoặc `/admin` trên trình duyệt | Hệ thống tự động chuyển hướng (redirect) về trang đăng nhập (`/login`). Sau khi đăng nhập thành công, hệ thống tự động điều hướng quay lại đúng trang ban đầu muốn truy cập. |
+
+| Ngày chạy | Người chạy | Kết quả | Issue |
+| --- | --- | --- | --- |
+| | | | |
+
+---
+
+### KB-04-06. Kiểm tra phân quyền truy cập trang `/admin`
+- Chức năng: A2, A4 · Nghiệm thu: AC-03
+- Tài khoản: tài khoản có trạng thái `board.pending` hoặc vai trò `MEMBER`
+
+| # | Thao tác | Kết quả phải thấy |
+| --- | --- | --- |
+| 1 | Đăng nhập bằng tài khoản có trạng thái `board.pending` hoặc vai trò `MEMBER`, sau đó truy cập vào đường dẫn `/admin` | Hệ thống từ chối truy cập, hiển thị thông báo không đủ quyền hạn hoặc chuyển hướng về trang chủ portal. |
+
+| Ngày chạy | Người chạy | Kết quả | Issue |
+| --- | --- | --- | --- |
+| | | | |
+
+---
+
+### KB-04-07. Kiểm tra giới hạn độ dài mật khẩu mới
 - Chức năng: A4 · Nghiệm thu: SEC-11
 
 | # | Thao tác | Kết quả phải thấy |

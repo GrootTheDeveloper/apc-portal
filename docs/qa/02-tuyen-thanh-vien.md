@@ -10,7 +10,7 @@
 | # | Thao tác | Kết quả phải thấy |
 | --- | --- | --- |
 | 1 | Mở http://localhost:5173/recruitment | Hiển thị danh sách các đợt tuyển thành viên (đang mở và đã đóng) |
-| 2 | Kiểm tra đợt tuyển chưa mở hoặc đã đóng | Đợt tuyển chưa mở hoặc đã đóng **không** có nút **Ứng tuyển** |
+| 2 | Kiểm tra đợt tuyển chưa mở hoặc đã đóng | Đợt tuyển chưa mở hoặc đã đóng **không** có nút **Ứng tuyển** (hoặc hiển thị thông báo trạng thái chưa mở/đã đóng) |
 
 | Ngày chạy | Người chạy | Kết quả | Issue |
 | --- | --- | --- | --- |
@@ -25,7 +25,7 @@
 | # | Thao tác | Kết quả phải thấy |
 | --- | --- | --- |
 | 1 | Mở trang đợt tuyển đang mở, bấm **Ứng tuyển** | Mở form nộp đơn tuyển |
-| 2 | Điền email ungvien1@example.com, MSSV và các trường hợp lệ, **chưa** tick ô đồng ý, bấm **Nộp đơn** | Bị chặn, không gửi được đơn |
+| 2 | Điền email ungvien1@example.com, MSSV và các trường hợp lệ, **chưa** tick ô đồng ý, bấm **Nộp đơn** | Bị chặn, không gửi được đơn, hiển thị thông báo yêu cầu đồng ý điều khoản |
 | 3 | Tick chọn ô đồng ý điều khoản, bấm **Nộp đơn** | Gửi đơn thành công, chuyển hướng đến trang thông báo kèm mã hồ sơ |
 
 | Ngày chạy | Người chạy | Kết quả | Issue |
@@ -57,7 +57,7 @@
 | # | Thao tác | Kết quả phải thấy |
 | --- | --- | --- |
 | 1 | Mở trang tra cứu đơn, nhập mã hồ sơ hợp lệ vừa nhận ở KB-02-02, bấm Tra cứu | Hiển thị trạng thái hồ sơ (ví dụ: Mới) |
-| 2 | Nhập mã hồ sơ sai định dạng hoặc không tồn tại, bấm Tra cứu | Hiển thị thông báo chung, không tiết lộ thông tin chi tiết hệ thống |
+| 2 | Nhập một mã tra cứu không tồn tại hoặc sai định dạng, bấm Tra cứu | Hiển thị thông báo không tìm thấy kết quả hoặc mã đơn không tồn tại |
 
 | Ngày chạy | Người chạy | Kết quả | Issue |
 | --- | --- | --- | --- |
