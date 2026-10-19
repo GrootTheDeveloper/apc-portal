@@ -1,24 +1,5 @@
-// BR-14: dữ liệu lưu UTC nhưng mọi ngày/giờ hiển thị và so sánh theo lịch Việt Nam,
-// không phụ thuộc múi giờ trên máy người xem. Dùng chung cho card sự kiện và lịch tháng.
-export const VN_TIME_ZONE = 'Asia/Ho_Chi_Minh'
-
-const partsFormatter = new Intl.DateTimeFormat('en-GB', {
-  timeZone: VN_TIME_ZONE,
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-
-export type VnParts = { year: number; month: number; day: number; hour: number; minute: number }
-
-/** Lấy các thành phần ngày giờ theo lịch Việt Nam. */
-export function vnParts(value: string | Date): VnParts {
-  const parts = partsFormatter.formatToParts(new Date(value))
-  const pick = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value)
-  return { year: pick('year'), month: pick('month'), day: pick('day'), hour: pick('hour'), minute: pick('minute') }
-}
+// Tháng dạng "2026-10" cho ?month= và lưới lịch tháng. Ngày theo lịch Việt Nam (BR-14), xem vnParts trong format.ts.
+import { vnParts, type VnParts } from './format'
 
 export const vnTodayParts = (): VnParts => vnParts(new Date())
 
@@ -56,8 +37,18 @@ export function monthKeyLabel(key: string): string {
   return `Tháng ${month}/${year}`
 }
 
-/** "14:00" — chỉ giờ:phút theo giờ Việt Nam (dùng cho dòng meta trên card). */
-export function formatVnTime(value: string | Date): string {
-  const { hour, minute } = vnParts(value)
-  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+export type CalendarCell = { day: number; inMonth: boolean }
+
+/** 42 ô (6 hàng x 7 cột, bắt đầu từ thứ Hai) của lưới tháng; ô ngoài tháng là ngày của tháng trước/sau. */
+export function calendarCells(year: number, month: number): CalendarCell[] {
+  // Thứ của ngày mùng 1 là thông tin lịch, không phụ thuộc múi giờ.
+  const firstWeekdayMon0 = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate()
+  const daysInPrevMonth = new Date(Date.UTC(year, month - 1, 0)).getUTCDate()
+  return Array.from({ length: 42 }, (_, index) => {
+    const dayNumber = index - firstWeekdayMon0 + 1
+    if (dayNumber < 1) return { day: daysInPrevMonth + dayNumber, inMonth: false }
+    if (dayNumber > daysInMonth) return { day: dayNumber - daysInMonth, inMonth: false }
+    return { day: dayNumber, inMonth: true }
+  })
 }

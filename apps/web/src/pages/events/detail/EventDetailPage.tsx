@@ -6,8 +6,7 @@ import { Button } from '../../../components/Button'
 import { Eyebrow } from '../../../components/Eyebrow'
 import { EVENT_STATUS_STYLES, eventTypeVisual, type EventCardStatus } from '../../../lib/eventVisual'
 import { NotFound } from '../../NotFound'
-import { formatDate, formatDateTime } from '../../../lib/format'
-import { formatVnTime, vnParts } from '../../../lib/vnTime'
+import { formatDate, formatDateTime, formatTime, vnParts } from '../../../lib/format'
 import { getEventBySlug, useMockApi, type EventDetail } from '../mock'
 
 /** Chỉ mở đăng ký khi sự kiện còn diễn ra và trong thời gian nhận đăng ký (BR-08). */
@@ -57,7 +56,7 @@ export function EventDetailPage() {
   const end = vnParts(data.endAt)
   const sameDay = start.year === end.year && start.month === end.month && start.day === end.day
   const timeText = sameDay
-    ? `${formatDateTime(data.startAt)} – ${formatVnTime(data.endAt)}`
+    ? `${formatDateTime(data.startAt)} – ${formatTime(data.endAt)}`
     : `${formatDateTime(data.startAt)} – ${formatDateTime(data.endAt)}`
   const onlineUrl = safeHttpUrl(data.onlineUrl)
   const descriptionParagraphs = data.description.split('\n\n')

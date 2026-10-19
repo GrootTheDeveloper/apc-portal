@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
 
 import type { EventListItem } from '../mock'
-import { formatVnTime, monthKeyLabel, addMonths, parseMonthKey, vnParts, vnTodayParts } from '../../../lib/vnTime'
+import { formatTime, vnParts } from '../../../lib/format'
+import { addMonths, calendarCells, monthKeyLabel, parseMonthKey, vnTodayParts } from '../../../lib/vnTime'
 
 // Class màu để literal (không nội suy) để Tailwind JIT nhận diện được.
 const STATUS_CHIP: Record<EventListItem['status'], string> = {
@@ -28,11 +29,6 @@ export function EventCalendar({ monthKey, events, onMonthChange }: EventCalendar
   if (!parsed) return null
   const { year, month } = parsed
 
-  // 00:00 giờ VN của ngày 1 = 17:00 UTC của ngày cuối tháng trước (VN = UTC+7, không có DST).
-  const firstWeekdayMon0 = (new Date(Date.UTC(year, month - 1, 1, 0, 0) - 7 * 3_600_000).getUTCDay() + 6) % 7
-  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate()
-  const daysInPrevMonth = new Date(Date.UTC(year, month - 1, 0)).getUTCDate()
-
   const eventsByDay = new Map<number, EventListItem[]>()
   for (const event of events) {
     const { year: eventYear, month: eventMonth, day } = vnParts(event.startAt)
@@ -46,12 +42,7 @@ export function EventCalendar({ monthKey, events, onMonthChange }: EventCalendar
   const isThisMonth = today.year === year && today.month === month
 
   // Luôn 6 hàng x 7 ô để lịch không nhảy chiều cao giữa các tháng.
-  const cells = Array.from({ length: 42 }, (_, index) => {
-    const dayNumber = index - firstWeekdayMon0 + 1
-    if (dayNumber < 1) return { day: daysInPrevMonth + dayNumber, inMonth: false }
-    if (dayNumber > daysInMonth) return { day: dayNumber - daysInMonth, inMonth: false }
-    return { day: dayNumber, inMonth: true }
-  })
+  const cells = calendarCells(year, month)
 
   return (
     <div>
@@ -101,7 +92,7 @@ export function EventCalendar({ monthKey, events, onMonthChange }: EventCalendar
                   title={event.title}
                   className={`block rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-tight truncate transition-colors ${STATUS_CHIP[event.status]}`}
                 >
-                  {formatVnTime(event.startAt)} {event.title}
+                  {formatTime(event.startAt)} {event.title}
                 </Link>
               ))}
               {dayEvents.length > MAX_CHIPS_PER_DAY && (

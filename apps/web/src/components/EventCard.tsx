@@ -1,10 +1,9 @@
 import { Link } from 'react-router-dom'
 
 import { EVENT_STATUS_STYLES, eventTypeVisual, type EventCardStatus } from '../lib/eventVisual'
-import { formatDate } from '../lib/format'
-import { VN_TIME_ZONE, formatVnTime, vnParts } from '../lib/vnTime'
+import { formatDate, formatTime, TIME_ZONE, vnParts } from '../lib/format'
 
-const monthFormatter = new Intl.DateTimeFormat('vi-VN', { timeZone: VN_TIME_ZONE, month: 'short' })
+const monthFormatter = new Intl.DateTimeFormat('vi-VN', { timeZone: TIME_ZONE, month: 'short' })
 
 type EventCardProps = {
   slug: string
@@ -28,7 +27,7 @@ export function EventCard({ slug, title, eventType, startAt, endAt, location, on
   const end = vnParts(endAt)
   const sameDay = start.year === end.year && start.month === end.month && start.day === end.day
   const timeText = sameDay
-    ? `${formatVnTime(startAt)} - ${formatVnTime(endAt)}`
+    ? `${formatTime(startAt)} - ${formatTime(endAt)}`
     : `${formatDate(startAt)} - ${formatDate(endAt)}`
   const statusStyle = status ? EVENT_STATUS_STYLES[status] : undefined
 
