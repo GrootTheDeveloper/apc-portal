@@ -1,4 +1,4 @@
-﻿# Hướng dẫn Kiểm thử & Kịch bản (QA)
+# Hướng dẫn Kiểm thử & Kịch bản (QA)
 
 ## 1. Chuẩn bị trước khi chạy
 - Khởi động hạ tầng: pnpm infra:up
@@ -6,13 +6,20 @@
 - Chạy ứng dụng: pnpm dev
 
 ## 2. Bảng tài khoản mẫu
-| Vai trò / Trạng thái | Tên đăng nhập (Email) | Mật khẩu mẫu | Ghi chú |
-| --- | --- | --- | --- |
-| Admin hệ thống | admin@example.com | `Password123!` | Toàn quyền quản trị hệ thống |
-| Ban quản trị (Board) | board.active@example.com | `Password123!` | Quản lý sự kiện, bài viết, đơn tuyển |
-| Thành viên (Member) | member.a@example.com | `Password123!` | Thành viên CLB bình thường |
-| Chờ duyệt (Pending) | member.pending@example.com | `Password123!` | Tài khoản đang chờ duyệt / kích hoạt |
-| Khóa / Inactive | member.locked@example.com | `Password123!` | Tài khoản bị khóa / không hoạt động |
+Dữ liệu mẫu tạo bởi seed (D1). Đăng nhập bằng **tên đăng nhập**, không dùng email. Mật khẩu chung của mọi tài khoản là giá trị `SEED_PASSWORD` trong file `.env` ở gốc repo.
+
+| Tên đăng nhập | Vai trò | Trạng thái | Ban | Ghi chú |
+| --- | --- | --- | --- | --- |
+| `board` | `BOARD` | `ACTIVE` | — | Ban Chủ nhiệm |
+| `techadmin` | `TECH_ADMIN` | `ACTIVE` | — | Quản trị hệ thống |
+| `board.pending` | `BOARD` | `ACTIVE` | — | Vai trò `PENDING`, chưa thiết lập 2 lớp |
+| `manager.a` | `DEPARTMENT_MANAGER` | `ACTIVE` | Ban A | Trưởng ban A |
+| `manager.b` | `DEPARTMENT_MANAGER` | `ACTIVE` | Ban B | Trưởng ban B |
+| `member.a` | `MEMBER` | `ACTIVE` | Ban A | Thành viên ban A |
+| `member.b` | `MEMBER` | `ACTIVE` | Ban B | Thành viên ban B |
+| `pending` | `MEMBER` | `PENDING_ACTIVATION` | Ban A | Chờ kích hoạt, phải đổi mật khẩu |
+| `locked` | `MEMBER` | `LOCKED` | Ban A | Đã bị khóa |
+| `inactive` | `MEMBER` | `INACTIVE` | Ban A | Đã rời CLB |
 
 ## 3. Cách báo lỗi
 - Tạo GitHub Issue mới tại tab **Issues** của repository với tiêu đề kèm mã kịch bản (ví dụ: [KB-02-03] Mô tả lỗi).

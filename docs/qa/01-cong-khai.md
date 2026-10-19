@@ -1,4 +1,4 @@
-﻿# Kịch bản kiểm tra: Trang công khai (01-cong-khai)
+# Kịch bản kiểm tra: Trang công khai (01-cong-khai)
 
 ## Danh sách kịch bản
 
@@ -42,7 +42,7 @@
 | # | Thao tác | Kết quả phải thấy |
 | --- | --- | --- |
 | 1 | Mở danh sách tin tức / sự kiện / dự án công khai | Các mục ở trạng thái bản nháp hoặc lưu trữ không xuất hiện trong danh sách |
-| 2 | Nhập trực tiếp đường dẫn (URL) của bài viết, sự kiện hoặc dự án đang ở trạng thái bản nháp/lưu trữ trên trình duyệt | Hệ thống chuyển hướng hoặc trả về trang lỗi **404 Not Found** |
+| 2 | Nhập trực tiếp đường dẫn (URL) của bài viết, sự kiện hoặc dự án đang ở trạng thái bản nháp/lưu trữ trên trình duyệt | Hiện trang **404** "Không tìm thấy trang" |
 
 | Ngày chạy | Người chạy | Kết quả | Issue |
 | --- | --- | --- | --- |

@@ -1,4 +1,4 @@
-﻿# Kịch bản kiểm tra: Đăng nhập & Xác thực (04-dang-nhap)
+# Kịch bản kiểm tra: Đăng nhập & Xác thực (04-dang-nhap)
 
 ## Danh sách kịch bản
 
@@ -32,12 +32,14 @@
 ---
 
 ### KB-04-03. Khóa tài khoản sau 5 lần sai mật khẩu liên tiếp
-- Chức năng: A4 · Luồng: FLOW-15
-- Tài khoản: tài khoản thử nghiệm
+- Chức năng: A2 · Luồng: FLOW-15
+- Tài khoản: `member.b`
 
 | # | Thao tác | Kết quả phải thấy |
 | --- | --- | --- |
-| 1 | Nhập sai mật khẩu liên tiếp 5 lần cho cùng một tài khoản | Tài khoản bị tạm khóa hoặc yêu cầu phải chờ 15 phút mới được thử lại |
+| 1 | Mở http://localhost:5173/login, nhập `member.b` với mật khẩu sai, bấm **Đăng nhập**, lặp lại đủ 5 lần | Lần nào cũng hiện "Sai tên đăng nhập hoặc mật khẩu." |
+| 2 | Nhập `member.b` với mật khẩu **đúng**, bấm **Đăng nhập** | Vẫn hiện "Sai tên đăng nhập hoặc mật khẩu.", không vào được |
+| 3 | Chờ hết 15 phút, đăng nhập lại bằng mật khẩu đúng | Đăng nhập thành công |
 
 | Ngày chạy | Người chạy | Kết quả | Issue |
 | --- | --- | --- | --- |
@@ -47,12 +49,13 @@
 
 ### KB-04-04. Kiểm tra tài khoản pending, locked, inactive
 - Chức năng: A2, A4 · Luồng: FLOW-15 · Nghiệm thu: AC-03
-- Tài khoản: các tài khoản có trạng thái pending, locked, inactive từ dữ liệu mẫu
+- Tài khoản: `locked`, `inactive`, `pending`
 
 | # | Thao tác | Kết quả phải thấy |
 | --- | --- | --- |
-| 1 | Đăng nhập bằng tài khoản locked hoặc inactive | Bị từ chối đăng nhập, thông báo tài khoản không hoạt động hoặc bị khóa |
-| 2 | Đăng nhập bằng tài khoản pending | Đăng nhập thành công nhưng chỉ được chuyển hướng vào trang kích hoạt tài khoản (AC-03) |
+| 1 | Đăng nhập bằng `locked` với mật khẩu đúng | Hiện "Sai tên đăng nhập hoặc mật khẩu.", không báo tài khoản bị khóa (FLOW-10) |
+| 2 | Đăng nhập bằng `inactive` với mật khẩu đúng | Hiện "Sai tên đăng nhập hoặc mật khẩu.", không báo tài khoản ngừng hoạt động |
+| 3 | Đăng nhập bằng `pending` với mật khẩu đúng | Chuyển tới trang kích hoạt tài khoản `/account/activate` (AC-03) |
 
 | Ngày chạy | Người chạy | Kết quả | Issue |
 | --- | --- | --- | --- |
@@ -66,7 +69,11 @@
 
 | # | Thao tác | Kết quả phải thấy |
 | --- | --- | --- |
-| 1 | Chưa đăng nhập nhưng nhập trực tiếp đường dẫn `/portal` hoặc `/admin` trên trình duyệt | Hệ thống tự động chuyển hướng (redirect) về trang đăng nhập (`/login`). Sau khi đăng nhập thành công, hệ thống tự động điều hướng quay lại đúng trang ban đầu muốn truy cập. |
+| 1 | Chưa đăng nhập, mở http://localhost:5173/portal | Chuyển tới trang đăng nhập, thanh địa chỉ là `/login?returnTo=%2Fportal` |
+| 2 | Đăng nhập bằng `member.a` | Quay về `/portal`, thấy tiêu đề "Trang thành viên" |
+| 3 | Bấm **Đăng xuất** trên thanh menu | Về trang chủ, thanh menu hiện lại nút **Đăng nhập** |
+| 4 | Mở http://localhost:5173/admin | Chuyển tới trang đăng nhập, thanh địa chỉ là `/login?returnTo=%2Fadmin` |
+| 5 | Đăng nhập bằng `manager.a` | Quay về `/admin`, thấy tiêu đề "Quản trị" |
 
 | Ngày chạy | Người chạy | Kết quả | Issue |
 | --- | --- | --- | --- |
@@ -75,12 +82,16 @@
 ---
 
 ### KB-04-06. Kiểm tra phân quyền truy cập trang `/admin`
-- Chức năng: A2, A4 · Nghiệm thu: AC-03
-- Tài khoản: tài khoản có trạng thái `board.pending` hoặc vai trò `MEMBER`
+- Chức năng: A1, A2 · Nghiệm thu: AC-10
+- Tài khoản: `member.a`, `board.pending`
 
 | # | Thao tác | Kết quả phải thấy |
 | --- | --- | --- |
-| 1 | Đăng nhập bằng tài khoản có trạng thái `board.pending` hoặc vai trò `MEMBER`, sau đó truy cập vào đường dẫn `/admin` | Hệ thống từ chối truy cập, hiển thị thông báo không đủ quyền hạn hoặc chuyển hướng về trang chủ portal. |
+| 1 | Chưa đăng nhập, mở http://localhost:5173/admin | Chuyển tới trang đăng nhập |
+| 2 | Đăng nhập bằng `member.a` | Hiện trang "Không có quyền truy cập" |
+| 3 | Bấm **Đăng xuất** trên thanh menu | Về trang chủ, thanh menu hiện lại nút **Đăng nhập** |
+| 4 | Mở lại http://localhost:5173/admin | Chuyển tới trang đăng nhập |
+| 5 | Đăng nhập bằng `board.pending` | Hiện trang "Không có quyền truy cập" (vai trò chưa thiết lập 2 lớp) |
 
 | Ngày chạy | Người chạy | Kết quả | Issue |
 | --- | --- | --- | --- |

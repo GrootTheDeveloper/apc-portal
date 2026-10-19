@@ -1,4 +1,4 @@
-﻿# Kịch bản kiểm tra: Email & Tệp đính kèm (05-email-tep)
+# Kịch bản kiểm tra: Email & Tệp đính kèm (05-email-tep)
 
 ## Danh sách kịch bản
 

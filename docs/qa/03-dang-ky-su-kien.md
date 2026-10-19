@@ -1,4 +1,4 @@
-﻿# Kịch bản kiểm tra: Đăng ký sự kiện (03-dang-ky-su-kien)
+# Kịch bản kiểm tra: Đăng ký sự kiện (03-dang-ky-su-kien)
 
 ## Danh sách kịch bản
 
