@@ -155,6 +155,7 @@ Mảng này gồm hai phần:
 6. **Nginx:**
    - `/api/*` chuyển tới API (bỏ tiền tố `/api`); `/sitemap.xml`, `/robots.txt` chuyển tới `/public/sitemap.xml`, `/public/robots.txt` của API (C6); còn lại là web.
    - Gửi header `x-request-id` (`$request_id`) sang API và ghi vào access log (OPS-11, C6).
+   - Gửi `X-Forwarded-For`, `X-Forwarded-Proto` sang API; API bật `trustProxy` (biến môi trường, chỉ tin địa chỉ của Nginx) để `request.ip` là IP người dùng. Thiếu bước này thì mọi request mang IP của Nginx: giới hạn đăng nhập theo IP (A2, 20 lần/phút) bị dùng chung cho cả CLB và `sessions.ipAddress` ghi sai.
    - Chế độ bảo trì: có file `/srv/apc/maintenance.on` thì trả `maintenance.html` (C6) với mã 503 cho mọi đường dẫn (PAGE-SYS-02). Bật/tắt ghi trong runbook.
    - Chứng chỉ Let's Encrypt bằng certbot, tự gia hạn. Header bảo mật (SEC-13): HSTS, Content-Security-Policy, chống clickjacking (`frame-ancestors`), `X-Content-Type-Options: nosniff`, `Referrer-Policy`. HTTP chuyển sang HTTPS.
 7. **Secrets:** mật khẩu database, SMTP Brevo, khóa R2, `TOTP_ENCRYPTION_KEY` lưu trong `.env` trên VPS và GitHub Secrets; staging và production dùng bộ khác nhau; không đưa vào repo.
@@ -170,6 +171,7 @@ Mảng này gồm hai phần:
 - [ ] Tạo file `maintenance.on` thì mọi đường dẫn trả 503 kèm trang bảo trì; xóa file thì trở lại bình thường.
 - [ ] Từ máy ngoài danh sách cho phép không kết nối được cổng SSH, PostgreSQL, ClamAV.
 - [ ] Email thật gửi qua Brevo đến hộp thư thật (từ staging).
+- [ ] Trên staging, một máy đăng nhập sai liên tục nhận 429 trong khi máy khác vẫn đăng nhập được; `sessions.ipAddress` là IP thật của người dùng.
 - [ ] Đủ 10 runbook trong `docs/ops/`.
 
 ### O5. Sao lưu, theo dõi và diễn tập khôi phục — hạn CN 29/11

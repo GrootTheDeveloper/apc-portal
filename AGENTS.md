@@ -25,6 +25,7 @@ Nguồn sự thật nghiệp vụ: `docs/01-prd.md` (yêu cầu), `docs/02-roles
   - `/admin/*` — quản trị (luôn kèm `requireRole`/`requireScope`)
 - Phiên đăng nhập: cookie `apc_session`, lưu ở bảng `sessions` (docs/06 §5). Không dùng JWT, không lưu token ở `localStorage`.
 - User đã đăng nhập: `request.user = { id, departmentId, roles }`; `roles` là các dòng `ACTIVE` trong bảng `user_roles` (`{ role, departmentId }`). Mọi tài khoản mặc định có vai trò nền `MEMBER`. Chặn quyền bằng `requireAuth`, `requireRole(...)`, `requireScope(...)` trong `src/modules/auth/rbac.ts`. **Không tự viết kiểm quyền riêng.**
+- Request `POST`/`PATCH`/`PUT`/`DELETE` phải có header `Origin` trùng `WEB_URL` (chống CSRF), thiếu thì 403. Web gọi qua `api(...)` đã tự có; test gửi `headers: { origin: 'http://localhost:5173' }`.
 - Validate mọi input bằng Zod (`schema.parse(...)`). Lỗi trả `{ error: '<code>', message: '<tiếng Việt>' }` theo docs/03 §14: 401 `unauthenticated`, 403 `forbidden`, 404 `not_found`, 409 `conflict`, 422 `validation` (kèm `issues`), 429 `rate_limited`. Chỉ cần `throw`; `src/lib/errors.ts` tự đổi ZodError → 422, trùng unique (P2002) → 409, lỗi khác → 500 kèm mã tham chiếu.
 - Truy cập dữ liệu ngoài phạm vi ban (người dùng không được biết dữ liệu tồn tại) trả 404, không trả 403 (docs/02 §12).
 - Danh sách có phân trang: `?page=1&pageSize=20` → `{ items, total, page, pageSize }`.

@@ -27,8 +27,10 @@ function appWithRoutes() {
 describe('error handler', () => {
   it('maps every error to { error, message } with the right status', async () => {
     const app = appWithRoutes()
+    // POST phải có Origin trùng WEB_URL (chặn CSRF, docs/06 mục 5 quyết định 2).
+    const headers = { origin: 'http://localhost:5173' }
     const call = (method: 'GET' | 'POST', url: string, payload?: object) =>
-      app.inject(payload ? { method, url, payload } : { method, url })
+      app.inject(payload ? { method, url, payload, headers } : { method, url, headers })
 
     const cases = [
       [await call('GET', '/missing'), 404, 'not_found'],

@@ -1,11 +1,17 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom'
 
+import { AuthProvider } from './components/AuthProvider'
+import { RequireAuth } from './components/RequireAuth'
 import { RootLayout } from './layouts/RootLayout'
-import { NotFound } from './pages/NotFound'
-import { Placeholder } from './pages/Placeholder'
-import { HomePage } from './pages/home/HomePage'
+import { ADMIN_ROLES } from './lib/auth'
+import { ADMIN_MENU, PORTAL_MENU } from './lib/menu'
+import { LoginPage } from './pages/auth/login/LoginPage'
 import { EventDetailPage } from './pages/events/detail/EventDetailPage'
 import { EventsListPage } from './pages/events/list/EventsListPage'
+import { HomePage } from './pages/home/HomePage'
+import { MenuPlaceholder } from './pages/MenuPlaceholder'
+import { NotFound } from './pages/NotFound'
+import { Placeholder } from './pages/Placeholder'
 
 const router = createBrowserRouter([
   {
@@ -23,13 +29,42 @@ const router = createBrowserRouter([
       { path: 'recruitment', element: <Placeholder title="Gia nhập APC" /> },
       { path: 'recruitment/application-lookup', element: <Placeholder title="Tra cứu hồ sơ ứng tuyển" /> },
       { path: 'privacy', element: <Placeholder title="Chính sách quyền riêng tư" /> },
-      { path: 'login', element: <Placeholder title="Đăng nhập" /> },
-      { path: 'admin', element: <Placeholder title="Quản trị" /> },
+      { path: 'login', element: <LoginPage /> },
+      {
+        path: 'account/activate',
+        element: (
+          <RequireAuth>
+            <Placeholder title="Kích hoạt tài khoản" />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'portal',
+        element: (
+          <RequireAuth>
+            <Outlet />
+          </RequireAuth>
+        ),
+        children: [{ index: true, element: <MenuPlaceholder title="Trang thành viên" menu={PORTAL_MENU} /> }],
+      },
+      {
+        path: 'admin',
+        element: (
+          <RequireAuth roles={ADMIN_ROLES}>
+            <Outlet />
+          </RequireAuth>
+        ),
+        children: [{ index: true, element: <MenuPlaceholder title="Quản trị" menu={ADMIN_MENU} /> }],
+      },
       { path: '*', element: <NotFound /> },
     ],
   },
 ])
 
 export default function App() {
-  return <RouterProvider router={router} />
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  )
 }
