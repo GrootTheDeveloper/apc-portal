@@ -5,7 +5,7 @@ import { Button } from '../../../components/Button'
 import { Eyebrow } from '../../../components/Eyebrow'
 import { Pagination } from '../../../components/Pagination'
 import { ProjectCard } from '../../../components/ProjectCard'
-import { useMockAbout } from '../../../hooks/useMockAbout'
+import { useMockApi } from '../../../hooks/useMockApi'
 import { getProjectList, PROJECT_TYPES, type ProjectItem } from './mock'
 import type { Page } from '../../../lib/api'
 
@@ -19,7 +19,7 @@ export function ProjectListPage() {
   const pageParam = searchParams.get('page')
   const currentPage = Math.max(1, parseInt(pageParam || '1', 10) || 1)
 
-  const { data, loading, error, reload } = useMockAbout<Page<ProjectItem>>(
+  const { data, loading, error, reload } = useMockApi<Page<ProjectItem>>(
     () => getProjectList({ page: currentPage, pageSize: PAGE_SIZE, type: currentType }),
     [currentPage, currentType],
   )

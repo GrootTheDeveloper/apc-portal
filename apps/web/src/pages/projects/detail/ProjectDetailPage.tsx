@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
 import { Breadcrumb } from '../../../components/Breadcrumb'
-import { useMockAbout } from '../../../hooks/useMockAbout'
+import { useMockApi } from '../../../hooks/useMockApi'
 import { NotFound } from '../../NotFound'
 import { getProjectDetail, type ProjectItem, type ProjectType } from '../list/mock'
 
@@ -23,7 +23,7 @@ function getTypeColorClass(type: ProjectType): string {
 export function ProjectDetailPage() {
   const { slug } = useParams<{ slug: string }>()
 
-  const { data, loading, error, reload } = useMockAbout<ProjectItem | null>(
+  const { data, loading, error, reload } = useMockApi<ProjectItem | null>(
     () => (slug ? getProjectDetail(slug) : Promise.resolve(null)),
     [slug],
   )

@@ -1,65 +1,25 @@
-import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
 import { Breadcrumb } from '../../../components/Breadcrumb'
 import { Eyebrow } from '../../../components/Eyebrow'
-import { ApiError } from '../../../lib/api'
+import { useMockApi } from '../../../hooks/useMockApi'
 import { formatDate } from '../../../lib/format'
 import { NotFound } from '../../NotFound'
 import { getNewsDetail, type NewsItem } from '../list/mock'
-
-type Result = {
-  key: string | null
-  item?: NewsItem | null
-  error?: ApiError
-}
 
 /** Trang chi tiết tin tức */
 export function NewsDetailPage() {
   const { slug } = useParams<{ slug: string }>()
 
-  const [attempt, setAttempt] = useState(0)
-  const [result, setResult] = useState<Result>({ key: null })
-
-  const key = slug ? `${attempt}:${slug}` : null
-
-  useEffect(() => {
-    if (!slug || !key) return
-    let cancelled = false
-
-    getNewsDetail(slug)
-      .then((res) => {
-        if (!cancelled) {
-          setResult({ key, item: res })
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setResult({
-            key,
-            error:
-              err instanceof ApiError
-                ? err
-                : new ApiError(500, 'unknown', 'Đã có lỗi xảy ra. Vui lòng thử lại.'),
-          })
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [slug, key])
+  const { data: item, loading, error, reload } = useMockApi<NewsItem | null>(
+    () => (slug ? getNewsDetail(slug) : Promise.resolve(null)),
+    [slug],
+  )
 
   if (!slug) {
     return <NotFound />
   }
-
-  const loading = key !== null && result.key !== key
-  const error = loading ? undefined : result.error
-  const item = loading ? undefined : result.item
-
-  const reload = () => setAttempt((count) => count + 1)
 
   // Nếu không tải và không có lỗi nhưng không tìm thấy bài viết
   if (!loading && !error && item === null) {

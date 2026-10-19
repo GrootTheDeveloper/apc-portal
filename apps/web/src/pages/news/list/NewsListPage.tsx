@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
@@ -6,16 +5,11 @@ import { Button } from '../../../components/Button'
 import { Eyebrow } from '../../../components/Eyebrow'
 import { NewsCard } from '../../../components/NewsCard'
 import { Pagination } from '../../../components/Pagination'
-import { ApiError, type Page } from '../../../lib/api'
+import { useMockApi } from '../../../hooks/useMockApi'
+import type { Page } from '../../../lib/api'
 import { getNewsList, NEWS_CATEGORIES, type NewsItem } from './mock'
 
 const PAGE_SIZE = 12
-
-type Result = {
-  key: string | null
-  data?: Page<NewsItem>
-  error?: ApiError
-}
 
 /** Trang danh sách tin tức (hỗ trợ phân trang, lọc chuyên mục, đủ 5 trạng thái) */
 export function NewsListPage() {
@@ -25,46 +19,10 @@ export function NewsListPage() {
   const pageParam = searchParams.get('page')
   const currentPage = Math.max(1, parseInt(pageParam || '1', 10) || 1)
 
-  const [attempt, setAttempt] = useState(0)
-  const [result, setResult] = useState<Result>({ key: null })
-
-  const key = `${attempt}:${currentPage}:${currentCategory ?? ''}`
-
-  useEffect(() => {
-    let cancelled = false
-
-    getNewsList({
-      page: currentPage,
-      pageSize: PAGE_SIZE,
-      category: currentCategory,
-    })
-      .then((res) => {
-        if (!cancelled) {
-          setResult({ key, data: res })
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setResult({
-            key,
-            error:
-              err instanceof ApiError
-                ? err
-                : new ApiError(500, 'unknown', 'Đã có lỗi xảy ra. Vui lòng thử lại.'),
-          })
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [currentPage, currentCategory, key])
-
-  const loading = result.key !== key
-  const error = loading ? undefined : result.error
-  const data = loading ? undefined : result.data
-
-  const reload = () => setAttempt((count) => count + 1)
+  const { data, loading, error, reload } = useMockApi<Page<NewsItem>>(
+    () => getNewsList({ page: currentPage, pageSize: PAGE_SIZE, category: currentCategory }),
+    [currentPage, currentCategory],
+  )
 
   const handleCategoryChange = (category?: string) => {
     const nextParams = new URLSearchParams(searchParams)

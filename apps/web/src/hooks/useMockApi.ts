@@ -5,14 +5,15 @@ import { ApiError } from '../lib/api'
 type Result<T> = { key: string | null; data?: T; error?: ApiError }
 
 /**
- * Hook chạy một mock async function và trả về interface giống hệt useApi.
- *   const { data, loading, error, reload } = useMockAbout(() => getProjectList(params), [dep1, dep2])
+ * Bản tạm của useApi cho dữ liệu giả ở C1, trả về cùng dạng { data, loading, error, reload }.
+ * C2 đổi các trang sang useApi(...) rồi xóa file này.
+ *   const { data, loading, error, reload } = useMockApi(() => getProjectList(params), [dep1, dep2])
  *
  * - `fetcher` là hàm trả Promise — được gọi lại mỗi khi deps thay đổi hoặc reload() được gọi.
  * - deps tương đương dependency array của useEffect.
  * - Khi reload() được gọi, key tăng lên → useEffect chạy lại.
  */
-export function useMockAbout<T>(
+export function useMockApi<T>(
   fetcher: () => Promise<T>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   deps: readonly any[],
