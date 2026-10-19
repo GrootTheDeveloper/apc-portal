@@ -2,10 +2,12 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.2 |
-| Trạng thái | Đã duyệt (27/09/2026) |
-| Ngày cập nhật | 27/09/2026 |
+| Phiên bản | 1.3 |
+| Trạng thái | Đã duyệt (01/10/2026) |
+| Ngày cập nhật | 01/10/2026 |
 
+> Cập nhật 01/10/2026: VPS nâng lên 4 GB RAM để chạy ClamAV; thêm quyết định 12–15 (quét mã độc, quét image, kiểm thử tải, tác vụ nền).
+>
 > Cập nhật 27/09/2026: chốt các quyết định kỹ thuật (mục 5); lưu tệp local đổi từ MinIO sang SeaweedFS.
 >
 > Cập nhật 27/08/2026: trang chủ đã tách từ HTML thô thành component React theo từng section (mục 3).
@@ -78,7 +80,7 @@ Nguồn thiết kế gốc `design-reference/homepage/index.html` chỉ được
 - Các cổng database và dịch vụ local chỉ bind vào `127.0.0.1`.
 - Không dùng credential local cho staging hoặc production.
 
-## 5. Quyết định đã chốt (27/09/2026)
+## 5. Quyết định đã chốt (27/09/2026, bổ sung 01/10/2026)
 
 Các quyết định dưới đây thay cho danh sách "quyết định còn mở" trước đây. Muốn đổi thì cập nhật mục này và ghi lý do.
 
@@ -89,12 +91,16 @@ Các quyết định dưới đây thay cho danh sách "quyết định còn m�
 | 3 | Vai trò | `MEMBER` là vai trò nền, không lưu. Vai trò quản lý và đặc quyền lưu trong bảng `user_roles` (phạm vi ban, trạng thái, ngày bắt đầu, ngày hết hạn). `request.user = { id, departmentId, roles }`, trong đó `roles` chỉ gồm các dòng `ACTIVE`. | Khớp [docs/02](./02-roles-permissions.md) mục 9 và ADM-08. |
 | 4 | Email | Code gửi qua SMTP chuẩn. Local: Mailpit. Production: Brevo (gói miễn phí). Email lưu trong bảng `NotificationDelivery` và được worker chạy trong process API gửi đi. | Đổi nhà cung cấp chỉ cần sửa `SMTP_*` trong `.env`; chưa cần Redis hay queue riêng. |
 | 5 | Lưu tệp | Code dùng S3 API. Local: SeaweedFS trong `compose.yaml`. Production: Cloudflare R2. Tệp nội bộ chỉ tải qua API có kiểm quyền. | MinIO đã gỡ image khỏi Docker Hub (09/2026). R2 không tính phí băng thông tải xuống và nằm ngoài VPS. |
-| 6 | Máy chủ | 1 VPS Ubuntu 24.04 LTS, tối thiểu 2 vCPU / 2 GB RAM / SSD (PERF-06), đặt tại DigitalOcean và dùng credit của GitHub Student Developer Pack. Chạy bằng Docker Compose: `web` (file tĩnh), `api`, `postgres`. Staging dùng cùng VPS với Compose project riêng, chỉ bật khi kiểm thử bản phát hành. | Chi phí thấp cho CLB sinh viên; đủ yêu cầu tài nguyên của PRD. |
+| 6 | Máy chủ | 1 VPS Ubuntu 24.04 LTS, 2 vCPU / 4 GB RAM / SSD (PERF-06 yêu cầu tối thiểu 2 GB), đặt tại DigitalOcean và dùng credit của GitHub Student Developer Pack. Chạy bằng Docker Compose: `web` (file tĩnh), `api`, `postgres`, `clamav`. Staging dùng cùng VPS với Compose project riêng, chỉ bật khi kiểm thử bản phát hành. | Chi phí thấp cho CLB sinh viên. 4 GB vì ClamAV giữ cơ sở dữ liệu mẫu virus trong RAM (khoảng 1–1,5 GB); 2 GB không đủ chạy cùng PostgreSQL và API. |
 | 7 | Reverse proxy & TLS | Nginx trên VPS giữ cổng 80/443; chứng chỉ Let's Encrypt gia hạn tự động bằng certbot. Web và API cùng tên miền: `/api/*` chuyển tới API (bỏ tiền tố `/api`), còn lại là file tĩnh của web. Local làm y hệt bằng proxy trong `apps/web/vite.config.ts`. | Đúng Charter mục 10. |
 | 8 | Build & triển khai | GitHub Actions build image, đẩy lên GitHub Container Registry (`ghcr.io`) với tag theo commit; VPS chỉ `pull` rồi chạy. Rollback là chạy lại tag trước. | Đúng PRD mục 11 (VPS không build source). |
 | 9 | Backup | Hằng ngày: `pg_dump` mã hóa bằng `age` rồi đẩy lên bucket R2 riêng cho backup; `rclone` sao chép bucket tệp sang bucket backup. Giữ bản ngày 30 ngày, bản cuối tháng 12 tháng (OPS-10). Diễn tập restore trước lần phát hành đầu tiên. | Backup nằm ngoài VPS và được mã hóa (OPS-02, SEC-14). |
 | 10 | Monitoring | UptimeRobot kiểm tra `/health` và hạn TLS từ bên ngoài; Netdata trên VPS theo dõi CPU, RAM, swap, disk, container và gửi cảnh báo qua email. | Có một nguồn cảnh báo độc lập với VPS (FLOW-29). |
 | 11 | Tên miền | Xin APC/Khoa cấp subdomain của UMT cho production. Staging dùng tên miền miễn phí từ GitHub Student Developer Pack. | Tên miền chính thức cần đơn vị sở hữu đứng tên. |
+| 12 | Quét mã độc | ClamAV (`clamav/clamav`, tiến trình `clamd`) chạy trong Compose, chỉ nằm trong network nội bộ. API gửi tệp bằng lệnh `INSTREAM` qua TCP, dùng `node:net` có sẵn. `FILE_SCAN_MODE=clamav` bắt buộc ở production; local và CI mặc định `skip`, bật ClamAV local bằng Compose profile `scan`. | SEC-15 bắt buộc; mã nguồn mở, không gửi tệp của thành viên ra dịch vụ ngoài, không thêm thư viện. |
+| 13 | Quét image | Trivy trong GitHub Actions (`aquasecurity/trivy-action`); dừng CI khi có lỗ hổng HIGH/CRITICAL đã có bản vá. | SEC-10; miễn phí, chạy được trên GitHub-hosted runner. |
+| 14 | Kiểm thử tải | k6 chạy bằng image Docker `grafana/k6`, kịch bản trong `load/`; không cài vào `package.json`. | PRD §11 mục 15; không thêm dependency cho ứng dụng. |
+| 15 | Tác vụ nền | Tác vụ định kỳ chạy trong process API qua `startJob(...)` (`apps/api/src/lib/jobs.ts`), không chạy chồng; ghi audit với định danh dịch vụ `audit({ service }, ...)`. Chưa dùng hàng đợi hay cron riêng. | Đủ cho một VPS; đúng Vai trò & quyền §12 mục 9. |
 
 ### 5.1. Thư viện đã duyệt
 

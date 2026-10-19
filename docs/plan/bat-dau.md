@@ -1,126 +1,200 @@
 # Bắt đầu
 
-Đọc hết trang này một lần. Làm theo thứ tự là đủ để tự làm việc của mình.
+Trang này dành cho thành viên mới của nhóm phát triển APC Portal. Đọc hết một lần trước buổi kickoff, sau đó làm theo đúng thứ tự từng mục.
 
-## 1. Cài máy (làm 1 lần, khoảng 30 phút)
+## 1. Cài máy
 
-Cần có: **Git**, **Node.js 22**, **Docker Desktop** (đang chạy), **VS Code** và một công cụ AI để code (Claude Code, Cursor, Copilot…).
+Làm theo [Cài đặt và chạy trên máy cá nhân](../07-local-development.md) từ mục 1 đến mục 7. Tài liệu đó hướng dẫn cài Git, Node.js, pnpm, Docker Desktop, VS Code từ đầu, kèm lệnh kiểm tra cho từng bước và bảng xử lý lỗi.
 
-Mở PowerShell, chạy lần lượt:
+Máy được coi là sẵn sàng khi đạt đủ 4 điều:
 
-```powershell
-git clone https://github.com/GrootTheDeveloper/apc-portal.git
-Set-Location apc-portal
-corepack enable
-pnpm install
-Copy-Item .env.example .env
-pnpm infra:up
-pnpm --filter @apc/api db:migrate
-pnpm dev
-```
+- [ ] http://localhost:5173 hiện trang chủ APC.
+- [ ] http://localhost:3000/health trả `{"status":"ok","service":"apc-api"}`.
+- [ ] `pnpm check` chạy xong, không báo lỗi.
+- [ ] Đã chấp nhận lời mời cộng tác trên GitHub (mục 1.2 của tài liệu cài đặt).
 
-Mở http://localhost:5173 thấy trang chủ APC là xong. Lỗi thì xem mục "Lỗi thường gặp" trong [Phát triển local](../07-local-development.md).
+Chưa đạt đủ 4 điều trước kickoff (T7 03/10): báo trong nhóm chat kèm ảnh chụp lỗi.
 
-## 2. Tìm việc của mình
+## 2. Khái niệm cần biết
 
-1. Mở [README kế hoạch](./README.md), tìm tên mình trong bảng Phân công, mở phiếu.
-2. Làm việc **chưa làm đầu tiên** trong phiếu. Hạn ghi ngay cạnh tên việc.
-3. Mở Google Sheet kế hoạch (link ghim trong nhóm chat), đổi Trạng thái việc đó thành **Đang làm**.
+| Thuật ngữ | Nghĩa trong dự án |
+| --- | --- |
+| Terminal | Cửa sổ gõ lệnh. Dự án dùng PowerShell, mở trong VS Code bằng `` Ctrl+` `` |
+| Repository (repo) | Thư mục code dùng chung, lưu trên GitHub tại `GrootTheDeveloper/apc-portal` |
+| `main` | Nhánh chính, luôn chạy được. Không ai đẩy code thẳng lên `main` |
+| Nhánh (branch) | Bản sao riêng của code để làm một việc mà không ảnh hưởng người khác |
+| Commit | Một lần lưu thay đổi vào lịch sử, kèm một dòng mô tả |
+| Push | Đẩy các commit trên máy lên GitHub |
+| Pull request (PR) | Yêu cầu gộp một nhánh vào `main`. Người khác xem và duyệt trước khi gộp |
+| Review | Người khác đọc code trong PR, góp ý hoặc duyệt (Approve) |
+| CI | Máy chủ GitHub tự chạy `pnpm check` trên mỗi PR. CI đỏ thì không gộp được |
+| Merge | Gộp PR vào `main` sau khi được duyệt và CI xanh |
+| Migration | File mô tả thay đổi cấu trúc database (thêm bảng, thêm cột). Tạo bằng `db:migrate` |
+| Phiếu việc | File `docs/plan/<chữ cái>-<mảng>.md`, liệt kê mọi việc của một người |
+| Mã việc | Mã của một việc trong phiếu, ví dụ `A1`, `R3`. Dùng trong tên nhánh, commit, PR và Google Sheet |
+| Xong khi | Danh sách điều kiện của một việc. Đạt đủ mới được mở PR |
 
-## 3. Làm một việc
+## 3. Tìm việc
 
-Ví dụ việc `A1`.
+1. Mở [README kế hoạch](./README.md), tìm tên trong bảng **Phân công**, mở phiếu tương ứng.
+2. Đọc phần **Bối cảnh** và **Phụ thuộc** ở đầu phiếu để biết mảng này nhận gì từ người khác và phải giao gì cho người khác.
+3. Chọn việc **chưa xong đầu tiên** trong phiếu. Hạn ghi cạnh tên việc.
+4. Mở Google Sheet kế hoạch (link ghim trong nhóm chat), đổi trạng thái việc đó thành **Đang làm**.
 
-**Bước 1. Lấy code mới nhất và tạo nhánh:**
+Trạng thái trong Sheet: **Chưa làm** → **Đang làm** → **Review** → **Xong**. Việc bị chặn hoặc sắp trễ hạn chuyển sang **Blocked**.
+
+## 4. Làm một việc
+
+Ví dụ dưới đây dùng việc `A1` trong phiếu `A-dang-nhap.md`. Khi làm việc khác, thay mã việc và tên phiếu.
+
+### Bước 1. Lấy code mới nhất và tạo nhánh
 
 ```powershell
 git switch main
 git pull
+pnpm install
+pnpm --filter @apc/api db:migrate
 git switch -c a1-phan-quyen
 ```
 
-Tên nhánh: mã việc viết thường + vài chữ không dấu.
+Tên nhánh: mã việc viết thường, gạch nối, vài chữ không dấu. Ví dụ `r3-nop-don`, `c1-trang-tin-tuc`.
 
-**Bước 2. Giao việc cho AI.** Chép nguyên câu dưới vào công cụ AI, đổi tên phiếu và mã việc:
+### Bước 2. Giao việc cho AI
+
+Chép đoạn dưới vào công cụ AI, thay mã việc và tên phiếu:
 
 ```text
-Đọc AGENTS.md và docs/plan/A-dang-nhap.md. Làm việc A1.
-Trước khi code: tóm tắt việc cần làm, liệt kê file sẽ tạo/sửa, và dùng lại những gì
-đã có sẵn (bảng "Có sẵn cho cả nhóm" trong docs/plan/README.md). Chờ tôi đồng ý rồi mới code.
-Code xong: viết test, chạy `pnpm check` cho đến khi xanh.
+Đọc AGENTS.md và docs/plan/A-dang-nhap.md, làm việc A1.
+
+Giai đoạn 1, chưa viết code: tóm tắt yêu cầu của việc; liệt kê file sẽ tạo và sửa,
+endpoint API và trang web sẽ làm; nêu những gì dùng lại từ bảng "Có sẵn cho cả nhóm"
+trong docs/plan/README.md. Dừng lại chờ xác nhận.
+
+Giai đoạn 2, sau khi được xác nhận: viết code và test, chạy `pnpm check` đến khi xanh.
+Cuối cùng liệt kê cách tự kiểm tra từng ý trong mục "Xong khi" của việc.
 ```
 
-Đọc kế hoạch AI đưa ra. Thấy lạ (sửa file của mảng khác, cài thư viện ngoài danh sách, bỏ qua test) thì bảo nó làm lại.
+Đọc kế hoạch AI đưa ra trước khi xác nhận. Yêu cầu AI làm lại nếu kế hoạch có một trong các dấu hiệu sau:
 
-**Bước 3. Tự kiểm tra.** Làm đúng từng ý trong dòng **Xong khi** của phiếu, trên trình duyệt hoặc bằng test. Chưa đạt thì chưa mở PR.
+- Sửa file thuộc mảng của người khác.
+- Cài thư viện không có trong danh sách [Kiến trúc](../06-architecture.md) mục 5.1.
+- Tự viết đoạn kiểm tra quyền thay vì dùng `requireAuth`, `requireRole`, `requireScope`.
+- Tạo nhiều hơn một migration.
+- Gọi `fetch` trực tiếp trong trang thay vì dùng `api(...)`.
+- Lưu mật khẩu hoặc token vào `localStorage`.
+- Bỏ qua test, hoặc chỉ có test trường hợp thành công.
 
-**Bước 4. Lưu và đẩy lên GitHub:**
+### Bước 3. Tự kiểm tra
+
+Làm lần lượt từng ý trong mục **Xong khi** của việc, trên trình duyệt hoặc bằng test. Ý nào chưa đạt thì dán mô tả cho AI sửa. Chưa đạt đủ thì chưa mở PR.
+
+Việc có giao diện: chụp ảnh màn hình ở kích thước máy tính và điện thoại (trong Chrome nhấn `F12` → biểu tượng điện thoại ở góc trên trái của DevTools).
+
+### Bước 4. Commit và push
 
 ```powershell
 pnpm check
+git status
 git add -A
-git commit -m "feat(api): phân quyền requireAuth, requireRole, requireScope"
+git commit -m "feat(api): A1 phân quyền requireAuth, requireRole, requireScope"
 git push -u origin a1-phan-quyen
 ```
 
-`pnpm check` phải xanh. Đỏ thì dán lỗi cho AI sửa.
+- `pnpm check` đỏ thì dán toàn bộ thông báo lỗi cho AI sửa, chạy lại đến khi xanh.
+- `git status` liệt kê file sắp commit. Có file lạ (`.env`, file ảnh không liên quan, thư mục `dist`) thì không commit, hỏi trong nhóm.
+- Dòng commit theo mẫu `<loại>(<phạm vi>): <mã việc> <mô tả>`. Loại: `feat` (tính năng), `fix` (sửa lỗi), `test`, `docs`, `chore`. Phạm vi: `api`, `web`, `db`, `docs`.
+- Lần push đầu tiên, Git mở trình duyệt yêu cầu đăng nhập GitHub. Bấm **Sign in with your browser** → **Authorize**.
 
-**Bước 5. Mở Pull Request.** Vào trang repo trên GitHub, bấm nút **Compare & pull request**. Điền theo mẫu có sẵn, dán ảnh chụp màn hình, chọn bạn cặp review ở mục **Reviewers**.
+### Bước 5. Mở pull request
 
-**Bước 6.** Trong Google Sheet: đổi Trạng thái thành **Review**, dán link PR. Sang việc tiếp theo trong phiếu (tạo nhánh mới từ `main` như Bước 1).
+1. Sau khi push, terminal in ra đường link dạng `https://github.com/GrootTheDeveloper/apc-portal/pull/new/a1-phan-quyen`. Mở link đó (hoặc vào trang repo, bấm **Compare & pull request**).
+2. Tiêu đề PR đặt giống dòng commit.
+3. Điền mô tả theo mẫu có sẵn: mã việc, đã làm gì, chép từng ý **Xong khi** và đánh dấu, dán ảnh chụp màn hình.
+4. Ở cột bên phải, mục **Reviewers**, chọn người review theo bảng ở mục 5.
+5. Bấm **Create pull request**.
+6. Trong Google Sheet: đổi trạng thái thành **Review**, dán link PR.
 
-**Bước 7.** Được duyệt thì bấm **Squash and merge**, đổi Sheet thành **Xong**.
+### Bước 6. Sửa theo góp ý
 
-## 4. Review PR của bạn cặp
+Người review để lại nhận xét trên PR. Quay lại đúng nhánh, sửa, rồi đẩy lên; PR tự cập nhật:
 
-Mỗi PR cần 1 người duyệt. Bạn được nhờ review thì làm trong ngày:
+```powershell
+git switch a1-phan-quyen
+# sửa code theo góp ý
+pnpm check
+git add -A
+git commit -m "fix(api): A1 sửa theo review"
+git push
+```
+
+Trả lời từng nhận xét trên GitHub (ví dụ "Đã sửa"), rồi bấm **Re-request review**.
+
+### Bước 7. Merge
+
+Khi PR có **Approve** và CI xanh (dấu ✓ xanh ở cuối trang PR): bấm **Squash and merge** → **Confirm**. Trong Google Sheet đổi trạng thái thành **Xong**.
+
+Dọn nhánh trên máy:
+
+```powershell
+git switch main
+git pull
+git branch -D a1-phan-quyen
+```
+
+### Bước 8. Sang việc tiếp theo
+
+Quay lại Bước 1 với việc tiếp theo trong phiếu. Không cần chờ PR trước được merge, **trừ khi** việc tiếp theo dùng code của việc trước; trường hợp đó phiếu ghi rõ ở dòng **Cần có trước**. Trong lúc chờ, làm review cho người khác hoặc chuẩn bị giao diện với dữ liệu giả.
+
+## 5. Review PR của người khác
+
+Mỗi PR cần một người duyệt. Được nhờ review thì hoàn thành trong vòng 24 giờ.
 
 1. Mở PR, xem tab **Files changed**.
-2. Kiểm tra:
-   - CI xanh (dấu ✓ xanh cuối trang).
-   - Làm đúng dòng "Xong khi" của phiếu.
-   - Có test, có ảnh nếu làm giao diện.
-   - Không có `.env`, mật khẩu, dữ liệu thật.
-   - Không sửa file của mảng khác mà không ghi lý do.
-3. Chỗ chưa ổn: bấm vào dòng code để ghi nhận xét. Ổn: **Review changes → Approve**.
+2. Kiểm tra theo danh sách:
+   - [ ] CI xanh.
+   - [ ] Mô tả PR đã đánh dấu đủ các ý **Xong khi** của việc trong phiếu.
+   - [ ] Có test cho trường hợp thành công và trường hợp bị từ chối (401/403/404).
+   - [ ] Việc có giao diện: có ảnh máy tính và điện thoại; trang có đủ trạng thái đang tải, rỗng, lỗi, có dữ liệu.
+   - [ ] Không có `.env`, mật khẩu, dữ liệu cá nhân thật.
+   - [ ] Không sửa file của mảng khác; nếu có thì mô tả PR ghi lý do.
+   - [ ] Có migration thì chỉ một, và đã cập nhật sơ đồ `apps/api/docs/erd-core-schema.md`.
+   - [ ] Đạt các quy tắc chung trong [README kế hoạch](./README.md) mục 7.2 (360 px, trạng thái rỗng khi lọc, xung đột phiên bản, phạm vi 404/403…).
+3. Muốn chạy thử trên máy: `git fetch`, `git switch <tên nhánh của PR>`, `pnpm install`, `pnpm --filter @apc/api db:migrate`, `pnpm dev`. Xong thì `git switch main`.
+4. Chỗ chưa ổn: bấm dấu **+** cạnh dòng code để ghi nhận xét cụ thể (sai gì, nên sửa thế nào). Xong thì bấm **Review changes** → **Request changes**.
+5. Mọi thứ ổn: **Review changes** → **Approve** → **Submit review**.
 
-Không chắc code đúng hay sai? Nhờ AI: *"Review PR này theo AGENTS.md và phiếu docs/plan/…, chỉ ra lỗi cụ thể"*.
+Chưa chắc code đúng hay sai: nhờ AI với câu lệnh *"Review PR này theo AGENTS.md và phiếu docs/plan/<tên phiếu>, việc <mã việc>. Chỉ ra lỗi cụ thể kèm dòng code."*
 
-| Cặp review | |
+| Cặp review | Mảng |
 | --- | --- |
 | Huỳnh Hoàn Phúc ↔ Trương Phúc Minh | Đăng nhập, bảo mật |
 | Nguyễn Gia Bảo ↔ Lê Đăng Nghĩa | Nội dung, sự kiện |
 | Phan Anh Khương ↔ Lương Huỳnh | Tuyển thành viên, thành viên |
 | Phạm Đăng Hoàng Thiên ↔ Đặng Phúc An Khang | Tệp, email, hạ tầng |
-| Nguyễn Tiến Bảo | Review thêm khi ai quá tải |
+| Nguyễn Tiến Bảo | Review thay khi người trong cặp quá tải hoặc vắng |
 
-## 5. Khi gặp chuyện
+## 6. Khi gặp sự cố
 
-| Chuyện | Làm gì |
+| Tình huống | Cách xử lý |
 | --- | --- |
-| PR báo **conflict** (xung đột) | `git switch main` → `git pull` → `git switch <nhánh của bạn>` → `git merge main`. Nhờ AI sửa các chỗ xung đột, rồi `pnpm check`, `git add -A`, `git commit`, `git push` |
-| `main` có migration mới sau khi bạn đã tạo migration | Xóa thư mục migration của bạn, `git merge main`, chạy lại `pnpm --filter @apc/api db:migrate` |
-| Sau khi `git pull`, code chạy lỗi lạ | Chạy lại `pnpm install` và `pnpm --filter @apc/api db:migrate` |
-| Phiếu viết không rõ, hoặc 2 tài liệu nói khác nhau | Hỏi trong nhóm chat, đừng tự đoán |
-| Biết sẽ trễ hạn | Đổi Sheet thành **Blocked**, nhắn nhóm lý do ngay, đừng chờ tới hạn |
+| PR báo **This branch has conflicts** | `git switch main` → `git pull` → `git switch <nhánh>` → `git merge main`. Nhờ AI sửa các đoạn có dấu `<<<<<<<`, rồi `pnpm check` → `git add -A` → `git commit` → `git push` |
+| `main` có migration mới sau khi nhánh đã tạo migration | Xóa thư mục migration của nhánh trong `apps/api/src/db/migrations/`, `git merge main`, chạy lại `pnpm --filter @apc/api db:migrate` để tạo lại migration. Prisma hỏi reset database local thì gõ `y` |
+| Sau `git pull`, code lỗi lạ | `pnpm install` → `pnpm --filter @apc/api db:migrate` |
+| Lỗi khi cài đặt hoặc chạy dự án | Bảng lỗi trong [tài liệu cài đặt](../07-local-development.md) mục 8 |
+| Phiếu không rõ, hoặc hai tài liệu nói khác nhau | Hỏi trong nhóm chat. Không tự đoán, nhất là phần liên quan đến quyền và dữ liệu cá nhân |
+| Cần sửa file của mảng khác | Nhắn người phụ trách mảng đó trước; ghi lý do trong mô tả PR |
+| Việc cần code của người khác mà chưa có | Làm phần không phụ thuộc trước (giao diện với dữ liệu giả, test). Đổi Sheet sang **Blocked** nếu không còn phần nào làm được |
+| Biết sẽ trễ hạn | Đổi Sheet sang **Blocked** và nhắn nhóm lý do ngay, không chờ đến hạn |
 
-**Kẹt thì theo thứ tự:** đọc kỹ thông báo lỗi → dán lỗi cho AI → hỏi bạn cặp → quá 30 phút thì hỏi trong nhóm chat, kèm ảnh chụp lỗi và lệnh đã chạy.
+Thứ tự khi bị kẹt: đọc kỹ thông báo lỗi → dán lỗi cho AI → hỏi người cùng cặp review → quá 30 phút thì hỏi trong nhóm chat, kèm ảnh chụp lỗi và lệnh đã chạy.
 
-## 6. Lệnh hay dùng
-
-| Muốn | Lệnh |
-| --- | --- |
-| Chạy web + API | `pnpm dev` |
-| Bật / tắt Postgres, Mailpit, kho tệp | `pnpm infra:up` / `pnpm infra:down` |
-| Kiểm tra trước khi mở PR | `pnpm check` |
-| Xem dữ liệu trong database | `pnpm --filter @apc/api db:studio` |
-| Tạo migration sau khi sửa `schema.prisma` | `pnpm --filter @apc/api db:migrate` rồi `pnpm --filter @apc/api db:erd` |
-| Xem email đã gửi (local) | http://localhost:8025 |
-| Đang ở nhánh nào, đã sửa gì | `git status` |
-
-## 7. Luật không được phá
+## 7. Luật bắt buộc
 
 - Không push thẳng lên `main`.
-- Không commit `.env`, mật khẩu, dữ liệu thật.
-- Chỉ cài thư viện trong danh sách đã duyệt ([Kiến trúc](../06-architecture.md) mục 5.1).
-- Không sửa file của mảng khác; cần thì ghi rõ trong PR và báo người đó.
+- Không commit `.env`, mật khẩu, dữ liệu cá nhân thật.
+- Chỉ cài thư viện trong danh sách [Kiến trúc](../06-architecture.md) mục 5.1.
+- Mỗi PR tối đa một migration.
+- Không sửa file của mảng khác khi chưa báo người phụ trách.
+- Mọi quy ước viết code cho API và web nằm trong [AGENTS.md](../../AGENTS.md). AI đọc file này, người làm cũng cần đọc ít nhất một lần.
+
+Danh sách lệnh thường dùng: [tài liệu cài đặt](../07-local-development.md) mục 10.3.
