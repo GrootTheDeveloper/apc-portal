@@ -5,13 +5,13 @@ import { Button } from '../../../components/Button'
 import { Eyebrow } from '../../../components/Eyebrow'
 import { Pagination } from '../../../components/Pagination'
 import { ProjectCard } from '../../../components/ProjectCard'
-import { useMockApi } from '../../../hooks/useMockApi'
-import { getProjectList, PROJECT_TYPES, type ProjectItem } from './mock'
+import { useApi } from '../../../hooks/useApi'
 import type { Page } from '../../../lib/api'
+import { PROJECT_TYPES, type ProjectItem } from '../../../lib/content'
 
 const PAGE_SIZE = 12
 
-/** Trang danh sách dự án (hỗ trợ phân trang, lọc theo thể loại, đủ 5 trạng thái) */
+/** Trang danh sách dự án (hỗ trợ phân trang, lọc theo thể loại, đủ 4 trạng thái async) */
 export function ProjectListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -19,9 +19,15 @@ export function ProjectListPage() {
   const pageParam = searchParams.get('page')
   const currentPage = Math.max(1, parseInt(pageParam || '1', 10) || 1)
 
-  const { data, loading, error, reload } = useMockApi<Page<ProjectItem>>(
-    () => getProjectList({ page: currentPage, pageSize: PAGE_SIZE, type: currentType }),
-    [currentPage, currentType],
+  const queryParams = new URLSearchParams()
+  queryParams.set('page', currentPage.toString())
+  queryParams.set('pageSize', PAGE_SIZE.toString())
+  if (currentType) {
+    queryParams.set('type', currentType)
+  }
+
+  const { data, loading, error, reload } = useApi<Page<ProjectItem>>(
+    `/public/projects?${queryParams.toString()}`,
   )
 
   const handleTypeChange = (type?: string) => {

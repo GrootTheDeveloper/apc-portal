@@ -5,9 +5,21 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react()],
   server: {
-    // /api/* → API (bỏ tiền tố /api). Production làm y hệt bằng Nginx (docs/06 mục 5).
+    // Trỏ chính xác về 127.0.0.1 (IPv4) để tránh lỗi ECONNREFUSED do Node 24 phân giải localhost sang IPv6 (::1).
     proxy: {
-      '/api': { target: 'http://localhost:3000', rewrite: (path) => path.replace(/^\/api/, '') },
+      '/api': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+      '/public': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true,
+      },
+      '/auth': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true,
+      },
     },
   },
 })

@@ -21,7 +21,9 @@ process.once('SIGINT', () => void shutdown('SIGINT'))
 process.once('SIGTERM', () => void shutdown('SIGTERM'))
 
 try {
-  await app.listen({ host: config.API_HOST, port: config.API_PORT })
+  // Lắng nghe trên IPv4 interface (127.0.0.1 / 0.0.0.0) tránh lỗi phân giải IPv6 trên Windows với Node 24
+  const host = config.API_HOST || '0.0.0.0'
+  await app.listen({ host, port: config.API_PORT })
 } catch (error) {
   app.log.error(error)
   process.exit(1)
