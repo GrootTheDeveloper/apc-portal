@@ -1,8 +1,8 @@
-import { useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
 import { Breadcrumb } from '../../../components/Breadcrumb'
+import { Seo } from '../../../components/Seo'
 import { useApi } from '../../../hooks/useApi'
 import { getProjectTypeColorClass, type ProjectItem } from '../../../lib/content'
 import { NotFound } from '../../NotFound'
@@ -15,20 +15,6 @@ export function ProjectDetailPage() {
     slug ? `/public/projects/${slug}` : null,
   )
 
-  useEffect(() => {
-    if (!item) return
-    const title = item.title || item.name || 'Dự án'
-    document.title = `${title} — CLB APC`
-
-    const description = item.description || ''
-    let metaDesc = document.querySelector('meta[name="description"]')
-    if (!metaDesc) {
-      metaDesc = document.createElement('meta')
-      metaDesc.setAttribute('name', 'description')
-      document.head.appendChild(metaDesc)
-    }
-    metaDesc.setAttribute('content', description)
-  }, [item])
 
   if (!slug) {
     return <NotFound />
@@ -63,6 +49,13 @@ export function ProjectDetailPage() {
         >
           {item && (
             <article className="flex flex-col gap-8">
+              {/* Đồng bộ SEO tags vào <head> — fallback chuỗi rỗng nếu description null */}
+              <Seo
+                title={item.title ?? item.name ?? 'Dự án'}
+                description={item.description ?? null}
+                canonicalUrl={`${window.location.origin}/projects/${slug}`}
+                imageUrl={item.thumbnailUrl ?? item.imageUrl ?? null}
+              />
               {/* Breadcrumb */}
               <Breadcrumb
                 items={[

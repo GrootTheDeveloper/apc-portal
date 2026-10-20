@@ -1,9 +1,9 @@
-import { useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
 import { Breadcrumb } from '../../../components/Breadcrumb'
 import { Eyebrow } from '../../../components/Eyebrow'
+import { Seo } from '../../../components/Seo'
 import { useApi } from '../../../hooks/useApi'
 import {
   getNewsCategoryChipClass,
@@ -21,21 +21,6 @@ export function NewsDetailPage() {
     slug ? `/public/news/${slug}` : null,
   )
 
-  // Cập nhật SEO meta tags cho trang chi tiết
-  useEffect(() => {
-    if (!item) return
-    const pageTitle = item.metaTitle || item.title
-    document.title = `${pageTitle} — CLB APC`
-
-    const description = item.metaDescription || item.summary || ''
-    let metaDesc = document.querySelector('meta[name="description"]')
-    if (!metaDesc) {
-      metaDesc = document.createElement('meta')
-      metaDesc.setAttribute('name', 'description')
-      document.head.appendChild(metaDesc)
-    }
-    metaDesc.setAttribute('content', description)
-  }, [item])
 
   if (!slug) {
     return <NotFound />
@@ -67,6 +52,14 @@ export function NewsDetailPage() {
         >
           {item && (
             <article className="flex flex-col gap-8">
+              {/* Đồng bộ SEO tags vào <head> — dùng metaTitle/metaDescription nếu có,
+                  fallback về title/summary nếu null/undefined */}
+              <Seo
+                title={item.metaTitle ?? item.title}
+                description={item.metaDescription ?? item.summary ?? null}
+                canonicalUrl={`${window.location.origin}/news/${slug}`}
+                imageUrl={item.thumbnailUrl ?? null}
+              />
               {/* Breadcrumb */}
               <Breadcrumb
                 items={[
