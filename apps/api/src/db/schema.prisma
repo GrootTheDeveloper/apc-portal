@@ -84,6 +84,14 @@ enum RecruitmentRoundStatus {
   ARCHIVED
 }
 
+enum DeliveryStatus {
+  PENDING
+  SENDING
+  RETRY
+  SENT
+  FAILED
+}
+
 // MODELS — TỔ CHỨC
 
 model Department {
@@ -102,6 +110,7 @@ model Department {
   events       Event[]
   projects     Project[]
   applications MembershipApplication[]
+  deliveries   NotificationDelivery[]
 
   @@map("departments")
 }
@@ -359,4 +368,31 @@ model MembershipApplication {
   @@index([applicantEmail])
   @@index([recruitmentRoundId])
   @@map("membership_applications")
+}
+
+// MODELS — EMAIL (O1)
+
+// Một email cần gửi. Không lưu nội dung đã dựng: worker đọc bản ghi gốc theo refType + refId lúc gửi,
+// nên mã hồ sơ, mã đăng ký không bao giờ nằm trong bảng này (FLOW-26, OPS-11).
+model NotificationDelivery {
+  id            String         @id @default(cuid()) // Cũng là idempotency key: Message-ID sinh từ id
+  type          String // Tên mẫu email, khớp với modules/email/templates.ts
+  recipient     String
+  refType       String // Loại bản ghi gốc, vd APPLICATION, EVENT_REGISTRATION
+  refId         String
+  departmentId  String? // Ban liên quan, để O3 lọc theo phạm vi ban
+  department    Department?    @relation(fields: [departmentId], references: [id])
+  status        DeliveryStatus @default(PENDING)
+  attempts      Int            @default(0)
+  nextAttemptAt DateTime       @default(now())
+  lockedAt      DateTime? // Lúc worker nhận xử lý (SENDING); kẹt quá 10 phút thì được nhận lại
+  messageId     String? // Message-ID nhà cung cấp trả về, đã làm sạch
+  lastError     String? // Lỗi gần nhất, đã làm sạch
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([refType, refId])
+  @@index([departmentId])
+  @@map("notification_deliveries")
 }

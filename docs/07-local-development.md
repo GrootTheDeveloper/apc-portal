@@ -284,6 +284,8 @@ Thay mục 2–5 bằng các bước sau, các mục còn lại giữ nguyên.
 | Kho tệp S3 (SeaweedFS) | http://localhost:9000 |
 | Kho tệp – giao diện quản trị | http://localhost:9001 |
 
+Email do API gửi (qua `enqueueEmail`) được worker trong process API gửi đi sau tối đa khoảng 10 giây và hiện ở Mailpit. `.env` cần có `SMTP_FROM` (xem `.env.example`); thiếu thì email chuyển trạng thái `FAILED` và log API báo "Thiếu cấu hình SMTP_FROM". Xem trạng thái từng email trong bảng `notification_deliveries` bằng `db:studio`.
+
 ### 10.3. Lệnh thường dùng
 
 | Mục đích | Lệnh |
