@@ -5,6 +5,7 @@ import { RequireAuth } from './components/RequireAuth'
 import { RootLayout } from './layouts/RootLayout'
 import { ADMIN_ROLES } from './lib/auth'
 import { ADMIN_MENU, PORTAL_MENU } from './lib/menu'
+import { AboutPage } from './pages/about/AboutPage'
 import { LoginPage } from './pages/auth/login/LoginPage'
 import { EventDetailPage } from './pages/events/detail/EventDetailPage'
 import { EventsListPage } from './pages/events/list/EventsListPage'
@@ -23,7 +24,7 @@ const router = createBrowserRouter([
     element: <RootLayout />,
     children: [
       { index: true, element: <HomePage /> },
-      { path: 'about', element: <Placeholder title="Về APC" /> },
+      { path: 'about', element: <AboutPage /> },
       { path: 'news', element: <NewsListPage /> },
       { path: 'news/:slug', element: <NewsDetailPage /> },
       // Route tĩnh khai báo trước route động /events/:slug (Sitemap §15.1).
