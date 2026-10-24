@@ -15,6 +15,8 @@ import { Placeholder } from './pages/Placeholder'
 import { ProjectDetailPage } from './pages/projects/detail/ProjectDetailPage'
 import { ProjectListPage } from './pages/projects/list/ProjectListPage'
 
+import { PrivacyPage } from './pages/public/PrivacyPage'
+
 const router = createBrowserRouter([
   {
     path: '/',
@@ -30,7 +32,7 @@ const router = createBrowserRouter([
       { path: 'recruitment', element: <Placeholder title="Gia nhập APC" /> },
       { path: 'recruitment/application-lookup', element: <Placeholder title="Tra cứu hồ sơ ứng tuyển" /> },
       { path: 'events/registration-lookup', element: <Placeholder title="Tra cứu đăng ký sự kiện" /> },
-      { path: 'privacy', element: <Placeholder title="Chính sách quyền riêng tư" /> },
+      { path: 'privacy', element: <PrivacyPage /> },
       { path: 'login', element: <LoginPage /> },
       {
         path: 'account/activate',
