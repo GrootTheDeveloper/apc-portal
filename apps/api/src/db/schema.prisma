@@ -92,6 +92,22 @@ enum DeliveryStatus {
   FAILED
 }
 
+enum AuditActorType {
+  USER
+  SERVICE
+}
+
+enum AuditCategory {
+  BUSINESS
+  SECURITY
+  OPERATIONS
+}
+
+enum AuditResult {
+  SUCCESS
+  FAILURE
+}
+
 // MODELS — TỔ CHỨC
 
 model Department {
@@ -154,6 +170,7 @@ model User {
   grantedRoles UserRole[] @relation("RoleGrantor")
   revokedRoles UserRole[] @relation("RoleRevoker")
   sessions     Session[]
+  auditLogs    AuditLog[]
 
   authoredPosts  Post[] @relation("PostAuthor")
   publishedPosts Post[] @relation("PostPublisher")
@@ -395,4 +412,32 @@ model NotificationDelivery {
   @@index([refType, refId])
   @@index([departmentId])
   @@map("notification_deliveries")
+}
+
+// MODELS — KIỂM TOÁN (AUDIT - B1)
+
+model AuditLog {
+  id          String         @id @default(cuid())
+  actorType   AuditActorType @default(USER)
+  actorId     String?
+  actor       User?          @relation(fields: [actorId], references: [id])
+  serviceName String?
+  actorRole   Role?
+  action      String
+  targetType  String
+  targetId    String?
+  category    AuditCategory
+  result      AuditResult
+  reason      String?
+  incidentId  String?
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime       @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }

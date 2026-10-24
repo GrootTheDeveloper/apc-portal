@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 
 import type { Role } from '../../db/generated/enums.js'
 import { type AppError, forbidden, notFound, unauthenticated } from '../../lib/errors.js'
+import { audit, AuditCategory, AuditResult } from '../audit/service.js'
 
 // Phân quyền dùng chung cho mọi API (docs/02 mục 12). Không tự viết kiểm quyền riêng trong module.
 //
@@ -36,10 +37,25 @@ export function registerAuth(app: FastifyInstance) {
 
 /**
  * Request bị từ chối 401/403 phải ghi audit loại SECURITY (FLOW-20).
- * TODO(B1): khi `audit(...)` của B1 merge, gọi audit ở đây; tạm thời chỉ ghi log kỹ thuật.
  */
 function denied(request: FastifyRequest, error: AppError): AppError {
-  request.log.warn({ userId: request.user?.id ?? null, route: request.routeOptions.url, status: error.statusCode }, 'auth denied')
+  const route = request.routeOptions?.url ?? request.url
+  request.log.warn({ userId: request.user?.id ?? null, route, status: error.statusCode }, 'auth denied')
+  const p = audit(request, {
+    action: 'auth.denied',
+    targetType: 'ROUTE',
+    targetId: route,
+    category: AuditCategory.SECURITY,
+    result: AuditResult.FAILURE,
+    reason: error.message,
+    metadata: {
+      status: error.statusCode,
+      route,
+    },
+  }).catch((err) => {
+    request.log.error({ err }, 'failed to write audit log for denied request')
+  })
+  ;(request as any).auditPromise = p
   return error
 }
 
