@@ -17,6 +17,8 @@ import { NotFound } from './pages/NotFound'
 import { Placeholder } from './pages/Placeholder'
 import { ProjectDetailPage } from './pages/projects/detail/ProjectDetailPage'
 import { ProjectListPage } from './pages/projects/list/ProjectListPage'
+import { RecruitmentDetailPage } from './pages/recruitment/detail/RecruitmentDetailPage'
+import { RecruitmentListPage } from './pages/recruitment/list/RecruitmentListPage'
 
 const router = createBrowserRouter([
   {
@@ -33,8 +35,9 @@ const router = createBrowserRouter([
       { path: 'events/:slug', element: <EventDetailPage /> },
       { path: 'projects', element: <ProjectListPage /> },
       { path: 'projects/:slug', element: <ProjectDetailPage /> },
-      { path: 'recruitment', element: <Placeholder title="Gia nhập APC" /> },
+      { path: 'recruitment', element: <RecruitmentListPage /> },
       { path: 'recruitment/application-lookup', element: <Placeholder title="Tra cứu hồ sơ ứng tuyển" /> },
+      { path: 'recruitment/:slug', element: <RecruitmentDetailPage /> },
       { path: 'privacy', element: <Placeholder title="Chính sách quyền riêng tư" /> },
       { path: 'login', element: <LoginPage /> },
       {
