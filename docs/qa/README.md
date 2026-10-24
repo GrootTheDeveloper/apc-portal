@@ -32,3 +32,10 @@ Dữ liệu mẫu tạo bởi seed (D1). Đăng nhập bằng **tên đăng nh�
 - [03 - Đăng ký sự kiện](./03-dang-ky-su-kien.md)
 - [04 - Đăng nhập & Xác thực](./04-dang-nhap.md)
 - [05 - Email & Tệp đính kèm](./05-email-tep.md)
+
+## Chạy test tự động (UI E2E)
+
+### Chuẩn bị
+1. Khởi động hạ tầng Docker:
+   ```powershell
+   pnpm infra:up

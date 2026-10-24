@@ -1,54 +1,73 @@
 name: CI
 
 on:
-  pull_request:
   push:
     branches: [main]
-
-permissions:
-  contents: read
+  pull_request:
+    branches: [main]
 
 jobs:
-  quality:
+  check:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # Postgres cho test cần database; migration được áp lên DB trống ở mỗi PR.
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_USER: apc
-          POSTGRES_PASSWORD: apc_ci_only
-          POSTGRES_DB: apc_portal
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U apc"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      DATABASE_URL: postgresql://apc:apc_ci_only@localhost:5432/apc_portal
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+      - uses: actions/setup-node@v4
         with:
-          version: 10.22.0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
+          node-version: 20
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Apply migrations
-        run: pnpm --filter @apc/api db:deploy
-
-      - name: Verify repository
+      - name: Typecheck & Lint & Unit Test
         run: pnpm check
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          POSTGRES_DB: apc_portal
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Browsers
+        run: pnpm --filter @apc/web exec playwright install chromium --with-deps
+
+      - name: Deploy DB & Seed
+        run: |
+          pnpm --filter @apc/api exec prisma migrate deploy
+          pnpm --filter @apc/api exec prisma db seed
+
+      - name: Build & Run Web & API
+        run: pnpm dev &
+        env:
+          NODE_ENV: test
+
+      - name: Run Playwright tests
+        run: pnpm --filter @apc/web test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-screenshots
+          path: apps/web/test-results/
