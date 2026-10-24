@@ -7,7 +7,8 @@ import { Eyebrow } from '../../../components/Eyebrow'
 import { EVENT_STATUS_STYLES, eventTypeVisual, type EventCardStatus } from '../../../lib/eventVisual'
 import { NotFound } from '../../NotFound'
 import { formatDate, formatDateTime, formatTime, vnParts } from '../../../lib/format'
-import { getEventBySlug, useMockApi, type EventDetail } from '../mock'
+import { useMockApi } from '../../../hooks/useMockApi'
+import { getEventBySlug, type EventDetail } from '../mock'
 
 /** Chỉ mở đăng ký khi sự kiện còn diễn ra và trong thời gian nhận đăng ký (BR-08). */
 function registrationState(event: EventDetail): 'open' | 'not_open' | 'closed' | null {

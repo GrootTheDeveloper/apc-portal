@@ -4,7 +4,9 @@ import { EventCard } from '../../../components/EventCard'
 import { AsyncState } from '../../../components/AsyncState'
 import { Button } from '../../../components/Button'
 import { Eyebrow } from '../../../components/Eyebrow'
-import { DEFAULT_MONTH_KEY, EVENT_TYPES, listEvents, useMockApi } from '../mock'
+import { Pagination } from '../../../components/Pagination'
+import { useMockApi } from '../../../hooks/useMockApi'
+import { DEFAULT_MONTH_KEY, EVENT_TYPES, listEvents } from '../mock'
 import { EventCalendar } from './EventCalendar'
 
 const PAGE_SIZE = 9
@@ -124,28 +126,12 @@ export function EventsListPage() {
                   <EventCard key={event.slug} {...event} linkState={{ from }} />
                 ))}
               </div>
-              <div className="mt-10 flex flex-col items-center gap-3 border-t border-outline-variant/20 pt-6 md:flex-row md:justify-between">
-                <p className="text-sm text-on-surface-variant">
-                  Trang {page}/{totalPages}
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={page <= 1}
-                    onClick={() => updateParams({ page: String(page - 1) })}
-                    className="rounded-apc border border-outline-variant/40 px-4 py-2 text-sm font-medium text-on-surface transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Trước
-                  </button>
-                  <button
-                    type="button"
-                    disabled={page >= totalPages}
-                    onClick={() => updateParams({ page: String(page + 1) })}
-                    className="rounded-apc border border-outline-variant/40 px-4 py-2 text-sm font-medium text-on-surface transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Sau
-                  </button>
-                </div>
+              <div className="mt-10 flex justify-center">
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  onPageChange={(nextPage) => updateParams({ page: nextPage <= 1 ? null : String(nextPage) })}
+                />
               </div>
             </>
           )}

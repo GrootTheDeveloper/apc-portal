@@ -1,5 +1,3 @@
-import { useEffect, useRef, useState } from 'react'
-
 import type { Page } from '../../lib/api'
 import { ApiError } from '../../lib/api'
 import { currentMonthKey, monthKeyOf, vnTodayParts } from '../../lib/vnTime'
@@ -300,42 +298,3 @@ export function homeEvents(): EventListItem[] {
 }
 
 export const DEFAULT_MONTH_KEY = currentMonthKey()
-
-type MockResult<T> = { key: string; data?: T; error?: ApiError }
-
-/** Bản tạm của useApi cho dữ liệu mock — cùng hình dạng trả về để E2 thay useApi(...) không phải sửa giao diện. */
-export function useMockApi<T>(fetcher: () => Promise<T>, deps: readonly unknown[]) {
-  const [attempt, setAttempt] = useState(0)
-  const [result, setResult] = useState<MockResult<T>>({ key: '' })
-  const key = `${attempt}:${JSON.stringify(deps)}`
-
-  // Giữ fetcher mới nhất ở ref để effect chỉ phụ thuộc key (fetcher được tạo mới mỗi lần render).
-  const fetcherRef = useRef(fetcher)
-  useEffect(() => {
-    fetcherRef.current = fetcher
-  })
-
-  useEffect(() => {
-    let cancelled = false
-    fetcherRef.current().then(
-      (data) => !cancelled && setResult({ key, data }),
-      (error: unknown) =>
-        !cancelled &&
-        setResult({
-          key,
-          error: error instanceof ApiError ? error : new ApiError(0, 'unknown', 'Đã có lỗi xảy ra. Vui lòng thử lại.'),
-        }),
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [key])
-
-  const loading = result.key !== key
-  return {
-    data: loading ? undefined : result.data,
-    error: loading ? undefined : result.error,
-    loading,
-    reload: () => setAttempt((count) => count + 1),
-  }
-}
