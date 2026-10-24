@@ -28,6 +28,7 @@ erDiagram
   membership_applications }o--|o departments : "desiredDepartment"
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
+  notification_deliveries }o--|o departments : "department"
 ```
 
 ## Chi tiết từng bảng
@@ -183,6 +184,22 @@ erDiagram
     DateTime submittedAt
     DateTime updatedAt
   }
+  notification_deliveries {
+    String id PK "Cũng là idempotency key: Message-ID sinh từ id"
+    String type "Tên mẫu email, khớp với modules/email/templates.ts"
+    String recipient
+    String refType "Loại bản ghi gốc, vd APPLICATION, EVENT_REGISTRATION"
+    String refId
+    String departmentId FK "tùy chọn. Ban liên quan, để O3 lọc theo phạm vi ban"
+    DeliveryStatus status "PENDING / SENDING / RETRY / SENT / FAILED"
+    Int attempts
+    DateTime nextAttemptAt
+    DateTime lockedAt "tùy chọn. Lúc worker nhận xử lý (SENDING); kẹt quá 10 phút thì được nhận lại"
+    String messageId "tùy chọn. Message-ID nhà cung cấp trả về, đã làm sạch"
+    String lastError "tùy chọn. Lỗi gần nhất, đã làm sạch"
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
   users }o--|o departments : "department"
   user_roles }o--|| users : "user"
@@ -202,6 +219,7 @@ erDiagram
   membership_applications }o--|o departments : "desiredDepartment"
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
+  notification_deliveries }o--|o departments : "department"
 ```
 
 ## Giá trị trạng thái (enum)
@@ -218,3 +236,4 @@ erDiagram
 | `RoleAssignmentStatus` | `PENDING`, `ACTIVE`, `EXPIRED`, `REVOKED` |
 | `EventStatus` | `DRAFT`, `PUBLISHED`, `CANCELLED`, `ENDED`, `ARCHIVED` |
 | `RecruitmentRoundStatus` | `DRAFT`, `OPEN`, `CLOSED`, `ARCHIVED` |
+| `DeliveryStatus` | `PENDING`, `SENDING`, `RETRY`, `SENT`, `FAILED` |

@@ -8,6 +8,7 @@ import { registerErrorHandler } from './lib/errors.js'
 import { registerAuth } from './modules/auth/rbac.js'
 import { authRoutes } from './modules/auth/routes.js'
 import { registerSession } from './modules/auth/session.js'
+import { emailRoutes } from './modules/email/routes.js'
 
 export function buildApp(config: AppConfig) {
   const app = Fastify({ logger: config.NODE_ENV !== 'test' })
@@ -22,6 +23,7 @@ export function buildApp(config: AppConfig) {
 
   app.get('/health', async () => ({ status: 'ok', service: 'apc-api' }))
   app.register(authRoutes(config))
+  app.register(emailRoutes)
 
   return app
 }
