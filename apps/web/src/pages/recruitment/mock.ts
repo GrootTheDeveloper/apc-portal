@@ -20,6 +20,10 @@ export type RecruitmentRoundItem = {
   departments: RecruitmentDepartment[]
 }
 
+const DAY = 24 * 60 * 60 * 1000
+// Mốc tính từ lúc mở trang, để lúc nào cũng có đủ đợt đang mở, sắp mở và đã đóng.
+const daysFromNow = (days: number) => new Date(Date.now() + days * DAY).toISOString()
+
 export const MOCK_DEPARTMENTS: RecruitmentDepartment[] = [
   {
     id: 'dept-dev',
@@ -50,8 +54,8 @@ export const MOCK_RECRUITMENT_ROUNDS: RecruitmentRoundItem[] = [
       'Đợt tuyển thành viên chính thức thường niên dành cho sinh viên UMT đam mê công nghệ phần mềm và muốn phát triển dự án thực tế.',
     status: 'OPEN',
     // Đang mở: opensAt quá khứ, closesAt tương lai
-    opensAt: '2026-10-01T00:00:00Z',
-    closesAt: '2026-10-31T23:59:59Z',
+    opensAt: daysFromNow(-10),
+    closesAt: daysFromNow(14),
     audience: 'Sinh viên Trường Đại học Quản lý và Công nghệ TP.HCM (UMT), ưu tiên khóa 2024, 2025 và 2026.',
     requirements:
       'Có tinh thần chủ động, trách nhiệm, đam mê học hỏi công nghệ và cam kết tham gia sinh hoạt định kỳ tối thiểu 1 buổi/tuần.',
@@ -64,8 +68,8 @@ export const MOCK_RECRUITMENT_ROUNDS: RecruitmentRoundItem[] = [
     description: 'Đợt tuyển chọn thành viên chuyên sâu cho nhóm dự án nghiên cứu mô hình AI tại phòng Lab APC.',
     status: 'OPEN',
     // Sắp mở: opensAt trong tương lai
-    opensAt: '2026-11-15T00:00:00Z',
-    closesAt: '2026-11-30T23:59:59Z',
+    opensAt: daysFromNow(20),
+    closesAt: daysFromNow(35),
     audience: 'Sinh viên ngành Công nghệ thông tin có kiến thức nền tảng về Python và Toán học.',
     requirements: 'Đã hoàn thành môn Lập trình cơ bản, nắm vững cấu trúc dữ liệu và giải thuật.',
     departments: [MOCK_DEPARTMENTS[1]],
@@ -84,3 +88,13 @@ export const MOCK_RECRUITMENT_ROUNDS: RecruitmentRoundItem[] = [
     departments: MOCK_DEPARTMENTS,
   },
 ]
+
+/** Bề mặt giả của API danh sách đợt tuyển công khai; R2 thay bằng useApi(...) rồi xóa file này. */
+export async function listRecruitmentRounds(): Promise<RecruitmentRoundItem[]> {
+  return MOCK_RECRUITMENT_ROUNDS
+}
+
+/** Trả null khi không có đợt tuyển công khai với slug này. */
+export async function getRecruitmentRound(slug: string): Promise<RecruitmentRoundItem | null> {
+  return MOCK_RECRUITMENT_ROUNDS.find((round) => round.slug === slug) ?? null
+}

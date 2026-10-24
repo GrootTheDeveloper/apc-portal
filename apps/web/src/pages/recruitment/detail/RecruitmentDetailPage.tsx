@@ -1,45 +1,47 @@
 import { Link, useParams } from 'react-router-dom'
+
+import { AsyncState } from '../../../components/AsyncState'
+import { Breadcrumb } from '../../../components/Breadcrumb'
 import { Button } from '../../../components/Button'
 import { Eyebrow } from '../../../components/Eyebrow'
+import { useMockApi } from '../../../hooks/useMockApi'
 import { formatDateTime } from '../../../lib/format'
-import { MOCK_RECRUITMENT_ROUNDS } from '../mock'
+import { NotFound } from '../../NotFound'
+import { getRecruitmentRound, type RecruitmentRoundItem } from '../mock'
+import { roundPhase } from '../roundPhase'
 
 export function RecruitmentDetailPage() {
   const { slug } = useParams<{ slug: string }>()
-  const round = MOCK_RECRUITMENT_ROUNDS.find((r) => r.slug === slug)
+  const { data: round, loading, error, reload } = useMockApi(
+    () => (slug ? getRecruitmentRound(slug) : Promise.resolve(null)),
+    [slug],
+  )
 
-  if (!round) {
-    return (
-      <main className="mx-auto max-w-container-max px-gutter py-20 text-center">
-        <h1 className="text-3xl font-bold text-on-surface">Không tìm thấy đợt tuyển</h1>
-        <p className="mt-3 text-on-surface-variant">Đợt tuyển bạn tìm kiếm không tồn tại hoặc đã được gỡ bỏ.</p>
-        <div className="mt-6">
-          <Link to="/recruitment">
-            <Button variant="outline">Quay lại danh sách</Button>
-          </Link>
-        </div>
-      </main>
-    )
-  }
+  if (!loading && !error && !round) return <NotFound />
 
-  const now = new Date()
-  const opensAt = new Date(round.opensAt)
-  const closesAt = new Date(round.closesAt)
+  return (
+    <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
+      {round && <RoundDetail round={round} />}
+    </AsyncState>
+  )
+}
 
-  const isUpcoming = round.status === 'OPEN' && now < opensAt
-  const isOpen = round.status === 'OPEN' && now >= opensAt && now <= closesAt
-  const isClosed = round.status === 'CLOSED' || now > closesAt
+function RoundDetail({ round }: { round: RecruitmentRoundItem }) {
+  const phase = roundPhase(round)
+  const isOpen = phase === 'open'
+  const isUpcoming = phase === 'upcoming'
+  const isClosed = phase === 'closed'
 
   return (
     <main className="mx-auto max-w-container-max px-gutter py-10 md:py-14">
       {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="mb-6 flex items-center gap-2 text-sm text-on-surface-variant">
-        <Link to="/" className="hover:text-apc-red transition-colors">Trang chủ</Link>
-        <span>/</span>
-        <Link to="/recruitment" className="hover:text-apc-red transition-colors">Gia nhập APC</Link>
-        <span>/</span>
-        <span className="text-on-surface font-medium truncate max-w-xs">{round.title}</span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: 'Trang chủ', to: '/' },
+          { label: 'Gia nhập APC', to: '/recruitment' },
+          { label: round.title },
+        ]}
+      />
 
       {/* Header đợt tuyển */}
       <div className="rounded-apc border border-outline-variant bg-surface-container-lowest p-8 md:p-10 shadow-sm">
