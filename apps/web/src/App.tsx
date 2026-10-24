@@ -6,6 +6,8 @@ import { RootLayout } from './layouts/RootLayout'
 import { ADMIN_ROLES } from './lib/auth'
 import { ADMIN_MENU, PORTAL_MENU } from './lib/menu'
 import { LoginPage } from './pages/auth/login/LoginPage'
+import { EventDetailPage } from './pages/events/detail/EventDetailPage'
+import { EventsListPage } from './pages/events/list/EventsListPage'
 import { HomePage } from './pages/home/HomePage'
 import { MenuPlaceholder } from './pages/MenuPlaceholder'
 import { NewsDetailPage } from './pages/news/detail/NewsDetailPage'
@@ -24,12 +26,14 @@ const router = createBrowserRouter([
       { path: 'about', element: <Placeholder title="Về APC" /> },
       { path: 'news', element: <NewsListPage /> },
       { path: 'news/:slug', element: <NewsDetailPage /> },
-      { path: 'events', element: <Placeholder title="Sự kiện" /> },
+      // Route tĩnh khai báo trước route động /events/:slug (Sitemap §15.1).
+      { path: 'events/registration-lookup', element: <Placeholder title="Tra cứu đăng ký sự kiện" /> },
+      { path: 'events', element: <EventsListPage /> },
+      { path: 'events/:slug', element: <EventDetailPage /> },
       { path: 'projects', element: <ProjectListPage /> },
       { path: 'projects/:slug', element: <ProjectDetailPage /> },
       { path: 'recruitment', element: <Placeholder title="Gia nhập APC" /> },
       { path: 'recruitment/application-lookup', element: <Placeholder title="Tra cứu hồ sơ ứng tuyển" /> },
-      { path: 'events/registration-lookup', element: <Placeholder title="Tra cứu đăng ký sự kiện" /> },
       { path: 'privacy', element: <Placeholder title="Chính sách quyền riêng tư" /> },
       { path: 'login', element: <LoginPage /> },
       {
