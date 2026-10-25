@@ -1,21 +1,19 @@
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 
+import { useApi } from '../../../hooks/useApi'
+import type { Page } from '../../../lib/api'
+import { newsCategoryStyle, type NewsItem } from '../../../lib/content'
 import { formatDate } from '../../../lib/format'
-import { MOCK_NEWS } from '../../news/list/mock'
-
-// Màu chấm trên nhánh và màu chữ chuyên mục (class literal cho Tailwind JIT).
-const CATEGORY_CLASS: Record<string, { dot: string; text: string }> = {
-  'Chuyên môn': { dot: 'bg-apc-blue', text: 'text-apc-blue-deep' },
-  'Thông báo': { dot: 'bg-apc-red', text: 'text-apc-red-deep' },
-  'Chia sẻ': { dot: 'bg-apc-gold', text: 'text-apc-gold-deep' },
-}
-const FALLBACK = { dot: 'bg-ink', text: 'text-muted' }
 
 const delay = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties
 
 export function NewsSection() {
-  const news = MOCK_NEWS.slice(0, 4)
+  const { data } = useApi<Page<NewsItem>>('/public/news?page=1&pageSize=3')
+  const news = data?.items ?? []
+
+  // Đang tải, lỗi hoặc chưa có bài công bố: ẩn cả khối, không để khoảng trống (FLOW-01)
+  if (news.length === 0) return null
 
   return (
     <section className="screen flex items-center bg-paper px-4 py-[clamp(40px,8vh,96px)] md:px-8">
@@ -47,20 +45,17 @@ export function NewsSection() {
           </Link>
         </div>
 
-        {news.length === 0 ? (
-          <p className="text-[18px]">Chưa có tin mới. Ghé lại sau nha.</p>
-        ) : (
-          <ol className="git-log relative">
+        <ol className="git-log relative">
             {news.map((item, index) => {
-              const color = CATEGORY_CLASS[item.category] ?? FALLBACK
+              const color = newsCategoryStyle(item.category)
               const head = index === 0
               return (
                 <li key={item.slug} data-rv className="relative pb-[clamp(20px,4.5vh,40px)] pl-12 last:pb-0" style={delay(160 + index * 100)}>
                   <span aria-hidden className={`git-dot absolute left-[5px] top-[6px] h-[18px] w-[18px] rounded-full ring-[5px] ring-paper ${color.dot}`} />
                   <article className="group relative">
                     <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-code text-[14px] font-bold">
-                      <span className="text-muted">{formatDate(item.publishedAt)}</span>
-                      <span className={color.text}>{item.category}</span>
+                      {item.publishedAt && <span className="text-muted">{formatDate(item.publishedAt)}</span>}
+                      <span className={color.label}>{item.category}</span>
                       {head && <span className="rounded-md bg-apc-gold px-2 py-0.5 text-ink">HEAD → main</span>}
                     </p>
                     <h3
@@ -75,13 +70,12 @@ export function NewsSection() {
                         →
                       </span>
                     </h3>
-                    {head && <p className="mt-3 max-w-[56ch] text-[18px] leading-relaxed">{item.excerpt}</p>}
+                    {head && <p className="mt-3 max-w-[56ch] text-[18px] leading-relaxed">{item.summary}</p>}
                   </article>
                 </li>
               )
             })}
-          </ol>
-        )}
+        </ol>
       </div>
     </section>
   )

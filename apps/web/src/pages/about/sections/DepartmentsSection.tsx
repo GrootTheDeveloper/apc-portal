@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 
-import type { Department } from '../mock'
+import type { Department } from '../types'
 import { Eyebrow } from '../../../components/Eyebrow'
 
 export function DepartmentsSection({ departments }: { departments: Department[] }) {
@@ -33,7 +33,9 @@ export function DepartmentsSection({ departments }: { departments: Department[] 
                 <div className="min-w-0">
                   <h3 className="font-display text-[28px] font-bold leading-[1.1]">{department.name}</h3>
                   <p className="mt-2 text-[17px] leading-relaxed">{department.description}</p>
-                  <p className="mt-4 break-words font-code text-[13px] font-bold text-muted">liên hệ · {department.contact}</p>
+                  {department.contact && (
+                    <p className="mt-4 break-words font-code text-[13px] font-bold text-muted">liên hệ · {department.contact}</p>
+                  )}
                 </div>
               </li>
             ))}

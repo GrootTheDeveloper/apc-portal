@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 
 import { buttonClass } from '../../../components/buttonClass'
 import { PageHero } from '../../../components/PageHero'
-import type { AboutData } from '../mock'
+import type { AboutData } from '../types'
 
 const MARK_PIECES = ['/assets/home/mark/mark-red.png', '/assets/home/mark/mark-gold.png', '/assets/home/mark/mark-blue.png']
 

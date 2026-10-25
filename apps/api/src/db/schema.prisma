@@ -92,17 +92,68 @@ enum DeliveryStatus {
   FAILED
 }
 
+enum AuditActorType {
+  USER
+  SERVICE
+}
+
+enum AuditCategory {
+  BUSINESS
+  SECURITY
+  OPERATIONS
+}
+
+enum AuditResult {
+  SUCCESS
+  FAILURE
+}
+
+// Chủ thể của một lần đồng ý (B2)
+enum ConsentSubjectType {
+  APPLICATION
+  EVENT_REGISTRATION
+  USER
+}
+
+// Mục đích đồng ý (REC-04, EVT-14, MEM-12)
+enum ConsentPurpose {
+  RECRUITMENT_PROCESSING
+  EVENT_REGISTRATION
+  PUBLIC_NAME
+  PUBLIC_PHOTO
+  PUBLIC_PROFILE // thông tin cá nhân khác: kỹ năng, lĩnh vực quan tâm
+}
+
 // MODELS — TỔ CHỨC
 
+// Thông tin CLB — singleton (1 dòng duy nhất, id = "singleton")
+// T2: SiteSetting.termEndsAt không trả ra /public/about; A6, A7 dùng để giới hạn ngày hết hạn vai trò đặc quyền (QĐ-6)
+model SiteSetting {
+  id String @id @default("singleton")
+
+  // Thông tin CLB công khai (JSON) — trả ra GET /public/about
+  info Json // { name, description, mission, contactEmail, fanpage, officialLinks }
+
+  // Ngày kết thúc nhiệm kỳ Ban Chủ nhiệm hiện tại (RP-03, QĐ-6) — KHÔNG trả ra API công khai
+  termEndsAt DateTime?
+
+  updatedAt DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
 model Department {
-  id          String           @id @default(cuid())
-  name        String
-  code        String           @unique
-  description String?
-  status      DepartmentStatus @default(ACTIVE)
-  order       Int              @default(0)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id           String           @id @default(cuid())
+  name         String
+  code         String           @unique
+  description  String?
+  // Đầu mối liên hệ chung của ban: email ban, fanpage hoặc chức danh (ORG-02)
+  // KHÔNG phải tên, email, SĐT cá nhân (BR-20, DATA-03)
+  contactPoint String?
+  status       DepartmentStatus @default(ACTIVE)
+  order        Int              @default(0)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   users        User[]
   roles        UserRole[]
@@ -154,6 +205,7 @@ model User {
   grantedRoles UserRole[] @relation("RoleGrantor")
   revokedRoles UserRole[] @relation("RoleRevoker")
   sessions     Session[]
+  auditLogs    AuditLog[]
 
   authoredPosts  Post[] @relation("PostAuthor")
   publishedPosts Post[] @relation("PostPublisher")
@@ -395,4 +447,52 @@ model NotificationDelivery {
   @@index([refType, refId])
   @@index([departmentId])
   @@map("notification_deliveries")
+}
+
+// MODELS — KIỂM TOÁN (AUDIT - B1)
+
+model AuditLog {
+  id          String         @id @default(cuid())
+  actorType   AuditActorType @default(USER)
+  actorId     String?
+  actor       User?          @relation(fields: [actorId], references: [id])
+  serviceName String?
+  actorRole   Role?
+  action      String
+  targetType  String
+  targetId    String?
+  category    AuditCategory
+  result      AuditResult
+  reason      String?
+  incidentId  String?
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime       @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// MODELS — QUYỀN RIÊNG TƯ (B2)
+
+// Mỗi lần đồng ý một dòng; thu hồi thì ghi revokedAt, không xóa dòng (DATA-07).
+// Không lưu email/IP/trình duyệt: chủ thể là hồ sơ ứng tuyển, đăng ký sự kiện hoặc tài khoản đã có sẵn dữ liệu đó.
+model ConsentRecord {
+  id            String             @id @default(cuid())
+  subjectType   ConsentSubjectType
+  subjectId     String
+  purpose       ConsentPurpose
+  // Đối tượng áp dụng, vd. một dự án cụ thể (MEM-12). Để trống là áp dụng chung.
+  targetType    String?
+  targetId      String?
+  policyVersion String
+  grantedAt     DateTime           @default(now())
+  revokedAt     DateTime?
+
+  @@index([subjectType, subjectId, purpose])
+  @@map("consent_records")
 }

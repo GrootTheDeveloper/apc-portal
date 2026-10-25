@@ -6,13 +6,13 @@ import { pillClass } from '../../../components/buttonClass'
 import { PageHero } from '../../../components/PageHero'
 import { NewsCard } from '../../../components/NewsCard'
 import { Pagination } from '../../../components/Pagination'
-import { useMockApi } from '../../../hooks/useMockApi'
+import { useApi } from '../../../hooks/useApi'
 import type { Page } from '../../../lib/api'
-import { getNewsList, NEWS_CATEGORIES, type NewsItem } from './mock'
+import { NEWS_CATEGORIES, type NewsItem } from '../../../lib/content'
 
 const PAGE_SIZE = 12
 
-/** Trang danh sách tin tức (hỗ trợ phân trang, lọc chuyên mục, đủ 5 trạng thái) */
+/** Trang danh sách tin tức (hỗ trợ phân trang, lọc chuyên mục, đủ 4 trạng thái async) */
 export function NewsListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -20,9 +20,15 @@ export function NewsListPage() {
   const pageParam = searchParams.get('page')
   const currentPage = Math.max(1, parseInt(pageParam || '1', 10) || 1)
 
-  const { data, loading, error, reload } = useMockApi<Page<NewsItem>>(
-    () => getNewsList({ page: currentPage, pageSize: PAGE_SIZE, category: currentCategory }),
-    [currentPage, currentCategory],
+  const queryParams = new URLSearchParams()
+  queryParams.set('page', currentPage.toString())
+  queryParams.set('pageSize', PAGE_SIZE.toString())
+  if (currentCategory) {
+    queryParams.set('category', currentCategory)
+  }
+
+  const { data, loading, error, reload } = useApi<Page<NewsItem>>(
+    `/public/news?${queryParams.toString()}`,
   )
 
   const handleCategoryChange = (category?: string) => {

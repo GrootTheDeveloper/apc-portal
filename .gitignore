@@ -13,6 +13,8 @@ coverage/
 apps/api/data/
 apps/api/src/db/generated/
 apps/web/.vite/
+apps/web/playwright-report/
+apps/web/test-results/
 
 # LaTeX build intermediates
 docs/tech/*.aux

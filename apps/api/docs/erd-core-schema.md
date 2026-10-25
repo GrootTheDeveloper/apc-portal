@@ -29,17 +29,25 @@ erDiagram
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
   notification_deliveries }o--|o departments : "department"
+  audit_logs }o--|o users : "actor"
 ```
 
 ## Chi tiết từng bảng
 
 ```mermaid
 erDiagram
+  site_settings {
+    String id PK
+    Json info "{ name, description, mission, contactEmail, fanpage, officialLinks }"
+    DateTime termEndsAt "tùy chọn"
+    DateTime updatedAt
+  }
   departments {
     String id PK
     String name
     String code UK
     String description "tùy chọn"
+    String contactPoint "tùy chọn"
     DepartmentStatus status "ACTIVE / ARCHIVED"
     Int order
     DateTime createdAt
@@ -200,6 +208,35 @@ erDiagram
     DateTime createdAt
     DateTime updatedAt
   }
+  audit_logs {
+    String id PK
+    AuditActorType actorType "USER / SERVICE"
+    String actorId FK "tùy chọn"
+    String serviceName "tùy chọn"
+    Role actorRole "tùy chọn. MEMBER / DEPARTMENT_MANAGER / BOARD / TECH_ADMIN"
+    String action
+    String targetType
+    String targetId "tùy chọn"
+    AuditCategory category "BUSINESS / SECURITY / OPERATIONS"
+    AuditResult result "SUCCESS / FAILURE"
+    String reason "tùy chọn"
+    String incidentId "tùy chọn"
+    Json metadata "tùy chọn"
+    String ipAddress "tùy chọn"
+    String userAgent "tùy chọn"
+    DateTime createdAt
+  }
+  consent_records {
+    String id PK
+    ConsentSubjectType subjectType "APPLICATION / EVENT_REGISTRATION / USER"
+    String subjectId
+    ConsentPurpose purpose "RECRUITMENT_PROCESSING / EVENT_REGISTRATION / PUBLIC_NAME / PUBLIC_PHOTO"
+    String targetType "tùy chọn"
+    String targetId "tùy chọn"
+    String policyVersion
+    DateTime grantedAt
+    DateTime revokedAt "tùy chọn"
+  }
 
   users }o--|o departments : "department"
   user_roles }o--|| users : "user"
@@ -220,6 +257,7 @@ erDiagram
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
   notification_deliveries }o--|o departments : "department"
+  audit_logs }o--|o users : "actor"
 ```
 
 ## Giá trị trạng thái (enum)
@@ -237,3 +275,8 @@ erDiagram
 | `EventStatus` | `DRAFT`, `PUBLISHED`, `CANCELLED`, `ENDED`, `ARCHIVED` |
 | `RecruitmentRoundStatus` | `DRAFT`, `OPEN`, `CLOSED`, `ARCHIVED` |
 | `DeliveryStatus` | `PENDING`, `SENDING`, `RETRY`, `SENT`, `FAILED` |
+| `AuditActorType` | `USER`, `SERVICE` |
+| `AuditCategory` | `BUSINESS`, `SECURITY`, `OPERATIONS` |
+| `AuditResult` | `SUCCESS`, `FAILURE` |
+| `ConsentSubjectType` | `APPLICATION`, `EVENT_REGISTRATION`, `USER` |
+| `ConsentPurpose` | `RECRUITMENT_PROCESSING`, `EVENT_REGISTRATION`, `PUBLIC_NAME`, `PUBLIC_PHOTO` |

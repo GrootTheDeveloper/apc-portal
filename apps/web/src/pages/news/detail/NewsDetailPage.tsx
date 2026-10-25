@@ -3,26 +3,19 @@ import { Link, useParams } from 'react-router-dom'
 import { AsyncState } from '../../../components/AsyncState'
 import { Breadcrumb } from '../../../components/Breadcrumb'
 import { PageHero } from '../../../components/PageHero'
-import { useMockApi } from '../../../hooks/useMockApi'
+import { Seo } from '../../../components/Seo'
+import { useApi } from '../../../hooks/useApi'
+import type { NewsDetailItem } from '../../../lib/content'
 import { formatDate } from '../../../lib/format'
 import { NotFound } from '../../NotFound'
-import { getNewsDetail, type NewsItem } from '../list/mock'
 
 /** Trang chi tiết tin tức */
 export function NewsDetailPage() {
   const { slug } = useParams<{ slug: string }>()
+  const { data: item, loading, error, reload } = useApi<NewsDetailItem>(slug ? `/public/news/${slug}` : null)
 
-  const { data: item, loading, error, reload } = useMockApi<NewsItem | null>(
-    () => (slug ? getNewsDetail(slug) : Promise.resolve(null)),
-    [slug],
-  )
-
-  if (!slug) {
-    return <NotFound />
-  }
-
-  // Nếu không tải và không có lỗi nhưng không tìm thấy bài viết
-  if (!loading && !error && item === null) {
+  // Bài không tồn tại, nháp, lưu trữ hay nội bộ đều trả 404 (docs/02 §12)
+  if (!slug || error?.status === 404) {
     return <NotFound />
   }
 
@@ -31,6 +24,13 @@ export function NewsDetailPage() {
       <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
         {item && (
           <article>
+            {/* metaTitle/metaDescription để trống thì dùng tiêu đề/tóm tắt */}
+            <Seo
+              title={item.metaTitle || item.title}
+              description={item.metaDescription || item.summary}
+              path={`/news/${slug}`}
+              imageUrl={item.thumbnailUrl}
+            />
             <PageHero
               tone="gold"
               top={
@@ -45,31 +45,24 @@ export function NewsDetailPage() {
               compact
               comment={item.category.toLowerCase()}
               title={item.title}
-              lede={item.excerpt}
+              lede={item.summary}
             >
-              <div className="mt-8 flex items-center gap-3">
-                <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-[13px] font-extrabold ${item.author.avatarClass}`}>
-                  {item.author.initials}
-                </span>
-                <span className="text-[15px] leading-tight">
-                  <b className="block">{item.author.name}</b>
-                  <span className="font-code text-[13px] font-bold opacity-75">
-                    {item.author.role} · {formatDate(item.publishedAt)}
-                  </span>
-                </span>
-              </div>
+              {item.publishedAt && <p className="mt-6 font-code text-[14px] font-bold opacity-75">{formatDate(item.publishedAt)}</p>}
             </PageHero>
 
             <section className="px-4 py-[clamp(40px,7vh,80px)] md:px-8">
               <div className="mx-auto w-full max-w-[760px]">
-                {item.coverUrl && (
+                {item.thumbnailUrl && (
                   <div data-rv className="photo mb-10 aspect-[16/9] bg-soft">
-                    <img alt="" className="h-full" src={item.coverUrl} />
+                    <img alt="" className="h-full" src={item.thumbnailUrl} />
                   </div>
                 )}
+                {/* Tách đoạn theo dòng trống, giữ xuống dòng trong đoạn */}
                 <div className="flex flex-col gap-5 text-[18px] leading-relaxed">
                   {item.content.split('\n\n').map((paragraph, index) => (
-                    <p key={index}>{paragraph}</p>
+                    <p key={index} className="whitespace-pre-line">
+                      {paragraph}
+                    </p>
                   ))}
                 </div>
                 <div className="mt-12 border-t-2 border-ink pt-6">

@@ -4,60 +4,55 @@ import { AsyncState } from '../../../components/AsyncState'
 import { Breadcrumb } from '../../../components/Breadcrumb'
 import { buttonClass } from '../../../components/buttonClass'
 import { PageHero } from '../../../components/PageHero'
-import { useMockApi } from '../../../hooks/useMockApi'
+import { Seo } from '../../../components/Seo'
+import { useApi } from '../../../hooks/useApi'
+import { safeHttpUrl, type ProjectItem } from '../../../lib/content'
 import { NotFound } from '../../NotFound'
-import { getProjectDetail, type ProjectItem } from '../list/mock'
 
-/** Trang chi tiết dự án */
+/** Trang chi tiết dự án. Loại dự án và thành viên tham gia thêm ở C4. */
 export function ProjectDetailPage() {
   const { slug } = useParams<{ slug: string }>()
+  const { data: item, loading, error, reload } = useApi<ProjectItem>(slug ? `/public/projects/${slug}` : null)
 
-  const { data, loading, error, reload } = useMockApi<ProjectItem | null>(
-    () => (slug ? getProjectDetail(slug) : Promise.resolve(null)),
-    [slug],
-  )
-
-  if (!slug) {
+  // Dự án không tồn tại hoặc chưa công bố trả 404
+  if (!slug || error?.status === 404) {
     return <NotFound />
   }
 
-  // data là null nghĩa là slug hợp lệ nhưng không tìm thấy dự án.
-  if (!loading && !error && data === null) {
-    return <NotFound />
-  }
-
-  // Alias để dùng tên quen thuộc trong JSX bên dưới.
-  const item = data
+  const productUrl = safeHttpUrl(item?.projectUrl)
+  const sourceUrl = safeHttpUrl(item?.sourceUrl)
+  const technologies = item?.technologies ?? []
 
   return (
     <main>
       <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
         {item && (
           <article>
+            <Seo title={item.title} description={item.description} path={`/projects/${slug}`} imageUrl={item.thumbnailUrl} />
             <PageHero
               top={
                 <Breadcrumb
                   items={[
                     { label: 'trang chủ', to: '/' },
                     { label: 'dự án', to: '/projects' },
-                    { label: item.name },
+                    { label: item.title },
                   ]}
                 />
               }
               compact
-              comment={item.type.toLowerCase()}
-              title={item.name}
+              comment="dự án"
+              title={item.title}
               lede={item.description}
             >
-              {(item.productUrl || item.sourceUrl) && (
+              {(productUrl || sourceUrl) && (
                 <div className="mt-8 flex flex-wrap gap-4">
-                  {item.productUrl && (
-                    <a href={item.productUrl} target="_blank" rel="noopener noreferrer" className={buttonClass('primary')}>
+                  {productUrl && (
+                    <a href={productUrl} target="_blank" rel="noopener noreferrer" className={buttonClass('primary')}>
                       Dùng thử ↗<span className="sr-only"> (mở tab mới)</span>
                     </a>
                   )}
-                  {item.sourceUrl && (
-                    <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className={buttonClass('light')}>
+                  {sourceUrl && (
+                    <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className={buttonClass('light')}>
                       Mã nguồn ↗<span className="sr-only"> (mở tab mới)</span>
                     </a>
                   )}
@@ -67,9 +62,9 @@ export function ProjectDetailPage() {
 
             <section className="px-4 py-[clamp(40px,7vh,80px)] md:px-8">
               <div className="mx-auto w-full max-w-container-max">
-                {item.imageUrl ? (
+                {item.thumbnailUrl ? (
                   <div data-rv className="photo aspect-[16/9] bg-soft">
-                    <img alt={`Ảnh chụp ${item.name}`} className="h-full" src={item.imageUrl} />
+                    <img alt={`Ảnh chụp ${item.title}`} className="h-full" src={item.thumbnailUrl} />
                   </div>
                 ) : (
                   <div data-rv className="rounded-[20px] bg-ink p-6 font-code text-[16px] font-bold text-paper/70 md:p-10">
@@ -79,36 +74,18 @@ export function ProjectDetailPage() {
                   </div>
                 )}
 
-                <div className="mt-[clamp(40px,7vh,72px)] grid gap-12 lg:grid-cols-2 lg:gap-16">
-                  {item.technologies.length > 0 && (
-                    <div>
-                      <h2 className="border-b-2 border-ink pb-3 font-display text-[28px] font-extrabold leading-none">Công nghệ</h2>
-                      <ul className="mt-5 flex flex-wrap gap-2">
-                        {item.technologies.map((tech) => (
-                          <li key={tech} className="rounded-lg bg-soft px-3 py-1.5 font-code text-[15px] font-bold">
-                            {tech}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {item.members.length > 0 && (
-                    <div>
-                      <h2 className="border-b-2 border-ink pb-3 font-display text-[28px] font-extrabold leading-none">Thành viên</h2>
-                      <ul className="mt-2">
-                        {item.members.map((member) => (
-                          <li key={member.name} className="flex items-center gap-4 border-b-2 border-ink/10 py-3">
-                            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-apc-blue text-[13px] font-extrabold text-paper">
-                              {member.initials}
-                            </span>
-                            <b className="min-w-0 flex-1 truncate">{member.name}</b>
-                            <span className="font-code text-[13px] font-bold text-muted">{member.role}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
+                {technologies.length > 0 && (
+                  <div className="mt-[clamp(40px,7vh,72px)] max-w-[760px]">
+                    <h2 className="border-b-2 border-ink pb-3 font-display text-[28px] font-extrabold leading-none">Công nghệ</h2>
+                    <ul className="mt-5 flex flex-wrap gap-2">
+                      {technologies.map((tech) => (
+                        <li key={tech} className="rounded-lg bg-soft px-3 py-1.5 font-code text-[15px] font-bold">
+                          {tech}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 <Link
                   to="/projects"

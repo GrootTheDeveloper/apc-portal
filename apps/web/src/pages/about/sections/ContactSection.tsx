@@ -1,4 +1,4 @@
-import type { AboutData } from '../mock'
+import type { AboutData } from '../types'
 import { Eyebrow } from '../../../components/Eyebrow'
 
 export function ContactSection({ data }: { data: AboutData }) {
