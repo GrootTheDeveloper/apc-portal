@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 
 import { AsyncState } from '../../components/AsyncState'
-import type { AboutData } from './mock'
-import { MOCK_ABOUT } from './mock'
+import { useApi } from '../../hooks/useApi'
+import type { AboutData } from './types'
 import { ContactSection } from './sections/ContactSection'
 import { DepartmentsSection } from './sections/DepartmentsSection'
 import { IntroSection } from './sections/IntroSection'
@@ -10,16 +10,9 @@ import { IntroSection } from './sections/IntroSection'
 const PAGE_PATH = '/about'
 const DEFAULT_TITLE = 'APC Portal - Từ ý tưởng đến sản phẩm thật'
 
-/**
- * PAGE-PUB-02 — T1 dùng dữ liệu giả cùng hình dạng GET /public/about.
- * T2: thay `useMockAbout()` bằng `useApi<AboutData>('/public/about')` và xóa `mock.ts`.
- */
-function useMockAbout() {
-  return { data: MOCK_ABOUT, loading: false, error: undefined, reload: () => undefined }
-}
-
+/** PAGE-PUB-02 — Trang Về APC. Dữ liệu từ GET /public/about (T2). */
 export function AboutPage() {
-  const about = useMockAbout()
+  const about = useApi<AboutData>('/public/about')
 
   useEffect(() => {
     if (!about.data) return
@@ -82,7 +75,10 @@ function setMeta(attr: 'name' | 'property', key: string, content: string) {
 
 function setCanonical(href: string) {
   const existing = document.head.querySelector('link[rel="canonical"]')
-  const el = existing instanceof HTMLLinkElement ? existing : document.head.appendChild(document.createElement('link'))
+  const el =
+    existing instanceof HTMLLinkElement
+      ? existing
+      : document.head.appendChild(document.createElement('link'))
   el.rel = 'canonical'
   el.href = href
 }

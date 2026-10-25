@@ -1,7 +1,7 @@
 import { Eyebrow } from '../../../components/Eyebrow'
-import type { Department } from '../mock'
+import type { AboutDepartment } from '../types'
 
-export function DepartmentsSection({ departments }: { departments: Department[] }) {
+export function DepartmentsSection({ departments }: { departments: AboutDepartment[] }) {
   const items = [...departments].sort((a, b) => a.order - b.order)
 
   return (
