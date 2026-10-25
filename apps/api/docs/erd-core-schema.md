@@ -29,6 +29,7 @@ erDiagram
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
   notification_deliveries }o--|o departments : "department"
+  audit_logs }o--|o users : "actor"
 ```
 
 ## Chi tiết từng bảng
@@ -200,6 +201,24 @@ erDiagram
     DateTime createdAt
     DateTime updatedAt
   }
+  audit_logs {
+    String id PK
+    AuditActorType actorType "USER / SERVICE"
+    String actorId FK "tùy chọn"
+    String serviceName "tùy chọn"
+    Role actorRole "tùy chọn. MEMBER / DEPARTMENT_MANAGER / BOARD / TECH_ADMIN"
+    String action
+    String targetType
+    String targetId "tùy chọn"
+    AuditCategory category "BUSINESS / SECURITY / OPERATIONS"
+    AuditResult result "SUCCESS / FAILURE"
+    String reason "tùy chọn"
+    String incidentId "tùy chọn"
+    Json metadata "tùy chọn"
+    String ipAddress "tùy chọn"
+    String userAgent "tùy chọn"
+    DateTime createdAt
+  }
 
   users }o--|o departments : "department"
   user_roles }o--|| users : "user"
@@ -220,6 +239,7 @@ erDiagram
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
   notification_deliveries }o--|o departments : "department"
+  audit_logs }o--|o users : "actor"
 ```
 
 ## Giá trị trạng thái (enum)
@@ -237,3 +257,6 @@ erDiagram
 | `EventStatus` | `DRAFT`, `PUBLISHED`, `CANCELLED`, `ENDED`, `ARCHIVED` |
 | `RecruitmentRoundStatus` | `DRAFT`, `OPEN`, `CLOSED`, `ARCHIVED` |
 | `DeliveryStatus` | `PENDING`, `SENDING`, `RETRY`, `SENT`, `FAILED` |
+| `AuditActorType` | `USER`, `SERVICE` |
+| `AuditCategory` | `BUSINESS`, `SECURITY`, `OPERATIONS` |
+| `AuditResult` | `SUCCESS`, `FAILURE` |
