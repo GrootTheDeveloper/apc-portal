@@ -284,6 +284,8 @@ Thay mục 2–5 bằng các bước sau, các mục còn lại giữ nguyên.
 | Kho tệp S3 (SeaweedFS) | http://localhost:9000 |
 | Kho tệp – giao diện quản trị | http://localhost:9001 |
 
+Email do API gửi (qua `enqueueEmail`) được worker trong process API gửi đi sau tối đa khoảng 10 giây và hiện ở Mailpit. `.env` cần có `SMTP_FROM` (xem `.env.example`); thiếu thì email chuyển trạng thái `FAILED` và log API báo "Thiếu cấu hình SMTP_FROM". Xem trạng thái từng email trong bảng `notification_deliveries` bằng `db:studio`.
+
 ### 10.3. Lệnh thường dùng
 
 | Mục đích | Lệnh |
@@ -304,3 +306,30 @@ Lệnh `migrate reset` xóa toàn bộ dữ liệu trong database local. Không 
 Trang chủ là các component React trong `apps/web/src/pages/home/sections/`; Navbar và Footer nằm ở `apps/web/src/layouts/`. Sửa trực tiếp các file này, rồi chạy `pnpm check` và mở trang `/` để kiểm tra.
 
 Lệnh `pnpm homepage:import` chỉ làm mới ảnh tham chiếu từ `design-reference/homepage`, không thay đổi giao diện đang chạy.
+
+### 10.5. Tài khoản mẫu
+
+Dự án có sẵn bộ dữ liệu mẫu (ban, bài viết, sự kiện, dự án, đợt tuyển và tài khoản) để chạy thử.
+
+**Cách chạy (tạo mới hoặc đặt lại dữ liệu):**
+```powershell
+pnpm --filter @apc/api run db:seed
+```
+*Lưu ý: Lệnh `prisma migrate reset` sẽ tự động chạy lệnh này.*
+
+**Danh sách tài khoản mẫu:**
+Mật khẩu chung cho tất cả tài khoản mẫu lấy từ biến `SEED_PASSWORD` trong file `.env` (mặc định là `apc_local_seed_only`). Email có dạng `<tên_đăng_nhập>@example.com`.
+
+| Tên đăng nhập | Vai trò | Trạng thái | Ban | Ghi chú |
+| --- | --- | --- | --- | --- |
+| `board` | `BOARD` | `ACTIVE` | — | Ban Chủ nhiệm |
+| `techadmin` | `TECH_ADMIN` | `ACTIVE` | — | Quản trị Hệ thống |
+| `board.pending` | `BOARD` | `ACTIVE` | — | Vai trò `PENDING` (chưa thiết lập 2 lớp) |
+| `manager.a` | `DEPARTMENT_MANAGER` | `ACTIVE` | Ban A | Trưởng ban A |
+| `manager.b` | `DEPARTMENT_MANAGER` | `ACTIVE` | Ban B | Trưởng ban B |
+| `member.a` | `MEMBER` (nền) | `ACTIVE` | Ban A | Thành viên ban A |
+| `member.b` | `MEMBER` (nền) | `ACTIVE` | Ban B | Thành viên ban B |
+| `pending` | `MEMBER` (nền) | `PENDING_ACTIVATION` | Ban A | Chờ kích hoạt (phải đổi mật khẩu) |
+| `locked` | `MEMBER` (nền) | `LOCKED` | Ban A | Đã bị khóa |
+| `inactive` | `MEMBER` (nền) | `INACTIVE` | Ban A | Đã rời CLB (`memberStatus = LEFT`) |
+

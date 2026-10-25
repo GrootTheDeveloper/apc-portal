@@ -28,7 +28,8 @@ erDiagram
   membership_applications }o--|o departments : "desiredDepartment"
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
-  consent_records }o--|o users : "user"
+  notification_deliveries }o--|o departments : "department"
+  audit_logs }o--|o users : "actor"
 ```
 
 ## Chi tiết từng bảng
@@ -184,12 +185,36 @@ erDiagram
     DateTime submittedAt
     DateTime updatedAt
   }
-  consent_records {
+  notification_deliveries {
+    String id PK "Cũng là idempotency key: Message-ID sinh từ id"
+    String type "Tên mẫu email, khớp với modules/email/templates.ts"
+    String recipient
+    String refType "Loại bản ghi gốc, vd APPLICATION, EVENT_REGISTRATION"
+    String refId
+    String departmentId FK "tùy chọn. Ban liên quan, để O3 lọc theo phạm vi ban"
+    DeliveryStatus status "PENDING / SENDING / RETRY / SENT / FAILED"
+    Int attempts
+    DateTime nextAttemptAt
+    DateTime lockedAt "tùy chọn. Lúc worker nhận xử lý (SENDING); kẹt quá 10 phút thì được nhận lại"
+    String messageId "tùy chọn. Message-ID nhà cung cấp trả về, đã làm sạch"
+    String lastError "tùy chọn. Lỗi gần nhất, đã làm sạch"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  audit_logs {
     String id PK
-    String email "Email của người đồng ý (bắt buộc)"
-    String userId FK "tùy chọn. Gắn với User nếu đã có tài khoản"
-    String purpose "Mục đích (vd: MEMBERSHIP_APPLICATION, EVENT_REGISTRATION)"
-    String privacyVersion "Phiên bản chính sách lúc đồng ý (vd: v1.0)"
+    AuditActorType actorType "USER / SERVICE"
+    String actorId FK "tùy chọn"
+    String serviceName "tùy chọn"
+    Role actorRole "tùy chọn. MEMBER / DEPARTMENT_MANAGER / BOARD / TECH_ADMIN"
+    String action
+    String targetType
+    String targetId "tùy chọn"
+    AuditCategory category "BUSINESS / SECURITY / OPERATIONS"
+    AuditResult result "SUCCESS / FAILURE"
+    String reason "tùy chọn"
+    String incidentId "tùy chọn"
+    Json metadata "tùy chọn"
     String ipAddress "tùy chọn"
     String userAgent "tùy chọn"
     DateTime createdAt
@@ -213,7 +238,8 @@ erDiagram
   membership_applications }o--|o departments : "desiredDepartment"
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
-  consent_records }o--|o users : "user"
+  notification_deliveries }o--|o departments : "department"
+  audit_logs }o--|o users : "actor"
 ```
 
 ## Giá trị trạng thái (enum)
@@ -230,3 +256,7 @@ erDiagram
 | `RoleAssignmentStatus` | `PENDING`, `ACTIVE`, `EXPIRED`, `REVOKED` |
 | `EventStatus` | `DRAFT`, `PUBLISHED`, `CANCELLED`, `ENDED`, `ARCHIVED` |
 | `RecruitmentRoundStatus` | `DRAFT`, `OPEN`, `CLOSED`, `ARCHIVED` |
+| `DeliveryStatus` | `PENDING`, `SENDING`, `RETRY`, `SENT`, `FAILED` |
+| `AuditActorType` | `USER`, `SERVICE` |
+| `AuditCategory` | `BUSINESS`, `SECURITY`, `OPERATIONS` |
+| `AuditResult` | `SUCCESS`, `FAILURE` |

@@ -2,6 +2,8 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 
 import type { Role } from '../../db/generated/enums.js'
 import { type AppError, forbidden, notFound, unauthenticated } from '../../lib/errors.js'
+import { AUDIT_ACTIONS, audit, AuditCategory, AuditResult } from '../audit/service.js'
+import { SESSION_COOKIE } from './session.js'
 
 // Phân quyền dùng chung cho mọi API (docs/02 mục 12). Không tự viết kiểm quyền riêng trong module.
 //
@@ -35,17 +37,37 @@ export function registerAuth(app: FastifyInstance) {
 }
 
 /**
- * Request bị từ chối 401/403 phải ghi audit loại SECURITY (FLOW-20).
- * TODO(B1): khi `audit(...)` của B1 merge, gọi audit ở đây; tạm thời chỉ ghi log kỹ thuật.
+ * Request bị từ chối 401/403 ghi audit loại SECURITY / FAILURE (FLOW-20), chờ ghi xong rồi trả lỗi để ném.
+ * 401 không kèm cookie phiên chỉ là khách chưa đăng nhập (web hỏi /auth/me mỗi lần mở trang), không phải
+ * sự kiện bảo mật nên không ghi, tránh bảng nhật ký phình theo lượt truy cập. Có cookie mà phiên sai/hết hạn thì vẫn ghi.
+ * Ghi audit lỗi không được biến 401/403 thành 500: chỉ log kỹ thuật.
  */
-function denied(request: FastifyRequest, error: AppError): AppError {
-  request.log.warn({ userId: request.user?.id ?? null, route: request.routeOptions.url, status: error.statusCode }, 'auth denied')
+async function denied(request: FastifyRequest, error: AppError): Promise<AppError> {
+  // Mẫu route (/admin/events/:id), không dùng URL thật vì có thể chứa query string (OPS-11).
+  const route = request.routeOptions?.url ?? request.url.split('?')[0] ?? request.url
+  request.log.warn({ userId: request.user?.id ?? null, route, status: error.statusCode }, 'auth denied')
+  if (error.statusCode === 401 && !request.cookies?.[SESSION_COOKIE]) return error
+  await audit(request, {
+    action: AUDIT_ACTIONS.AUTH_DENIED,
+    targetType: 'ROUTE',
+    targetId: route,
+    category: AuditCategory.SECURITY,
+    result: AuditResult.FAILURE,
+    reason: error.message,
+    metadata: { status: error.statusCode },
+  }).catch((err) => request.log.error({ err }, 'failed to write audit log for denied request'))
   return error
 }
 
-/** Người đang đăng nhập, hoặc ném 401. Dùng trong handler sau `requireAuth`/`requireRole`. */
+/** Người đang đăng nhập, hoặc ghi audit rồi ném 401. Dùng trong preHandler. */
+async function authedUser(request: FastifyRequest): Promise<AuthUser> {
+  if (!request.user) throw await denied(request, unauthenticated())
+  return request.user
+}
+
+/** Người đang đăng nhập, hoặc ném 401. Dùng trong handler sau `requireAuth`/`requireRole` (đã chặn và ghi audit ở đó). */
 export function currentUser(request: FastifyRequest): AuthUser {
-  if (!request.user) throw denied(request, unauthenticated())
+  if (!request.user) throw unauthenticated()
   return request.user
 }
 
@@ -80,14 +102,14 @@ export function assertInScope(user: AuthUser, departmentId: string | null) {
 
 /** preHandler: bắt buộc đã đăng nhập (401). */
 export async function requireAuth(request: FastifyRequest) {
-  currentUser(request)
+  await authedUser(request)
 }
 
 /** preHandler: có ít nhất một trong các vai trò (403). Chưa đăng nhập vẫn là 401. */
 export function requireRole(...roles: [Role, ...Role[]]) {
   return async function requireRoleHandler(request: FastifyRequest) {
-    const user = currentUser(request)
-    if (!roles.some((role) => hasRole(user, role))) throw denied(request, forbidden())
+    const user = await authedUser(request)
+    if (!roles.some((role) => hasRole(user, role))) throw await denied(request, forbidden())
   }
 }
 
@@ -100,7 +122,7 @@ export function requireScope<K extends string = 'id'>(
   load: (params: Record<K, string>) => Promise<{ departmentId: string | null } | null | undefined>,
 ) {
   return async function requireScopeHandler(request: FastifyRequest) {
-    const user = currentUser(request)
+    const user = await authedUser(request)
     const resource = await load(request.params as Record<K, string>)
     if (!resource) throw notFound()
     assertInScope(user, resource.departmentId)
