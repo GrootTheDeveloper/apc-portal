@@ -185,13 +185,13 @@ async function main() {
 
   // 3. Posts
   const posts: { slug: string; title: string; status: ContentStatus; scope: ContentScope; category: string; departmentId?: string }[] = [
-    { slug: 'post-1', title: 'Bài viết công khai 1', status: 'PUBLISHED', scope: 'PUBLIC', category: 'News' },
-    { slug: 'post-2', title: 'Bài viết công khai 2', status: 'PUBLISHED', scope: 'PUBLIC', category: 'News' },
-    { slug: 'post-3', title: 'Bài viết công khai 3', status: 'PUBLISHED', scope: 'PUBLIC', category: 'News' },
-    { slug: 'post-4', title: 'Bài viết công khai 4', status: 'PUBLISHED', scope: 'PUBLIC', category: 'News' },
-    { slug: 'post-draft', title: 'Bài viết nháp', status: 'DRAFT', scope: 'PUBLIC', category: 'News' },
-    { slug: 'post-archived', title: 'Bài viết lưu trữ', status: 'ARCHIVED', scope: 'PUBLIC', category: 'News' },
-    { slug: 'post-internal', title: 'Thông báo nội bộ Ban A', status: 'PUBLISHED', scope: 'INTERNAL', category: 'Notice', departmentId: banA.id },
+    { slug: 'post-1', title: 'Bài viết công khai 1', status: 'PUBLISHED', scope: 'PUBLIC', category: 'Chuyên môn' },
+    { slug: 'post-2', title: 'Bài viết công khai 2', status: 'PUBLISHED', scope: 'PUBLIC', category: 'Thông báo' },
+    { slug: 'post-3', title: 'Bài viết công khai 3', status: 'PUBLISHED', scope: 'PUBLIC', category: 'Chia sẻ' },
+    { slug: 'post-4', title: 'Bài viết công khai 4', status: 'PUBLISHED', scope: 'PUBLIC', category: 'Chuyên môn' },
+    { slug: 'post-draft', title: 'Bài viết nháp', status: 'DRAFT', scope: 'PUBLIC', category: 'Chuyên môn' },
+    { slug: 'post-archived', title: 'Bài viết lưu trữ', status: 'ARCHIVED', scope: 'PUBLIC', category: 'Chia sẻ' },
+    { slug: 'post-internal', title: 'Thông báo nội bộ Ban A', status: 'PUBLISHED', scope: 'INTERNAL', category: 'Thông báo', departmentId: banA.id },
   ]
 
   for (const p of posts) {
@@ -200,6 +200,7 @@ async function main() {
       update: {
         status: p.status,
         scope: p.scope,
+        category: p.category,
       },
       create: {
         slug: p.slug,
