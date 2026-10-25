@@ -156,7 +156,7 @@ Forms: inputs are white with a 2px ink inset border; focus switches to a blue bo
 
 ## 7. Imagery
 
-- Photos live in `/assets/home/photos/` (club life: workshop, training, tech talk, hackathon, award, contest, demo day, teamwork, hero). Events without a cover use the photo for their type (`eventPhoto()` in `lib/eventVisual.ts`); finished or cancelled events show it in greyscale.
+- Photos live in `/assets/home/photos/` (club life: workshop, training, tech talk, hackathon, award, contest, demo day, teamwork, hero). They are illustrative placeholders, not real club photos: replace them with real APC photos (with the people's consent) before release. Events without a cover use the photo for their type (`eventPhoto()` in `lib/eventVisual.ts`); finished or cancelled events show it in greyscale.
 - Real product screenshots for projects; a project without one shows a soft box with its folder as a shell line, not a fake screenshot.
 - News without a cover shows a flat tinted block in its category colour with one Material Symbol.
 - No gradient placeholders, no stock icons as decoration, no stickers.
@@ -198,3 +198,4 @@ Don't
 - No dark theme yet; colours are defined for the light page only.
 - Portal and admin layouts (A3) are not designed; `MenuPlaceholder` uses `PageHero` + ruled rows as a stopgap.
 - Modal/dialog and toast styles are not defined.
+- `tailwind.config.cjs` keeps temporary aliases for the v01 tokens (`on-surface`, `surface-container-*`, `outline-variant`, `font-headline-*`, `rounded-apc`…) so pages written before v02 still render in the new palette. New code uses the v02 tokens; remove the aliases once no file uses them.

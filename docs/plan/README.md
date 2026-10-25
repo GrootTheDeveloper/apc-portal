@@ -109,7 +109,7 @@ Dùng lại, không viết bản khác.
 | Phần | Trạng thái |
 | --- | --- |
 | Trang chủ `/` | Hoàn chỉnh giao diện theo `DESIGN.md` (mỗi phần vừa một màn hình, cuộn hít), dùng nội dung mẫu |
-| Router và layout công khai | Có Navbar, Footer kéo rèm. `/about`, `/events`, `/news`, `/projects`, `/recruitment` và trang chi tiết đã có giao diện, dùng dữ liệu giả (`mock.ts`) chờ API. `/recruitment/application-lookup`, `/events/registration-lookup`, `/privacy`, `/account/activate` đang là trang tạm (`Placeholder`) |
+| Router và layout công khai | Có Navbar, Footer kéo rèm. `/about`, `/news`, `/projects` và trang chi tiết dùng dữ liệu thật (T2, C2); `/privacy` xong (B2). `/events`, `/recruitment` đã có giao diện, dùng dữ liệu giả (`mock.ts`) chờ E2, R2. `/recruitment/application-lookup`, `/events/registration-lookup`, `/account/activate` đang là trang tạm (`Placeholder`) |
 | Đăng nhập (A1, A2 — xong 09/10) | Trang `/login`; `/portal`, `/admin` chặn bằng `<RequireAuth>` và đang là trang tạm liệt kê menu theo vai trò (layout thật ở A3). Navbar hiện Đăng nhập hoặc Portal/Quản trị/Đăng xuất |
 | API | Có `/health`, bộ xử lý lỗi chung, cấu hình đọc từ `.env`; `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`; phân quyền `requireAuth`/`requireRole`/`requireScope`; chặn CSRF theo `Origin` cho mọi request ghi |
 | Database | Có bảng `users`, `user_roles`, `sessions`, `departments`, `posts`, `events`, `projects`, `recruitment_rounds`, `membership_applications` |
