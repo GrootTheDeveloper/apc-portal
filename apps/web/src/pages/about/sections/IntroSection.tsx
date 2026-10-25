@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { Button } from '../../../components/Button'
 import { Eyebrow } from '../../../components/Eyebrow'
-import type { AboutData } from '../mock'
+import type { AboutData } from '../types'
 
 export function IntroSection({ data }: { data: AboutData }) {
   const navigate = useNavigate()

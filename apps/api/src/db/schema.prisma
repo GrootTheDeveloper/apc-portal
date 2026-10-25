@@ -110,15 +110,34 @@ enum AuditResult {
 
 // MODELS — TỔ CHỨC
 
+// Thông tin CLB — singleton (1 dòng duy nhất, id = "singleton")
+// T2: SiteSetting.termEndsAt không trả ra /public/about; A6, A7 dùng để giới hạn ngày hết hạn vai trò đặc quyền (QĐ-6)
+model SiteSetting {
+  id String @id @default("singleton")
+
+  // Thông tin CLB công khai (JSON) — trả ra GET /public/about
+  info Json // { name, description, mission, contactEmail, fanpage, officialLinks }
+
+  // Ngày kết thúc nhiệm kỳ Ban Chủ nhiệm hiện tại (RP-03, QĐ-6) — KHÔNG trả ra API công khai
+  termEndsAt DateTime?
+
+  updatedAt DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
 model Department {
-  id          String           @id @default(cuid())
-  name        String
-  code        String           @unique
-  description String?
-  status      DepartmentStatus @default(ACTIVE)
-  order       Int              @default(0)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id           String           @id @default(cuid())
+  name         String
+  code         String           @unique
+  description  String?
+  // Đầu mối liên hệ chung của ban: email ban, fanpage hoặc chức danh (ORG-02)
+  // KHÔNG phải tên, email, SĐT cá nhân (BR-20, DATA-03)
+  contactPoint String?
+  status       DepartmentStatus @default(ACTIVE)
+  order        Int              @default(0)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   users        User[]
   roles        UserRole[]
