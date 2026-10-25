@@ -5,13 +5,20 @@ import {
   getNewsCategoryVisual,
   getProjectTypeColorClass,
   NEWS_CATEGORIES,
-  PROJECT_TYPES,
+  safeHttpUrl,
 } from './content'
 
 describe('content helpers & constants', () => {
-  it('has expected categories and project types', () => {
+  it('has expected categories', () => {
     expect(NEWS_CATEGORIES).toEqual(['Chuyên môn', 'Thông báo', 'Chia sẻ'])
-    expect(PROJECT_TYPES).toEqual(['Nền tảng', 'Công cụ', 'Sản phẩm'])
+  })
+
+  it('only accepts http(s) links', () => {
+    expect(safeHttpUrl('https://apc.umt.edu.vn')).toBe('https://apc.umt.edu.vn')
+    expect(safeHttpUrl('http://example.com')).toBe('http://example.com')
+    expect(safeHttpUrl('javascript:alert(1)')).toBeUndefined()
+    expect(safeHttpUrl('//evil.com')).toBeUndefined()
+    expect(safeHttpUrl(null)).toBeUndefined()
   })
 
   it('returns valid chip class for each news category', () => {

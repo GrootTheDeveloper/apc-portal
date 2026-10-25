@@ -4,7 +4,7 @@ import { AsyncState } from '../../../components/AsyncState'
 import { Breadcrumb } from '../../../components/Breadcrumb'
 import { Seo } from '../../../components/Seo'
 import { useApi } from '../../../hooks/useApi'
-import { getProjectTypeColorClass, type ProjectItem } from '../../../lib/content'
+import { getProjectTypeColorClass, safeHttpUrl, type ProjectItem } from '../../../lib/content'
 import { NotFound } from '../../NotFound'
 
 /** Trang chi tiết dự án */
@@ -34,8 +34,8 @@ export function ProjectDetailPage() {
   const typeText = item?.type || 'Dự án'
   const typeColorClass = getProjectTypeColorClass(typeText)
   const imageUrl = item?.thumbnailUrl || item?.imageUrl
-  const productLink = item?.projectUrl || item?.productUrl
-  const sourceLink = item?.sourceUrl
+  const productLink = safeHttpUrl(item?.projectUrl || item?.productUrl)
+  const sourceLink = safeHttpUrl(item?.sourceUrl)
   const technologies = Array.isArray(item?.technologies) ? item.technologies : []
 
   return (
@@ -49,13 +49,7 @@ export function ProjectDetailPage() {
         >
           {item && (
             <article className="flex flex-col gap-8">
-              {/* Đồng bộ SEO tags vào <head> — fallback chuỗi rỗng nếu description null */}
-              <Seo
-                title={item.title ?? item.name ?? 'Dự án'}
-                description={item.description ?? null}
-                canonicalUrl={`${window.location.origin}/projects/${slug}`}
-                imageUrl={item.thumbnailUrl ?? item.imageUrl ?? null}
-              />
+              <Seo title={title} description={item.description} path={`/projects/${slug}`} imageUrl={imageUrl} />
               {/* Breadcrumb */}
               <Breadcrumb
                 items={[
@@ -115,7 +109,7 @@ export function ProjectDetailPage() {
               {/* Mô tả dự án */}
               <section className="bg-surface-container-low/40 rounded-2xl p-6 sm:p-8 border border-outline-variant/20">
                 <h2 className="text-xl font-bold text-on-surface mb-3">Mô tả dự án</h2>
-                <p className="text-on-surface-variant leading-relaxed text-base sm:text-lg">{item.description}</p>
+                <p className="text-on-surface-variant leading-relaxed text-base sm:text-lg whitespace-pre-line">{item.description}</p>
               </section>
 
               {/* Công nghệ */}

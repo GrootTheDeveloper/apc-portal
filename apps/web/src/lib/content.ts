@@ -46,9 +46,6 @@ export type ProjectItem = {
   featured?: boolean
 }
 
-export const PROJECT_TYPES = ['Nền tảng', 'Công cụ', 'Sản phẩm'] as const
-export type ProjectType = (typeof PROJECT_TYPES)[number]
-
 /** Lấy style màu sắc theo loại dự án */
 export function getProjectTypeColorClass(type?: string): string {
   switch (type) {
@@ -61,6 +58,11 @@ export function getProjectTypeColorClass(type?: string): string {
     default:
       return 'text-apc-blue'
   }
+}
+
+/** Chỉ nhận link http(s) từ dữ liệu nhập tay; chặn `javascript:` và scheme lạ. */
+export function safeHttpUrl(url?: string | null): string | undefined {
+  return url && /^https?:\/\//i.test(url) ? url : undefined
 }
 
 /** Lấy style chip phân loại chuyên mục tin tức */

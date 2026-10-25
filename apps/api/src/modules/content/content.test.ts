@@ -164,10 +164,9 @@ describe('GET /public/news', () => {
 
     expect(response.statusCode).toBe(200)
     const body = response.json()
-    // Chỉ trả bài đúng category
-    for (const item of body.items) {
-      expect(item.category).toBe(category)
-    }
+    // Chỉ trả đúng một bài thuộc category này
+    expect(body.total).toBe(1)
+    expect(body.items.map((i: { slug: string }) => i.slug)).toEqual([`bai-viet-cat-match-${tag}`])
   })
 
   it('hỗ trợ phân trang: page và pageSize', async () => {
@@ -201,8 +200,10 @@ describe('GET /public/news/:slug', () => {
     const body = response.json()
     expect(body.slug).toBe(post.slug)
     expect(body.title).toBe(post.title)
-    // Trang chi tiết phải có `content`
+    // Trang chi tiết phải có `content` và thẻ SEO
     expect(body).toHaveProperty('content')
+    expect(body).toHaveProperty('metaTitle')
+    expect(body).toHaveProperty('metaDescription')
     // Không lộ trường nội bộ
     expect(body).not.toHaveProperty('authorId')
     expect(body).not.toHaveProperty('publishedById')
@@ -276,8 +277,7 @@ describe('GET /public/projects', () => {
     expect(slugs).not.toContain(`du-an-proj-draft-${tag}`)
   })
 
-  it('nhận query param type mà không gây lỗi (schema chưa có trường type)', async () => {
-    // Đảm bảo API không crash khi nhận param `type` dù chưa filter
+  it('bỏ qua query param type (lọc theo loại thêm ở C4)', async () => {
     const response = await app.inject({ method: 'GET', url: '/public/projects?type=web' })
     expect(response.statusCode).toBe(200)
   })

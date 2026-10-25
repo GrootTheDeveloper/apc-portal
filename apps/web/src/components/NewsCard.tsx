@@ -45,16 +45,6 @@ export function NewsCard({ item }: NewsCardProps) {
         </h3>
 
         <p className="text-on-surface-variant text-sm line-clamp-2 flex-1">{summaryText}</p>
-
-        <div className="pt-4 border-t border-outline-variant/20 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs bg-apc-blue text-white">
-            APC
-          </div>
-          <div className="text-xs">
-            <p className="font-bold text-on-surface">CLB APC</p>
-            <p className="text-on-surface-variant">Ban Chuyên môn</p>
-          </div>
-        </div>
       </div>
     </Link>
   )

@@ -52,13 +52,12 @@ export function NewsDetailPage() {
         >
           {item && (
             <article className="flex flex-col gap-8">
-              {/* Đồng bộ SEO tags vào <head> — dùng metaTitle/metaDescription nếu có,
-                  fallback về title/summary nếu null/undefined */}
+              {/* metaTitle/metaDescription để trống thì dùng tiêu đề/tóm tắt */}
               <Seo
-                title={item.metaTitle ?? item.title}
-                description={item.metaDescription ?? item.summary ?? null}
-                canonicalUrl={`${window.location.origin}/news/${slug}`}
-                imageUrl={item.thumbnailUrl ?? null}
+                title={item.metaTitle || item.title}
+                description={item.metaDescription || item.summary}
+                path={`/news/${slug}`}
+                imageUrl={item.thumbnailUrl}
               />
               {/* Breadcrumb */}
               <Breadcrumb
@@ -83,24 +82,9 @@ export function NewsDetailPage() {
                   {item.title}
                 </h1>
 
-                {/* Tác giả & Ngày đăng */}
-                <div className="pt-2 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs bg-apc-blue text-white">
-                    APC
-                  </div>
-                  <div className="text-xs sm:text-sm">
-                    <p className="font-bold text-on-surface">CLB APC</p>
-                    <div className="flex items-center gap-2 text-on-surface-variant">
-                      <span>Ban Chuyên môn</span>
-                      {item.publishedAt && (
-                        <>
-                          <span>•</span>
-                          <span>{formatDate(item.publishedAt)}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                {item.publishedAt && (
+                  <p className="pt-2 text-sm text-on-surface-variant">{formatDate(item.publishedAt)}</p>
+                )}
               </div>
 
               {/* Ảnh cover hoặc block gradient */}
@@ -123,15 +107,13 @@ export function NewsDetailPage() {
                 </p>
               )}
 
-              {/* Nội dung bài viết (tách paragraph theo \n\n) */}
+              {/* Nội dung bài viết (tách đoạn theo dòng trống, giữ xuống dòng trong đoạn) */}
               <div className="flex flex-col gap-5 pt-2">
-                {item.content ? (
-                  item.content.split('\n\n').map((paragraph, index) => (
-                    <p key={index} className="text-base sm:text-lg text-on-surface leading-relaxed">
-                      {paragraph}
-                    </p>
-                  ))
-                ) : null}
+                {item.content.split('\n\n').map((paragraph, index) => (
+                  <p key={index} className="text-base sm:text-lg text-on-surface leading-relaxed whitespace-pre-line">
+                    {paragraph}
+                  </p>
+                ))}
               </div>
 
               {/* Liên kết quay lại */}
