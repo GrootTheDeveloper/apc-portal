@@ -45,24 +45,50 @@ type SeedUser = {
 async function main() {
   const passwordHash = await hashPassword(seedPassword)
 
-  // 1. Departments
+  // 0. Thông tin CLB (T2). Chạy lại seed không ghi đè chỗ đã sửa trong db:studio.
+  await db.siteSetting.upsert({
+    where: { id: 'singleton' },
+    update: {},
+    create: {
+      id: 'singleton',
+      info: {
+        name: 'Câu lạc bộ Lập trình ứng dụng (APC)',
+        description:
+          'APC – Applied Programming Club – là câu lạc bộ học thuật trực thuộc Khoa Công Nghệ, Trường Đại học Quản lý và Công nghệ TP.HCM (UMT). Thành lập năm 2022, APC quy tụ sinh viên đam mê công nghệ cùng học, cùng làm và cùng trưởng thành qua các dự án thực tế.',
+        mission:
+          'Xây dựng cộng đồng sinh viên công nghệ nơi mỗi thành viên được rèn luyện kỹ năng lập trình, phát triển tư duy giải quyết vấn đề và chuyển hóa ý tưởng thành sản phẩm có giá trị thực tiễn.',
+        contactEmail: 'apc@umt.edu.vn',
+        fanpage: 'https://www.facebook.com/apc.umt',
+        officialLinks: [
+          { label: 'UMT Online Judge', url: 'https://sot.umtoj.edu.vn' },
+          { label: 'Trang UMT chính thức', url: 'https://umt.edu.vn' },
+          { label: 'Facebook APC', url: 'https://www.facebook.com/apc.umt' },
+        ],
+      },
+      termEndsAt: new Date('2027-06-01T00:00:00Z'),
+    },
+  })
+
+  // 1. Departments (đầu mối liên hệ là kênh chung của ban, không phải thông tin cá nhân — ORG-02, BR-20)
   const banA = await db.department.upsert({
     where: { code: 'ban-a' },
-    update: { status: 'ACTIVE' },
+    update: { status: 'ACTIVE', contactPoint: 'Email ban: ban-a@example.com' },
     create: {
       name: 'Ban A',
       code: 'ban-a',
       status: 'ACTIVE',
+      contactPoint: 'Email ban: ban-a@example.com',
     },
   })
 
   const banB = await db.department.upsert({
     where: { code: 'ban-b' },
-    update: { status: 'ACTIVE' },
+    update: { status: 'ACTIVE', contactPoint: 'Fanpage APC' },
     create: {
       name: 'Ban B',
       code: 'ban-b',
       status: 'ACTIVE',
+      contactPoint: 'Fanpage APC',
     },
   })
 

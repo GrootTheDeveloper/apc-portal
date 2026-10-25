@@ -5,6 +5,7 @@ import Fastify from 'fastify'
 
 import type { AppConfig } from './config.js'
 import { registerErrorHandler } from './lib/errors.js'
+import { aboutRoutes } from './modules/about/routes.js'
 import { registerAuth } from './modules/auth/rbac.js'
 import { authRoutes } from './modules/auth/routes.js'
 import { contentRoutes } from './modules/content/routes.js'
@@ -26,6 +27,7 @@ export function buildApp(config: AppConfig) {
   app.register(authRoutes(config))
   app.register(emailRoutes)
   app.register(contentRoutes())
+  app.register(aboutRoutes)
 
   return app
 }

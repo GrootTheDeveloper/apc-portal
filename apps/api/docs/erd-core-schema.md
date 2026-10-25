@@ -36,11 +36,18 @@ erDiagram
 
 ```mermaid
 erDiagram
+  site_settings {
+    String id PK
+    Json info "{ name, description, mission, contactEmail, fanpage, officialLinks }"
+    DateTime termEndsAt "tùy chọn"
+    DateTime updatedAt
+  }
   departments {
     String id PK
     String name
     String code UK
     String description "tùy chọn"
+    String contactPoint "tùy chọn"
     DepartmentStatus status "ACTIVE / ARCHIVED"
     Int order
     DateTime createdAt
