@@ -226,6 +226,17 @@ erDiagram
     String userAgent "tùy chọn"
     DateTime createdAt
   }
+  consent_records {
+    String id PK
+    ConsentSubjectType subjectType "APPLICATION / EVENT_REGISTRATION / USER"
+    String subjectId
+    ConsentPurpose purpose "RECRUITMENT_PROCESSING / EVENT_REGISTRATION / PUBLIC_NAME / PUBLIC_PHOTO"
+    String targetType "tùy chọn"
+    String targetId "tùy chọn"
+    String policyVersion
+    DateTime grantedAt
+    DateTime revokedAt "tùy chọn"
+  }
 
   users }o--|o departments : "department"
   user_roles }o--|| users : "user"
@@ -267,3 +278,5 @@ erDiagram
 | `AuditActorType` | `USER`, `SERVICE` |
 | `AuditCategory` | `BUSINESS`, `SECURITY`, `OPERATIONS` |
 | `AuditResult` | `SUCCESS`, `FAILURE` |
+| `ConsentSubjectType` | `APPLICATION`, `EVENT_REGISTRATION`, `USER` |
+| `ConsentPurpose` | `RECRUITMENT_PROCESSING`, `EVENT_REGISTRATION`, `PUBLIC_NAME`, `PUBLIC_PHOTO` |
