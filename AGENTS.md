@@ -15,7 +15,7 @@ Nguồn sự thật nghiệp vụ: `docs/01-prd.md` (yêu cầu), `docs/02-roles
 
 ## Quy ước API (`apps/api`)
 - Mỗi mảng một thư mục: `src/modules/<mảng>/` gồm `routes.ts`, `service.ts`, `*.test.ts`. Đăng ký route trong `app.ts`.
-- Có sẵn, dùng lại, không viết bản khác: `db` trong `src/db/client.ts`; `notFound()`, `forbidden()`, `conflict()`… trong `src/lib/errors.ts`; `hashPassword`/`verifyPassword` trong `src/lib/password.ts`; `pageQuery`/`pageArgs`/`toPage` trong `src/lib/pagination.ts`; `publicCode()`/`slugify()` trong `src/lib/ids.ts`.
+- Có sẵn, dùng lại, không viết bản khác: `db` trong `src/db/client.ts`; `notFound()`, `forbidden()`, `conflict()`… trong `src/lib/errors.ts`; `hashPassword`/`verifyPassword` trong `src/lib/password.ts`; `pageQuery`/`pageArgs`/`toPage` trong `src/lib/pagination.ts`; `publicCode()`/`slugify()` trong `src/lib/ids.ts`; `startJob(...)` trong `src/lib/jobs.ts` cho mọi tác vụ định kỳ.
 - Tra cứu bằng mã (mã hồ sơ, mã đăng ký) gửi qua body `POST`, không đặt mã hay email trong URL vì URL bị ghi log (OPS-11).
 - `@fastify/rate-limit` chỉ đăng ký 1 lần trong `app.ts` với `global: false`; route cần giới hạn tự khai báo `config.rateLimit`.
 - Nhóm route theo người gọi:
@@ -25,11 +25,12 @@ Nguồn sự thật nghiệp vụ: `docs/01-prd.md` (yêu cầu), `docs/02-roles
   - `/admin/*` — quản trị (luôn kèm `requireRole`/`requireScope`)
 - Phiên đăng nhập: cookie `apc_session`, lưu ở bảng `sessions` (docs/06 §5). Không dùng JWT, không lưu token ở `localStorage`.
 - User đã đăng nhập: `request.user = { id, departmentId, roles }`; `roles` là các dòng `ACTIVE` trong bảng `user_roles` (`{ role, departmentId }`). Mọi tài khoản mặc định có vai trò nền `MEMBER`. Chặn quyền bằng `requireAuth`, `requireRole(...)`, `requireScope(...)` trong `src/modules/auth/rbac.ts`. **Không tự viết kiểm quyền riêng.**
+- Request `POST`/`PATCH`/`PUT`/`DELETE` phải có header `Origin` trùng `WEB_URL` (chống CSRF), thiếu thì 403. Web gọi qua `api(...)` đã tự có; test gửi `headers: { origin: 'http://localhost:5173' }`.
 - Validate mọi input bằng Zod (`schema.parse(...)`). Lỗi trả `{ error: '<code>', message: '<tiếng Việt>' }` theo docs/03 §14: 401 `unauthenticated`, 403 `forbidden`, 404 `not_found`, 409 `conflict`, 422 `validation` (kèm `issues`), 429 `rate_limited`. Chỉ cần `throw`; `src/lib/errors.ts` tự đổi ZodError → 422, trùng unique (P2002) → 409, lỗi khác → 500 kèm mã tham chiếu.
 - Truy cập dữ liệu ngoài phạm vi ban (người dùng không được biết dữ liệu tồn tại) trả 404, không trả 403 (docs/02 §12).
 - Danh sách có phân trang: `?page=1&pageSize=20` → `{ items, total, page, pageSize }`.
 - Thao tác nhạy cảm (tạo/sửa quyền, công bố, xử lý đơn, import/export, tài liệu) gọi `audit(...)` (docs/02 §11).
-- Email: gọi `enqueueEmail(...)`. Không gửi SMTP trực tiếp, không gửi mật khẩu/mã khôi phục qua email.
+- Email: gọi `enqueueEmail(tx, { type, to, refType, refId })` (`src/modules/email/service.ts`) trong cùng transaction với thao tác nghiệp vụ; chỉ truyền tham chiếu, không truyền mã hồ sơ/mã đăng ký. Không gửi SMTP trực tiếp, không gửi mật khẩu/mã khôi phục qua email.
 - Tệp: dùng module `files` (S3 API). Không trả URL kho tệp trực tiếp cho tài liệu nội bộ.
 
 ## Quy ước DB

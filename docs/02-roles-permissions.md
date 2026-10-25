@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.3 |
-| Trạng thái | Đã duyệt (27/09/2026) |
-| Ngày cập nhật | 27/09/2026 |
+| Phiên bản | 1.4 |
+| Trạng thái | Đã duyệt (01/10/2026) |
+| Ngày cập nhật | 01/10/2026 |
 | Sản phẩm | APC Portal |
 | Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC) |
 | Tài liệu liên quan | [Project Charter](./00-project-charter.md), [Product Requirements Document](./01-prd.md) |
@@ -17,6 +17,7 @@
 | 1.1 | Làm rõ các quyền production chưa áp dụng trong giai đoạn local |
 | 1.2 | Bỏ hạng mục Thành tích khỏi ma trận nội dung (mục 8.4) và danh mục hành động nhạy cảm |
 | 1.3 | APC duyệt vai trò, phạm vi và ngưỡng tài khoản đặc quyền |
+| 1.4 | Thành viên được yêu cầu xóa dữ liệu (mục 8.7); xóa file xuất hết hạn là tác vụ tự động, không thuộc `DUAL`; làm rõ `RP-03` (nơi lưu ngày kết thúc nhiệm kỳ), `RP-09` (Ngừng tham gia), quyền `INCIDENT` và định danh dịch vụ (mục 12) |
 
 > Vai trò và ngưỡng tài khoản đặc quyền đã được APC duyệt ngày 27/09/2026. Giai đoạn local chưa tạo tài khoản thật hay cấp quyền production.
 
@@ -127,7 +128,7 @@ Thông tin ban quản lý sự kiện hoặc người tạo nội dung chỉ dù
 | `SCOPE` | Chỉ dữ liệu thuộc ban chuyên môn của người dùng |
 | `ALL` | Toàn bộ dữ liệu nghiệp vụ câu lạc bộ |
 | `DUAL` | Cần phối hợp giữa hai vai trò có thẩm quyền |
-| `INCIDENT` | Chỉ được dùng khi xử lý sự cố đã ghi nhận và phải có audit log |
+| `INCIDENT` | Chỉ được dùng khi xử lý sự cố đã ghi nhận: request kèm mã sự cố trong sổ sự cố và lý do, mỗi lần dùng tạo audit log |
 | `-` | Không được phép |
 
 Quyền `SCOPE` chỉ có hiệu lực khi tài khoản mang vai trò `DEPARTMENT_MANAGER` và được gắn với ban chuyên môn tương ứng.
@@ -265,12 +266,12 @@ Việc gán hoặc thu hồi `TECH_ADMIN` cần quyết định của `BOARD` v�
 | Xem trạng thái email nghiệp vụ | - | SCOPE | ALL | INCIDENT |
 | Gửi lại email nghiệp vụ thất bại | - | - | ALL | INCIDENT |
 | Sửa cấu hình SMTP/nhà cung cấp email | - | - | - | ALL |
-| Tạo yêu cầu xuất/chỉnh sửa dữ liệu của chính mình | OWN | OWN | OWN | OWN |
+| Tạo yêu cầu xuất, chỉnh sửa hoặc xóa dữ liệu của chính mình | OWN | OWN | OWN | OWN |
 | Xử lý yêu cầu dữ liệu cá nhân | - | - | ALL | - |
 | Chạy dry-run retention | - | - | ALL | ALL |
-| Thực thi retention hoặc xóa file xuất hết hạn | - | - | DUAL | DUAL |
+| Thực thi retention (xóa hoặc ẩn danh theo lô) | - | - | DUAL | DUAL |
 
-`TECH_ADMIN` chỉ xem metadata giao nhận và lỗi kỹ thuật của email; nội dung nghiệp vụ và dữ liệu cá nhân người nhận chỉ hiển thị khi cần thiết để xử lý sự cố đã được ghi nhận.
+File xuất hết hạn được tác vụ nền xóa tự động theo `RP-17`, không cần thao tác của người. `TECH_ADMIN` chỉ xem metadata giao nhận và lỗi kỹ thuật của email; nội dung nghiệp vụ và dữ liệu cá nhân người nhận chỉ hiển thị khi cần thiết để xử lý sự cố đã được ghi nhận.
 
 ## 9. Quy tắc cấp và thay đổi quyền
 
@@ -278,13 +279,13 @@ Việc gán hoặc thu hồi `TECH_ADMIN` cần quyết định của `BOARD` v�
 | --- | --- |
 | RP-01 | Tài khoản mới luôn bắt đầu với vai trò `MEMBER` |
 | RP-02 | Vai trò quản lý phải gắn với phạm vi và ngày bắt đầu |
-| RP-03 | Vai trò đặc quyền có ngày hết hạn không muộn hơn ngày kết thúc nhiệm kỳ hiện tại; hệ thống cảnh báo `BOARD` và người giữ vai trò trước 30 ngày và 7 ngày |
+| RP-03 | Vai trò đặc quyền có ngày hết hạn không muộn hơn ngày kết thúc nhiệm kỳ hiện tại, lưu trong cấu hình thông tin APC và do `BOARD` cập nhật; hệ thống cảnh báo `BOARD` và người giữ vai trò trước 30 ngày và 7 ngày |
 | RP-04 | Chỉ `BOARD` được gán hoặc thu hồi vai trò nghiệp vụ và phạm vi ban chuyên môn |
 | RP-05 | Không ai được tự thay đổi vai trò hoặc phạm vi của chính mình |
 | RP-06 | Sau khi production được phát hành, không được khóa, thu hồi hoặc ngừng hoạt động tài khoản nếu thao tác làm số `BOARD` đang hoạt động thấp hơn hai; giai đoạn bootstrap trước production được áp dụng ngoại lệ theo `RP-15` |
 | RP-07 | Sau khi production được phát hành, không được khóa, thu hồi hoặc ngừng hoạt động tài khoản nếu thao tác làm số `TECH_ADMIN` đang hoạt động thấp hơn hai; giai đoạn bootstrap trước production được áp dụng ngoại lệ theo `RP-15` |
 | RP-08 | Khi đổi ban, toàn bộ quyền theo ban cũ bị thu hồi trước khi quyền ban mới có hiệu lực |
-| RP-09 | Khi thành viên ngừng hoạt động, hệ thống thu hồi phiên và quyền quản trị ngay lập tức |
+| RP-09 | Khi tài khoản chuyển Ngừng hoạt động, hệ thống thu hồi mọi phiên, vai trò quản lý và đặc quyền ngay lập tức; thành viên chuyển Ngừng tham gia thì tài khoản chuyển Ngừng hoạt động theo quy tắc này |
 | RP-10 | Quyền đặc quyền được rà soát đầu mỗi học kỳ, khi nhận cảnh báo sắp hết hạn và khi bàn giao nhiệm kỳ; người kế nhiệm phải được kích hoạt trước ngày hết hạn nếu production sẽ thiếu ngưỡng tối thiểu |
 | RP-11 | Mọi thay đổi vai trò phải có lý do và người thực hiện trong audit log |
 | RP-12 | Dữ liệu lịch sử vẫn giữ thông tin người từng thực hiện hành động sau khi tài khoản ngừng hoạt động |
@@ -306,7 +307,7 @@ Việc gán hoặc thu hồi `TECH_ADMIN` cần quyết định của `BOARD` v�
 | Kích hoạt đặc quyền | BOARD/TECH_ADMIN | Thiết lập TOTP, lưu mã khôi phục và đăng nhập lại trước khi vai trò đặc quyền có hiệu lực |
 | Khóa bảo mật | BOARD hoặc TECH_ADMIN | Chặn đăng nhập mới và thu hồi toàn bộ phiên |
 | Mở khóa | BOARD | Mở lại tài khoản và cấp mật khẩu tạm thời khi cần |
-| Ngừng hoạt động | BOARD | Thu hồi phiên và quyền đặc quyền; giữ hồ sơ lịch sử |
+| Ngừng hoạt động | BOARD | Thu hồi phiên, vai trò quản lý và đặc quyền; giữ hồ sơ lịch sử. Áp dụng cả khi thành viên chuyển Ngừng tham gia |
 | Bàn giao | BOARD và TECH_ADMIN | Cấp quyền cho người kế nhiệm trước khi thu hồi người cũ |
 
 ### 10.1. Sơ đồ kích hoạt quyền đặc quyền
@@ -363,7 +364,7 @@ Khi cần ghi thay đổi trước/sau, audit log chỉ lưu tên trường và 
 6. Thay đổi vai trò, mật khẩu hoặc trạng thái tài khoản làm mới hoặc vô hiệu hóa quyền trong phiên hiện tại.
 7. Giao diện chỉ hiển thị menu và hành động phù hợp, nhưng backend vẫn kiểm tra lại mọi request.
 8. Mỗi quyền quan trọng phải có kiểm thử cho trường hợp được phép, bị từ chối và vượt phạm vi.
-9. Job nền và CLI production sử dụng service identity riêng, quyền tối thiểu và audit log; không dùng tài khoản cá nhân để chạy tự động.
+9. Job nền và CLI production sử dụng service identity riêng, quyền tối thiểu và audit log; không dùng tài khoản cá nhân để chạy tự động. Mỗi job ghi audit log với loại người thực hiện là dịch vụ và tên job.
 10. File import/export và URL tạm thời phải kiểm tra quyền cả lúc tạo lẫn lúc tải xuống.
 
 ## 13. Tiêu chí nghiệm thu phân quyền

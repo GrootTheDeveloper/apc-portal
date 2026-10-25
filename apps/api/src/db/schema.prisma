@@ -26,7 +26,7 @@ enum AccountStatus {
   INACTIVE
 }
 
-// Trạng thái thành viên CLB — độc lập với AccountStatus (MEM-11)
+// Trạng thái thành viên CLB — độc lập với AccountStatus, trừ LEFT: chuyển LEFT thì tài khoản INACTIVE (MEM-11, RP-09)
 enum MemberStatus {
   ACTIVE
   PAUSED
@@ -84,17 +84,60 @@ enum RecruitmentRoundStatus {
   ARCHIVED
 }
 
+enum DeliveryStatus {
+  PENDING
+  SENDING
+  RETRY
+  SENT
+  FAILED
+}
+
+enum AuditActorType {
+  USER
+  SERVICE
+}
+
+enum AuditCategory {
+  BUSINESS
+  SECURITY
+  OPERATIONS
+}
+
+enum AuditResult {
+  SUCCESS
+  FAILURE
+}
+
 // MODELS — TỔ CHỨC
 
+// Thông tin CLB — singleton (1 dòng duy nhất, id = "singleton")
+// T2: SiteSetting.termEndsAt không trả ra /public/about; A6, A7 dùng để giới hạn ngày hết hạn vai trò đặc quyền (QĐ-6)
+model SiteSetting {
+  id String @id @default("singleton")
+
+  // Thông tin CLB công khai (JSON) — trả ra GET /public/about
+  info Json // { name, description, mission, contactEmail, fanpage, officialLinks }
+
+  // Ngày kết thúc nhiệm kỳ Ban Chủ nhiệm hiện tại (RP-03, QĐ-6) — KHÔNG trả ra API công khai
+  termEndsAt DateTime?
+
+  updatedAt DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
 model Department {
-  id          String           @id @default(cuid())
-  name        String
-  code        String           @unique
-  description String?
-  status      DepartmentStatus @default(ACTIVE)
-  order       Int              @default(0)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id           String           @id @default(cuid())
+  name         String
+  code         String           @unique
+  description  String?
+  // Đầu mối liên hệ chung của ban: email ban, fanpage hoặc chức danh (ORG-02)
+  // KHÔNG phải tên, email, SĐT cá nhân (BR-20, DATA-03)
+  contactPoint String?
+  status       DepartmentStatus @default(ACTIVE)
+  order        Int              @default(0)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   users        User[]
   roles        UserRole[]
@@ -102,6 +145,7 @@ model Department {
   events       Event[]
   projects     Project[]
   applications MembershipApplication[]
+  deliveries   NotificationDelivery[]
 
   @@map("departments")
 }
@@ -136,7 +180,7 @@ model User {
 
   departmentId String? // Ban đang hoạt động; khác phạm vi quản lý trong user_roles
   department   Department?  @relation(fields: [departmentId], references: [id])
-  memberStatus MemberStatus @default(ACTIVE) // MEM-11, độc lập AccountStatus
+  memberStatus MemberStatus @default(ACTIVE) // MEM-11: độc lập AccountStatus, trừ LEFT kéo theo INACTIVE
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -145,6 +189,7 @@ model User {
   grantedRoles UserRole[] @relation("RoleGrantor")
   revokedRoles UserRole[] @relation("RoleRevoker")
   sessions     Session[]
+  auditLogs    AuditLog[]
 
   authoredPosts  Post[] @relation("PostAuthor")
   publishedPosts Post[] @relation("PostPublisher")
@@ -359,4 +404,59 @@ model MembershipApplication {
   @@index([applicantEmail])
   @@index([recruitmentRoundId])
   @@map("membership_applications")
+}
+
+// MODELS — EMAIL (O1)
+
+// Một email cần gửi. Không lưu nội dung đã dựng: worker đọc bản ghi gốc theo refType + refId lúc gửi,
+// nên mã hồ sơ, mã đăng ký không bao giờ nằm trong bảng này (FLOW-26, OPS-11).
+model NotificationDelivery {
+  id            String         @id @default(cuid()) // Cũng là idempotency key: Message-ID sinh từ id
+  type          String // Tên mẫu email, khớp với modules/email/templates.ts
+  recipient     String
+  refType       String // Loại bản ghi gốc, vd APPLICATION, EVENT_REGISTRATION
+  refId         String
+  departmentId  String? // Ban liên quan, để O3 lọc theo phạm vi ban
+  department    Department?    @relation(fields: [departmentId], references: [id])
+  status        DeliveryStatus @default(PENDING)
+  attempts      Int            @default(0)
+  nextAttemptAt DateTime       @default(now())
+  lockedAt      DateTime? // Lúc worker nhận xử lý (SENDING); kẹt quá 10 phút thì được nhận lại
+  messageId     String? // Message-ID nhà cung cấp trả về, đã làm sạch
+  lastError     String? // Lỗi gần nhất, đã làm sạch
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([refType, refId])
+  @@index([departmentId])
+  @@map("notification_deliveries")
+}
+
+// MODELS — KIỂM TOÁN (AUDIT - B1)
+
+model AuditLog {
+  id          String         @id @default(cuid())
+  actorType   AuditActorType @default(USER)
+  actorId     String?
+  actor       User?          @relation(fields: [actorId], references: [id])
+  serviceName String?
+  actorRole   Role?
+  action      String
+  targetType  String
+  targetId    String?
+  category    AuditCategory
+  result      AuditResult
+  reason      String?
+  incidentId  String?
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime       @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }

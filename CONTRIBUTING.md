@@ -10,15 +10,17 @@
 
 ## Quy ước nhánh và commit
 
-Tên nhánh: `<mã việc>-<mô tả ngắn>`, ví dụ `r1-trang-tuyen`. Việc ngoài phiếu dùng `fix/...`, `docs/...`, `chore/...`.
+Tên nhánh: `<mã việc>-<mô tả ngắn>`, viết thường, không dấu, ví dụ `r1-trang-tuyen`. Việc ngoài phiếu dùng `fix/...`, `docs/...`, `chore/...`.
 
-Commit nên nhỏ, có mục đích rõ ràng, ví dụ:
+Commit theo mẫu `<loại>(<phạm vi>): <mã việc> <mô tả>`. Loại: `feat`, `fix`, `test`, `docs`, `chore`. Phạm vi: `api`, `web`, `db`, `docs`. Ví dụ:
 
 ```text
-feat(web): add public event listing
-fix(api): enforce department scope
-docs: clarify recruitment flow
+feat(web): E1 trang danh sách sự kiện
+fix(api): A1 chặn truy cập ngoài phạm vi ban
+docs(plan): làm rõ phiếu tuyển thành viên
 ```
+
+Các bước chi tiết (tạo nhánh, giao việc cho AI, mở PR, sửa theo review, merge) nằm trong [Bắt đầu](./docs/plan/bat-dau.md) mục 4.
 
 ## Điều bắt buộc
 

@@ -2,9 +2,9 @@
 
 | Thuộc tính | Giá trị |
 | --- | --- |
-| Phiên bản | 1.3 |
-| Trạng thái | Đã duyệt (27/09/2026) |
-| Ngày cập nhật | 27/09/2026 |
+| Phiên bản | 1.4 |
+| Trạng thái | Đã duyệt (01/10/2026) |
+| Ngày cập nhật | 01/10/2026 |
 | Đơn vị sở hữu | Câu lạc bộ Lập trình ứng dụng (APC) |
 | Đơn vị | Câu lạc bộ Lập trình ứng dụng (APC), Khoa Công Nghệ, UMT |
 | Tên sản phẩm | APC Portal |
@@ -17,6 +17,7 @@
 | 1.1 | Ghi nhận giai đoạn local-first; hạ tầng production chưa được chọn và cần quyết định riêng |
 | 1.2 | Bỏ hạng mục Thành tích khỏi phạm vi; đồng bộ với bản kế hoạch bàn giao (route công khai tiếng Anh, tuyển thành viên theo mô hình đợt tuyển) |
 | 1.3 | APC duyệt; cập nhật quy mô nhóm phát triển (9 thành viên) và vai trò Tech Lead |
+| 1.4 | Tách email tài khoản và email liên hệ trong danh mục dữ liệu thu thập (theo PRD 1.4) |
 
 Tài liệu này xác lập định hướng sản phẩm, phạm vi MVP và các nguyên tắc triển khai của APC Portal.
 
@@ -123,7 +124,7 @@ MVP chỉ thu thập dữ liệu cần thiết cho vận hành câu lạc bộ:
 
 - Họ tên.
 - Tên đăng nhập.
-- Email liên hệ, ưu tiên email UMT.
+- Email tài khoản, ưu tiên email UMT, dùng để nhận email từ hệ thống; email liên hệ tùy chọn do thành viên tự cập nhật.
 - Mã số sinh viên.
 - Khoa, ngành và niên khóa.
 - Kỹ năng và lĩnh vực quan tâm.

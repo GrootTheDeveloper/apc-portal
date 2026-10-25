@@ -23,6 +23,7 @@ Mã việc: <!-- vd A1 --> · Phiếu: <!-- vd docs/plan/A-dang-nhap.md -->
 - [ ] `pnpm check` xanh
 - [ ] API: mỗi endpoint có 1 test thành công và 1 test bị từ chối
 - [ ] Trang có đủ 4 trạng thái: đang tải / rỗng / lỗi / có dữ liệu
+- [ ] Đạt các quy tắc chung trong `docs/plan/README.md` mục 7.2
 - [ ] Có migration thì chỉ 1, tạo sau khi đã merge `main` mới nhất, và đã chạy `db:erd` cập nhật sơ đồ
 - [ ] Không có `.env`, mật khẩu, dữ liệu thật
 - [ ] Đã cập nhật trạng thái và link PR trong Google Sheet kế hoạch

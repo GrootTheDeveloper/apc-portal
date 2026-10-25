@@ -11,4 +11,7 @@ if (env.error && !process.env.DATABASE_URL) {
 
 export default defineConfig({
   schema: 'src/db/schema.prisma',
+  migrations: {
+    seed: 'tsx src/db/seed.ts',
+  },
 })
