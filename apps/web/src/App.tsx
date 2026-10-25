@@ -15,6 +15,7 @@ import { NewsDetailPage } from './pages/news/detail/NewsDetailPage'
 import { NewsListPage } from './pages/news/list/NewsListPage'
 import { NotFound } from './pages/NotFound'
 import { Placeholder } from './pages/Placeholder'
+import { PrivacyPage } from './pages/privacy/PrivacyPage'
 import { ProjectDetailPage } from './pages/projects/detail/ProjectDetailPage'
 import { ProjectListPage } from './pages/projects/list/ProjectListPage'
 import { RecruitmentDetailPage } from './pages/recruitment/detail/RecruitmentDetailPage'
@@ -38,7 +39,7 @@ const router = createBrowserRouter([
       { path: 'recruitment', element: <RecruitmentListPage /> },
       { path: 'recruitment/application-lookup', element: <Placeholder title="Tra cứu hồ sơ ứng tuyển" /> },
       { path: 'recruitment/:slug', element: <RecruitmentDetailPage /> },
-      { path: 'privacy', element: <Placeholder title="Chính sách quyền riêng tư" /> },
+      { path: 'privacy', element: <PrivacyPage /> },
       { path: 'login', element: <LoginPage /> },
       {
         path: 'account/activate',

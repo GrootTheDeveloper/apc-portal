@@ -108,6 +108,22 @@ enum AuditResult {
   FAILURE
 }
 
+// Chủ thể của một lần đồng ý (B2)
+enum ConsentSubjectType {
+  APPLICATION
+  EVENT_REGISTRATION
+  USER
+}
+
+// Mục đích đồng ý (REC-04, EVT-14, MEM-12)
+enum ConsentPurpose {
+  RECRUITMENT_PROCESSING
+  EVENT_REGISTRATION
+  PUBLIC_NAME
+  PUBLIC_PHOTO
+  PUBLIC_PROFILE // thông tin cá nhân khác: kỹ năng, lĩnh vực quan tâm
+}
+
 // MODELS — TỔ CHỨC
 
 // Thông tin CLB — singleton (1 dòng duy nhất, id = "singleton")
@@ -459,4 +475,24 @@ model AuditLog {
   @@index([targetType, targetId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// MODELS — QUYỀN RIÊNG TƯ (B2)
+
+// Mỗi lần đồng ý một dòng; thu hồi thì ghi revokedAt, không xóa dòng (DATA-07).
+// Không lưu email/IP/trình duyệt: chủ thể là hồ sơ ứng tuyển, đăng ký sự kiện hoặc tài khoản đã có sẵn dữ liệu đó.
+model ConsentRecord {
+  id            String             @id @default(cuid())
+  subjectType   ConsentSubjectType
+  subjectId     String
+  purpose       ConsentPurpose
+  // Đối tượng áp dụng, vd. một dự án cụ thể (MEM-12). Để trống là áp dụng chung.
+  targetType    String?
+  targetId      String?
+  policyVersion String
+  grantedAt     DateTime           @default(now())
+  revokedAt     DateTime?
+
+  @@index([subjectType, subjectId, purpose])
+  @@map("consent_records")
 }
