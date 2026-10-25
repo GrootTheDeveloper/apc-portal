@@ -1,58 +1,25 @@
-// Màu/icon theo loại sự kiện và nhãn trạng thái — dùng chung cho EventCard và trang chi tiết.
+// Ảnh minh hoạ theo loại sự kiện và nhãn trạng thái — dùng chung cho trang chủ, EventCard và trang chi tiết.
 // Tách khỏi EventCard.tsx để file đó chỉ export component (react-refresh/only-export-components).
 
 export type EventCardStatus = 'PUBLISHED' | 'CANCELLED' | 'ENDED'
 
-export type TypeStyle = { chipClass: string; coverClass: string; iconClass: string; icon: string }
+// Ảnh minh hoạ theo loại, dùng khi sự kiện chưa có ảnh bìa.
+const TYPE_PHOTOS: Record<string, string> = {
+  Workshop: '/assets/home/photos/workshop.jpg',
+  Training: '/assets/home/photos/training.jpg',
+  'Tech Talk': '/assets/home/photos/techtalk.jpg',
+  'Cuộc thi': '/assets/home/photos/award.jpg',
+  Hackathon: '/assets/home/photos/hackathon.jpg',
+}
 
 // Class màu để literal (không nội suy) để Tailwind JIT nhận diện được.
-const TYPE_STYLES: Record<string, TypeStyle> = {
-  Workshop: {
-    chipClass: 'bg-apc-blue/10 text-apc-blue',
-    coverClass: 'from-apc-blue/15 to-surface-container-high',
-    iconClass: 'text-apc-blue/50',
-    icon: 'code',
-  },
-  Training: {
-    chipClass: 'bg-apc-gold/10 text-apc-gold',
-    coverClass: 'from-apc-gold/20 to-surface-container-high',
-    iconClass: 'text-apc-gold/60',
-    icon: 'science',
-  },
-  'Tech Talk': {
-    chipClass: 'bg-apc-gold/10 text-apc-gold',
-    coverClass: 'from-apc-gold/20 to-surface-container-high',
-    iconClass: 'text-apc-gold/60',
-    icon: 'campaign',
-  },
-  'Cuộc thi': {
-    chipClass: 'bg-apc-red/10 text-apc-red',
-    coverClass: 'from-apc-red/15 to-surface-container-high',
-    iconClass: 'text-apc-red/50',
-    icon: 'emoji_events',
-  },
-  Hackathon: {
-    chipClass: 'bg-apc-blue/10 text-apc-blue',
-    coverClass: 'from-apc-blue/15 to-surface-container-high',
-    iconClass: 'text-apc-blue/50',
-    icon: 'bolt',
-  },
-}
-
-const FALLBACK_STYLE: TypeStyle = {
-  chipClass: 'bg-apc-blue/10 text-apc-blue',
-  coverClass: 'from-apc-blue/15 to-surface-container-high',
-  iconClass: 'text-apc-blue/50',
-  icon: 'event',
-}
-
 export const EVENT_STATUS_STYLES: Record<EventCardStatus, { label: string; chipClass: string }> = {
-  PUBLISHED: { label: 'Sắp diễn ra', chipClass: 'bg-apc-blue text-white' },
-  CANCELLED: { label: 'Đã hủy', chipClass: 'bg-apc-red text-white' },
-  ENDED: { label: 'Đã kết thúc', chipClass: 'bg-on-surface-variant text-white' },
+  PUBLISHED: { label: 'Sắp diễn ra', chipClass: 'bg-apc-blue text-paper' },
+  CANCELLED: { label: 'Đã hủy', chipClass: 'bg-apc-red text-paper' },
+  ENDED: { label: 'Đã kết thúc', chipClass: 'bg-ink text-paper' },
 }
 
-/** Màu/icon theo loại sự kiện — loại chưa map thì dùng màu trung tính. */
-export function eventTypeVisual(eventType: string): TypeStyle {
-  return TYPE_STYLES[eventType] ?? FALLBACK_STYLE
+/** Ảnh bìa của sự kiện, chưa có thì lấy ảnh minh hoạ theo loại. */
+export function eventPhoto(eventType: string, coverImageUrl?: string | null): string {
+  return coverImageUrl ?? TYPE_PHOTOS[eventType] ?? TYPE_PHOTOS.Workshop
 }

@@ -85,11 +85,14 @@ Dùng lại, không viết bản khác.
 
 | Cần | Dùng |
 | --- | --- |
-| Nút, nhãn tiêu đề | `Button`, `Eyebrow` trong `apps/web/src/components/` |
+| Nút, nút lọc, nhãn `// comment` | `Button`, `buttonClass(...)`, `pillClass(...)`, `Eyebrow` trong `apps/web/src/components/` |
+| Đầu trang con, breadcrumb, phân trang | `PageHero`, `Breadcrumb`, `Pagination` trong `apps/web/src/components/` |
+| Trang 404, 403, trang đang xây | `StatusScreen` trong `apps/web/src/components/StatusScreen.tsx` |
 | Gọi API từ web | `api(...)` trong `apps/web/src/lib/api.ts`; lỗi là `ApiError` có `status`, `code`, `message`, `issues` |
 | Tải dữ liệu cho trang kèm 4 trạng thái | `useApi(...)` trong `apps/web/src/hooks/useApi.ts` và `<AsyncState>` trong `apps/web/src/components/AsyncState.tsx` |
 | Hiện ngày giờ theo giờ Việt Nam | `formatDate`, `formatDateTime` trong `apps/web/src/lib/format.ts` |
-| Mẫu card tin tức, sự kiện, dự án | `NewsSection`, `EventsSection`, `ProjectsSection` trong `apps/web/src/pages/home/sections/`. Người dùng lại đầu tiên chuyển card sang `apps/web/src/components/` |
+| Card tin tức, sự kiện, dự án | `NewsCard`, `EventCard`, `ProjectCard` trong `apps/web/src/components/`; ảnh minh hoạ sự kiện theo loại: `eventPhoto()` trong `apps/web/src/lib/eventVisual.ts` |
+| Hiệu ứng hiện dần khi cuộn | Gắn `data-rv` cho phần tử trong `<section>`; độ trễ qua `style={{ '--d': '90ms' }}` (`useReveal` đã chạy sẵn ở `RootLayout`) |
 | Đọc, ghi database | `db` trong `apps/api/src/db/client.ts` |
 | Trả lỗi 401, 403, 404, 409, 429 | `throw unauthenticated()`, `forbidden()`, `notFound()`, `conflict()`, `rateLimited()` trong `apps/api/src/lib/errors.ts` |
 | Chặn quyền ở API | `requireAuth`, `requireRole(...)`, `requireScope(...)`, `currentUser(request)`, `departmentScope(user)` (lọc danh sách theo ban) trong `apps/api/src/modules/auth/rbac.ts`; ví dụ ở đầu file |
@@ -105,8 +108,8 @@ Dùng lại, không viết bản khác.
 
 | Phần | Trạng thái |
 | --- | --- |
-| Trang chủ `/` | Hoàn chỉnh giao diện, dùng nội dung mẫu |
-| Router và layout công khai | Có Navbar, Footer; các route `/about`, `/news`, `/events`, `/projects`, `/recruitment`, `/recruitment/application-lookup`, `/events/registration-lookup`, `/privacy`, `/account/activate` đang là trang tạm (`Placeholder`) |
+| Trang chủ `/` | Hoàn chỉnh giao diện theo `DESIGN.md` (mỗi phần vừa một màn hình, cuộn hít), dùng nội dung mẫu |
+| Router và layout công khai | Có Navbar, Footer kéo rèm. `/about`, `/events`, `/news`, `/projects`, `/recruitment` và trang chi tiết đã có giao diện, dùng dữ liệu giả (`mock.ts`) chờ API. `/recruitment/application-lookup`, `/events/registration-lookup`, `/privacy`, `/account/activate` đang là trang tạm (`Placeholder`) |
 | Đăng nhập (A1, A2 — xong 09/10) | Trang `/login`; `/portal`, `/admin` chặn bằng `<RequireAuth>` và đang là trang tạm liệt kê menu theo vai trò (layout thật ở A3). Navbar hiện Đăng nhập hoặc Portal/Quản trị/Đăng xuất |
 | API | Có `/health`, bộ xử lý lỗi chung, cấu hình đọc từ `.env`; `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`; phân quyền `requireAuth`/`requireRole`/`requireScope`; chặn CSRF theo `Origin` cho mọi request ghi |
 | Database | Có bảng `users`, `user_roles`, `sessions`, `departments`, `posts`, `events`, `projects`, `recruitment_rounds`, `membership_applications` |

@@ -1,10 +1,11 @@
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
 import { AsyncState } from '../../../components/AsyncState'
+import { Breadcrumb } from '../../../components/Breadcrumb'
 import { Button } from '../../../components/Button'
-import { Eyebrow } from '../../../components/Eyebrow'
-import { EVENT_STATUS_STYLES, eventTypeVisual, type EventCardStatus } from '../../../lib/eventVisual'
+import { PageHero } from '../../../components/PageHero'
+import { EVENT_STATUS_STYLES, eventPhoto, type EventCardStatus } from '../../../lib/eventVisual'
 import { NotFound } from '../../NotFound'
 import { formatDate, formatDateTime, formatTime, vnParts } from '../../../lib/format'
 import { useMockApi } from '../../../hooks/useMockApi'
@@ -33,14 +34,14 @@ export function EventDetailPage() {
   if (event.error?.status === 404) return <NotFound />
   if (event.loading) {
     return (
-      <main className="mx-auto w-full max-w-container-max px-gutter py-12 md:py-16">
+      <main className="mx-auto w-full max-w-container-max px-4 md:px-8">
         <AsyncState loading empty={false}>{null}</AsyncState>
       </main>
     )
   }
   if (event.error || !event.data) {
     return (
-      <main className="mx-auto w-full max-w-container-max px-gutter py-12 md:py-16">
+      <main className="mx-auto w-full max-w-container-max px-4 md:px-8">
         <AsyncState loading={false} error={event.error} empty={false} onRetry={event.reload}>
           {null}
         </AsyncState>
@@ -50,7 +51,6 @@ export function EventDetailPage() {
 
   const data = event.data
   const backTo = (location.state as { from?: string } | null)?.from ?? '/events'
-  const visual = eventTypeVisual(data.eventType)
   const statusStyle = EVENT_STATUS_STYLES[data.status as EventCardStatus]
   const registration = registrationState(data)
   const start = vnParts(data.startAt)
@@ -62,153 +62,119 @@ export function EventDetailPage() {
   const onlineUrl = safeHttpUrl(data.onlineUrl)
   const descriptionParagraphs = data.description.split('\n\n')
 
-  const metaRows: { icon: string; label: string; content: ReactNode }[] = [
+  const metaRows: { label: string; content: ReactNode }[] = [
+    { label: 'thời gian', content: timeText },
     {
-      icon: 'schedule',
-      label: 'Thời gian',
-      content: <span className="text-on-surface">{timeText}</span>,
-    },
-    {
-      icon: data.location ? 'location_on' : 'videocam',
-      label: data.location ? 'Địa điểm' : 'Hình thức',
+      label: data.location ? 'địa điểm' : 'hình thức',
       content: data.location ? (
-        <span className="text-on-surface">{data.location}</span>
+        data.location
       ) : onlineUrl ? (
-        <a href={onlineUrl} target="_blank" rel="noopener noreferrer" className="text-apc-blue hover:underline">
-          Trực tuyến <span className="material-symbols-outlined inline-block align-[-2px] text-sm">open_in_new</span>
+        <a href={onlineUrl} target="_blank" rel="noopener noreferrer" className="text-apc-blue underline decoration-2 underline-offset-4">
+          Trực tuyến ↗<span className="sr-only"> (mở tab mới)</span>
         </a>
       ) : (
-        <span className="text-on-surface">Trực tuyến</span>
+        'Trực tuyến'
       ),
     },
-    {
-      icon: 'groups',
-      label: 'Ban tổ chức',
-      content: <span className="text-on-surface">{data.departmentName ?? 'CLB APC'}</span>,
-    },
-    {
-      icon: 'support_agent',
-      label: 'Đầu mối liên hệ',
-      content: <span className="text-on-surface">{data.contactPoint ?? 'CLB APC'}</span>,
-    },
+    { label: 'ban tổ chức', content: data.departmentName ?? 'CLB APC' },
+    { label: 'đầu mối liên hệ', content: data.contactPoint ?? 'CLB APC' },
   ]
 
   return (
-    <main className="mx-auto w-full max-w-container-max px-gutter py-12 md:py-16">
-      <nav aria-label="Breadcrumb" className="mb-6 text-sm text-on-surface-variant">
-        <ol className="flex flex-wrap items-center gap-1.5">
-          <li>
-            <Link to="/" className="hover:text-apc-blue hover:underline">
-              Trang chủ
-            </Link>
-          </li>
-          <li aria-hidden className="material-symbols-outlined text-sm">chevron_right</li>
-          <li>
-            <Link to={backTo} className="hover:text-apc-blue hover:underline">
-              Sự kiện
-            </Link>
-          </li>
-          <li aria-hidden className="material-symbols-outlined text-sm">chevron_right</li>
-          <li aria-current="page" className="text-on-surface">
-            {data.title}
-          </li>
-        </ol>
-      </nav>
+    <main>
+      <PageHero
+        tone="blue"
+        top={
+          <Breadcrumb
+            items={[
+              { label: 'trang chủ', to: '/' },
+              { label: 'sự kiện', to: backTo },
+              { label: data.title },
+            ]}
+          />
+        }
+        compact
+        comment={data.eventType.toLowerCase()}
+        title={data.title}
+      >
+        <p className="mt-6 flex flex-wrap items-center gap-3">
+          <b className="font-display text-[clamp(20px,2vw,26px)] font-bold">{timeText}</b>
+          {statusStyle && data.status !== 'PUBLISHED' && (
+            <span className={`rounded-md px-2 py-1 font-code text-[13px] font-bold ${statusStyle.chipClass}`}>{statusStyle.label}</span>
+          )}
+        </p>
+        {data.status === 'CANCELLED' && data.cancelReason && (
+          <p className="mt-4 max-w-[60ch] rounded-xl bg-paper px-4 py-3 text-[16px] text-apc-red">
+            <b>Lý do hủy: </b>
+            {data.cancelReason}
+          </p>
+        )}
+      </PageHero>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="flex flex-col gap-6 lg:col-span-2">
-          <div className={`relative aspect-[16/9] flex items-center justify-center rounded-2xl border border-outline-variant/20 bg-gradient-to-br ${visual.coverClass}`}>
-            {data.coverImageUrl ? (
-              <img src={data.coverImageUrl} alt={data.title} className="h-full w-full rounded-2xl object-cover" />
-            ) : (
-              <span className={`material-symbols-outlined text-7xl ${visual.iconClass}`}>{visual.icon}</span>
-            )}
+      <section className="px-4 py-[clamp(40px,7vh,80px)] md:px-8">
+        <div className="mx-auto grid w-full max-w-container-max gap-10 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-16">
+          <div className="min-w-0">
+            <div data-rv className="photo aspect-[16/9] bg-soft">
+              <img
+                alt=""
+                className={`h-full ${data.status === 'PUBLISHED' ? '' : 'opacity-60 grayscale'}`}
+                src={eventPhoto(data.eventType, data.coverImageUrl)}
+              />
+            </div>
+            <div aria-label="Mô tả sự kiện" className="mt-10 flex max-w-[68ch] flex-col gap-5 text-[18px] leading-relaxed">
+              {descriptionParagraphs.map((paragraph, index) => (
+                <p key={index}>{paragraph}</p>
+              ))}
+            </div>
           </div>
 
-          <header className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${visual.chipClass}`}>{data.eventType}</span>
-              {statusStyle && <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${statusStyle.chipClass}`}>{statusStyle.label}</span>}
-            </div>
-            <h1 className="text-3xl font-bold text-on-surface md:text-4xl">{data.title}</h1>
-            {data.status === 'CANCELLED' && data.cancelReason && (
-              <p className="rounded-apc border border-apc-red/30 bg-apc-red/5 px-4 py-3 text-sm text-apc-red">
-                <span className="font-bold">Lý do hủy: </span>
-                {data.cancelReason}
-              </p>
-            )}
-          </header>
-
-          <section aria-label="Mô tả sự kiện" className="flex flex-col gap-4">
-            {descriptionParagraphs.map((paragraph, index) => (
-              <p key={index} className="leading-relaxed text-on-surface-variant">
-                {paragraph}
-              </p>
-            ))}
-          </section>
-        </div>
-
-        <aside className="flex flex-col gap-6">
-          <div className="rounded-2xl border border-outline-variant/20 bg-white p-6">
-            <Eyebrow className="text-on-surface-variant mb-4">THÔNG TIN</Eyebrow>
-            <dl className="flex flex-col gap-4">
+          <aside className="flex flex-col gap-6 lg:sticky lg:top-24 lg:self-start">
+            <dl className="rounded-[20px] bg-soft p-6">
               {metaRows.map((row) => (
-                <div key={row.label} className="flex gap-3">
-                  <span className="material-symbols-outlined text-xl text-apc-blue/70">{row.icon}</span>
-                  <div className="flex flex-col">
-                    <dt className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">{row.label}</dt>
-                    <dd className="text-sm">{row.content}</dd>
-                  </div>
+                <div key={row.label} className="border-b-2 border-ink/10 py-3 first:pt-0 last:border-0 last:pb-0">
+                  <dt className="font-code text-[13px] font-bold text-muted">{row.label}</dt>
+                  <dd className="mt-0.5 text-[16px] font-bold">{row.content}</dd>
                 </div>
               ))}
             </dl>
-          </div>
 
-          <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-6">
-            <Eyebrow className="text-on-surface-variant mb-4">ĐĂNG KÝ</Eyebrow>
-            {registration === null ? (
-              <p className="text-sm text-on-surface-variant">
-                {data.status === 'CANCELLED'
-                  ? 'Sự kiện đã hủy, không nhận đăng ký.'
-                  : 'Sự kiện đã kết thúc, không nhận đăng ký.'}
-              </p>
-            ) : (
-              <div className="flex flex-col gap-3 text-sm text-on-surface-variant">
-                {(data.registrationOpensAt || data.registrationClosesAt) && (
-                  <p>
-                    Thời gian nhận đăng ký:{' '}
-                    <span className="text-on-surface">
-                      {data.registrationOpensAt ? formatDate(data.registrationOpensAt) : '—'} →{' '}
-                      {data.registrationClosesAt ? formatDateTime(data.registrationClosesAt) : '—'}
-                    </span>
-                  </p>
-                )}
-                <p>
-                  Sức chứa: <span className="text-on-surface">{data.capacity ? `${data.capacity} người` : 'Không giới hạn'}</span>
+            <div className="rounded-[20px] bg-ink p-6 text-paper">
+              <p className="font-code text-[14px] font-bold text-apc-gold-soft">{'// đăng ký'}</p>
+              {registration === null ? (
+                <p className="mt-3 text-[16px]">
+                  {data.status === 'CANCELLED' ? 'Sự kiện đã hủy, không nhận đăng ký.' : 'Sự kiện đã kết thúc, không nhận đăng ký.'}
                 </p>
-                {registration === 'open' ? (
-                  <>
-                    <Button onClick={() => navigate(`/events/${data.slug}/register`)}>Đăng ký tham gia</Button>
-                    {data.registrationClosesAt && (
-                      <p className="text-xs">Nhận đăng ký đến {formatDateTime(data.registrationClosesAt)}</p>
-                    )}
-                  </>
-                ) : registration === 'not_open' ? (
-                  <p className="text-on-surface">
-                    <span className="material-symbols-outlined mr-1 inline-block align-[-3px] text-base">schedule</span>
-                    Đăng ký sẽ mở vào {formatDateTime(data.registrationOpensAt ?? data.startAt)}
+              ) : (
+                <div className="mt-3 flex flex-col gap-3 text-[16px]">
+                  {(data.registrationOpensAt || data.registrationClosesAt) && (
+                    <p>
+                      Nhận đăng ký:{' '}
+                      <b>
+                        {data.registrationOpensAt ? formatDate(data.registrationOpensAt) : '—'} →{' '}
+                        {data.registrationClosesAt ? formatDateTime(data.registrationClosesAt) : '—'}
+                      </b>
+                    </p>
+                  )}
+                  <p>
+                    Sức chứa: <b>{data.capacity ? `${data.capacity} người` : 'không giới hạn'}</b>
                   </p>
-                ) : (
-                  <p className="text-on-surface">
-                    <span className="material-symbols-outlined mr-1 inline-block align-[-3px] text-base">event_busy</span>
-                    Đã hết hạn đăng ký{data.registrationClosesAt ? ` từ ${formatDateTime(data.registrationClosesAt)}` : ''}.
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        </aside>
-      </div>
+                  {registration === 'open' ? (
+                    <Button className="mt-2 w-full" onClick={() => navigate(`/events/${data.slug}/register`)}>
+                      Đăng ký tham gia →
+                    </Button>
+                  ) : registration === 'not_open' ? (
+                    <p className="font-bold text-apc-gold-soft">Đăng ký mở vào {formatDateTime(data.registrationOpensAt ?? data.startAt)}.</p>
+                  ) : (
+                    <p className="font-bold text-apc-gold-soft">
+                      Đã hết hạn đăng ký{data.registrationClosesAt ? ` từ ${formatDateTime(data.registrationClosesAt)}` : ''}.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
+      </section>
     </main>
   )
 }

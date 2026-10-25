@@ -2,7 +2,8 @@ import { useSearchParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
 import { Button } from '../../../components/Button'
-import { Eyebrow } from '../../../components/Eyebrow'
+import { pillClass } from '../../../components/buttonClass'
+import { PageHero } from '../../../components/PageHero'
 import { Pagination } from '../../../components/Pagination'
 import { ProjectCard } from '../../../components/ProjectCard'
 import { useMockApi } from '../../../hooks/useMockApi'
@@ -52,87 +53,63 @@ export function ProjectListPage() {
   const hasFilter = Boolean(currentType)
   const isEmpty = !loading && !error && items.length === 0
 
+  const filters = [{ label: 'Tất cả', value: undefined }, ...PROJECT_TYPES.map((type) => ({ label: type, value: type }))]
+
   return (
-    <main className="w-full min-h-[60vh] py-12 px-gutter bg-white">
-      <div className="max-w-container-max mx-auto fade-up w-full">
-        {/* Tiêu đề trang */}
-        <div className="mb-8 border-b border-outline-variant/20 pb-6">
-          <Eyebrow className="text-apc-blue mb-2">SẢN PHẨM &amp; DỰ ÁN</Eyebrow>
-          <h1 className="font-headline-md text-3xl md:text-4xl font-bold text-on-surface">
-            Dự án &amp; Sản phẩm
-          </h1>
-          <p className="mt-2 text-on-surface-variant text-base">
-            Khám phá các sản phẩm công nghệ thực tế được nghiên cứu và phát triển bởi các thành viên APC.
-          </p>
-        </div>
-
-        {/* Bộ lọc thể loại */}
-        <div className="flex flex-wrap items-center gap-2 mb-8">
-          <button
-            type="button"
-            onClick={() => handleTypeChange(undefined)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              !currentType
-                ? 'bg-apc-blue text-white shadow-sm'
-                : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high border border-outline-variant/30'
-            }`}
-          >
-            Tất cả
-          </button>
-          {PROJECT_TYPES.map((type) => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => handleTypeChange(type)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                currentType === type
-                  ? 'bg-apc-blue text-white shadow-sm'
-                  : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high border border-outline-variant/30'
-              }`}
-            >
-              {type}
-            </button>
-          ))}
-        </div>
-
-        {/* Trạng thái dữ liệu */}
-        <AsyncState
-          loading={loading}
-          error={error}
-          empty={items.length === 0}
-          emptyText={
-            hasFilter
-              ? 'Không có dự án nào trong thể loại này.'
-              : 'Chưa có dự án nào.'
-          }
-          onRetry={reload}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {items.map((item) => (
-              <ProjectCard key={item.slug} item={item} />
+    <main>
+      <PageHero
+        comment="sản phẩm & dự án"
+        title={
+          <>
+            Dự án do <span className="text-apc-gold">thành viên</span> làm.
+          </>
+        }
+        lede="Sản phẩm công nghệ thật, được thành viên APC nghiên cứu, xây dựng và vận hành."
+      />
+      <section className="px-4 py-[clamp(40px,7vh,80px)] md:px-8">
+        <div className="mx-auto w-full max-w-container-max">
+          <div role="group" aria-label="Lọc theo loại dự án" className="flex flex-wrap gap-2">
+            {filters.map((filter) => (
+              <button
+                key={filter.label}
+                type="button"
+                aria-pressed={currentType === filter.value}
+                onClick={() => handleTypeChange(filter.value)}
+                className={pillClass(currentType === filter.value)}
+              >
+                {filter.label}
+              </button>
             ))}
           </div>
 
-          {totalPages > 1 && (
-            <div className="mt-12 flex justify-center">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-              />
+          <AsyncState
+            loading={loading}
+            error={error}
+            empty={items.length === 0}
+            emptyText={hasFilter ? 'Không có dự án nào trong loại này.' : 'Chưa có dự án nào.'}
+            onRetry={reload}
+          >
+            <div className="mt-10 grid gap-x-8 gap-y-14 md:grid-cols-2 lg:grid-cols-3">
+              {items.map((item) => (
+                <ProjectCard key={item.slug} item={item} />
+              ))}
+            </div>
+            {totalPages > 1 && (
+              <div className="mt-16">
+                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+              </div>
+            )}
+          </AsyncState>
+
+          {isEmpty && hasFilter && (
+            <div className="-mt-8 pb-16 text-center">
+              <Button variant="outline" onClick={() => handleTypeChange(undefined)}>
+                Xóa bộ lọc
+              </Button>
             </div>
           )}
-        </AsyncState>
-
-        {/* Nút Xóa bộ lọc khi lọc không có kết quả */}
-        {isEmpty && hasFilter && (
-          <div className="text-center -mt-8 pb-16">
-            <Button variant="outline" onClick={() => handleTypeChange(undefined)}>
-              Xóa bộ lọc
-            </Button>
-          </div>
-        )}
-      </div>
+        </div>
+      </section>
     </main>
   )
 }

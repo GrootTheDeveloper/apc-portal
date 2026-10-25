@@ -19,3 +19,6 @@ docs/tech/*.aux
 docs/tech/*.log
 docs/tech/*.out
 docs/tech/*.toc
+
+# công cụ thiết kế cục bộ
+.taste-skill/

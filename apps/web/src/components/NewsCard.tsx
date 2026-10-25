@@ -3,66 +3,49 @@ import { Link } from 'react-router-dom'
 import { formatDate } from '../lib/format'
 import type { NewsItem } from '../pages/news/list/mock'
 
-function getCategoryChipClass(category: string): string {
-  switch (category) {
-    case 'Chuyên môn':
-      return 'bg-apc-blue/10 text-apc-blue'
-    case 'Thông báo':
-      return 'bg-apc-gold/10 text-apc-gold'
-    case 'Chia sẻ':
-      return 'bg-apc-red/10 text-apc-red'
-    default:
-      return 'bg-surface-container-highest text-on-surface-variant'
-  }
+// Mỗi chuyên mục một sắc nhạt của màu logo; lưới nhiều bài nên dùng nền nhạt cho dịu mắt (class literal để Tailwind JIT nhận diện).
+const CATEGORY_FIELDS: Record<string, { field: string; label: string }> = {
+  'Chuyên môn': { field: 'bg-apc-blue-pale text-apc-blue', label: 'text-apc-blue' },
+  'Thông báo': { field: 'bg-apc-gold-pale text-apc-gold-deep', label: 'text-apc-gold-deep' },
+  'Chia sẻ': { field: 'bg-apc-red-pale text-apc-red', label: 'text-apc-red' },
 }
+const FALLBACK_FIELD = { field: 'bg-soft text-muted', label: 'text-muted' }
 
-type NewsCardProps = {
-  item: NewsItem
-}
-
-/** Card hiển thị bài viết tin tức, giữ nguyên visual style từ NewsSection */
-export function NewsCard({ item }: NewsCardProps) {
-  const chipClass = getCategoryChipClass(item.category)
-  const formattedDate = item.publishedAt ? formatDate(item.publishedAt) : ''
+/** Card bài viết: ảnh bìa (chưa có thì mảng màu theo chuyên mục), chuyên mục, tiêu đề, tác giả. */
+export function NewsCard({ item }: { item: NewsItem }) {
+  const colors = CATEGORY_FIELDS[item.category] ?? FALLBACK_FIELD
 
   return (
-    <Link
-      to={`/news/${item.slug}`}
-      className="group bg-white rounded-2xl overflow-hidden shadow-sm border border-outline-variant/20 flex flex-col hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer"
-    >
+    <Link to={`/news/${item.slug}`} className="group flex min-w-0 flex-col">
       {item.coverUrl ? (
-        <div className="aspect-[16/10] overflow-hidden">
-          <img src={item.coverUrl} alt={item.title} className="w-full h-full object-cover" />
+        <div className="photo aspect-[16/10] bg-soft">
+          <img alt="" className="h-full" loading="lazy" src={item.coverUrl} />
         </div>
       ) : (
-        <div className={`aspect-[16/10] flex items-center justify-center bg-gradient-to-br ${item.coverClass}`}>
-          <span className={`material-symbols-outlined text-5xl ${item.iconClass}`}>{item.icon}</span>
+        <div className={`grid aspect-[16/10] place-items-center rounded-[20px] ${colors.field}`}>
+          <span aria-hidden className="material-symbols-outlined text-[72px] transition-transform duration-500 group-hover:scale-110">
+            {item.icon}
+          </span>
         </div>
       )}
 
-      <div className="p-6 flex flex-col gap-3 flex-1">
-        <div className="flex items-center justify-between">
-          <span className={`px-3 py-1 rounded-full text-xs font-bold ${chipClass}`}>{item.category}</span>
-          <span className="text-on-surface-variant text-xs">{formattedDate}</span>
-        </div>
+      <p className="mt-4 flex items-center justify-between gap-3 font-code text-[13px] font-bold">
+        <span className={colors.label}>{item.category}</span>
+        {item.publishedAt && <span className="text-muted">{formatDate(item.publishedAt)}</span>}
+      </p>
+      <h3 className="mt-1 line-clamp-2 font-display text-[22px] font-bold leading-[1.15] transition-colors group-hover:text-apc-red">
+        {item.title}
+      </h3>
+      <p className="mt-2 line-clamp-2 text-[15px] leading-relaxed text-muted">{item.excerpt}</p>
 
-        <h3 className="font-bold text-lg text-on-surface leading-tight group-hover:text-apc-blue transition-colors">
-          {item.title}
-        </h3>
-
-        <p className="text-on-surface-variant text-sm line-clamp-2 flex-1">{item.excerpt}</p>
-
-        <div className="pt-4 border-t border-outline-variant/20 flex items-center gap-3">
-          <div
-            className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs ${item.author.avatarClass}`}
-          >
-            {item.author.initials}
-          </div>
-          <div className="text-xs">
-            <p className="font-bold text-on-surface">{item.author.name}</p>
-            <p className="text-on-surface-variant">{item.author.role}</p>
-          </div>
-        </div>
+      <div className="mt-auto flex items-center gap-3 pt-4">
+        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-[12px] font-extrabold ${item.author.avatarClass}`}>
+          {item.author.initials}
+        </span>
+        <span className="text-[13px] leading-tight">
+          <b className="block">{item.author.name}</b>
+          <span className="text-muted">{item.author.role}</span>
+        </span>
       </div>
     </Link>
   )

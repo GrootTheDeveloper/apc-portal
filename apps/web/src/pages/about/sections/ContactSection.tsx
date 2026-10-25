@@ -1,40 +1,51 @@
-import { Eyebrow } from '../../../components/Eyebrow'
 import type { AboutData } from '../mock'
+import { Eyebrow } from '../../../components/Eyebrow'
 
 export function ContactSection({ data }: { data: AboutData }) {
   return (
-    <section className="w-full bg-surface-container-low px-gutter py-16 md:py-section-padding">
-      <div className="mx-auto grid w-full max-w-container-max grid-cols-1 gap-12 lg:grid-cols-2">
+    <section className="px-4 py-[clamp(56px,10vh,120px)] md:px-8">
+      <div className="mx-auto grid w-full max-w-container-max gap-14 lg:grid-cols-2 lg:gap-16">
         <div className="min-w-0">
-          <Eyebrow className="mb-4 text-apc-gold">Liên hệ</Eyebrow>
-          <h2 className="font-display-lg text-3xl font-bold leading-tight text-on-surface md:text-4xl">
-            Thông tin liên hệ
+          <Eyebrow data-rv className="text-apc-red">
+            liên hệ
+          </Eyebrow>
+          <h2 data-rv className="mt-3 font-display text-[clamp(36px,4.4vw,64px)] font-extrabold leading-[0.95] tracking-[-0.03em]">
+            Nhắn cho APC
           </h2>
-          <ul className="mt-8 flex flex-col gap-5">
-            <li className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-6">
-              <p className="text-sm font-medium text-on-surface-variant">Email</p>
-              <a className="mt-1 inline-block break-all text-lg font-bold text-apc-blue hover:underline" href={`mailto:${data.contactEmail}`}>
-                {data.contactEmail}
-              </a>
-            </li>
-            <li className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-6">
-              <p className="text-sm font-medium text-on-surface-variant">Fanpage</p>
-              <ExternalLink href={data.fanpage} label={data.fanpage} className="mt-1 break-all text-lg font-bold" />
-            </li>
-          </ul>
+          <dl className="mt-8 border-t-2 border-ink">
+            <div className="border-b-2 border-ink py-5">
+              <dt className="font-code text-[13px] font-bold text-muted">email</dt>
+              <dd className="mt-1">
+                <a
+                  className="break-all font-display text-[clamp(24px,2.6vw,36px)] font-bold text-apc-red underline decoration-2 underline-offset-4 hover:text-apc-red-deep"
+                  href={`mailto:${data.contactEmail}`}
+                >
+                  {data.contactEmail}
+                </a>
+              </dd>
+            </div>
+            <div className="border-b-2 border-ink py-5">
+              <dt className="font-code text-[13px] font-bold text-muted">fanpage</dt>
+              <dd className="mt-1">
+                <ExternalLink href={data.fanpage} label={data.fanpage} className="break-all text-[18px] font-bold text-apc-blue underline decoration-2 underline-offset-4" />
+              </dd>
+            </div>
+          </dl>
         </div>
         <div className="min-w-0">
-          <Eyebrow className="mb-4 text-apc-blue">Liên kết chính thức</Eyebrow>
-          <h2 className="font-display-lg text-3xl font-bold leading-tight text-on-surface md:text-4xl">
-            Kênh và hệ thống ngoài
+          <Eyebrow data-rv className="text-apc-blue">
+            liên kết chính thức
+          </Eyebrow>
+          <h2 data-rv className="mt-3 font-display text-[clamp(36px,4.4vw,64px)] font-extrabold leading-[0.95] tracking-[-0.03em]">
+            Kênh và hệ thống
           </h2>
-          <ul className="mt-8 flex flex-col gap-3">
+          <ul className="mt-8 border-t-2 border-ink">
             {data.officialLinks.map((link) => (
-              <li key={link.url}>
+              <li key={link.url} className="border-b-2 border-ink">
                 <ExternalLink
                   href={link.url}
                   label={link.label}
-                  className="w-full justify-between break-words rounded-2xl border border-outline-variant bg-surface-container-lowest px-6 py-4 font-medium hover:border-outline"
+                  className="flex min-h-16 w-full justify-between py-4 font-display text-[22px] font-bold hover:text-apc-red"
                 />
               </li>
             ))}
@@ -48,7 +59,7 @@ export function ContactSection({ data }: { data: AboutData }) {
 function ExternalLink({ href, label, className }: { href: string; label: string; className?: string }) {
   return (
     <a
-      className={`inline-flex items-center gap-1 text-apc-blue hover:underline ${className ?? ''}`}
+      className={`inline-flex items-center gap-2 transition-colors ${className ?? ''}`}
       href={href}
       target="_blank"
       rel="noopener noreferrer"

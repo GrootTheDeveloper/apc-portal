@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
-import { Eyebrow } from '../../../components/Eyebrow'
+import { buttonClass } from '../../../components/buttonClass'
+import { PageHero } from '../../../components/PageHero'
 import { useMockApi } from '../../../hooks/useMockApi'
 import { listRecruitmentRounds } from '../mock'
 import { sortRounds } from '../roundPhase'
@@ -12,56 +13,43 @@ export function RecruitmentListPage() {
   const sortedRounds = sortRounds(data ?? [])
 
   return (
-    <main className="mx-auto max-w-container-max px-gutter py-12 md:py-16">
-      {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-outline-variant/60 pb-8">
-        <div>
-          <Eyebrow>Cơ hội tham gia</Eyebrow>
-          <h1 className="mt-3 text-3xl md:text-5xl font-extrabold text-on-surface">Gia nhập APC</h1>
-          <p className="mt-3 max-w-2xl text-base md:text-lg text-on-surface-variant font-light">
-            Nơi kết nối những bạn trẻ đam mê công nghệ phần mềm tại UMT. Cùng học tập qua dự án, xây dựng sản phẩm thực tế và đồng hành cùng mentor.
-          </p>
-        </div>
+    <main>
+      <PageHero
+        tone="red"
+        comment="cơ hội tham gia"
+        title="Gia nhập APC"
+        lede="Nơi các bạn mê làm phần mềm ở UMT cùng học qua dự án, làm sản phẩm thật và có anh chị đi trước kèm cặp."
+        aside={
+          // Tra cứu hồ sơ theo FLOW-03
+          <Link to="/recruitment/application-lookup" className={buttonClass('light')}>
+            Tra cứu hồ sơ bằng mã
+          </Link>
+        }
+      />
 
-        {/* Nút tra cứu hồ sơ theo yêu cầu FLOW-03 */}
-        <Link
-          to="/recruitment/application-lookup"
-          className="inline-flex items-center gap-2 rounded-apc border border-outline-variant bg-surface-container-lowest px-5 py-3 text-sm font-semibold text-on-surface hover:border-apc-blue hover:text-apc-blue shadow-sm transition-all shrink-0"
-        >
-          <span className="material-symbols-outlined text-xl">search_check</span>
-          Tra cứu kết quả hồ sơ
-        </Link>
-      </div>
-
-      {/* Danh sách đợt tuyển hoặc Khối Empty State theo FLOW-03 */}
       <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
         {sortedRounds.length === 0 ? (
-          <section className="mt-12 rounded-apc border border-outline-variant bg-surface-container-lowest p-8 md:p-12 text-center">
-            <div className="mx-auto max-w-lg">
-              <span className="material-symbols-outlined text-5xl text-apc-red mb-3">campaign</span>
-              <h2 className="text-2xl font-bold text-on-surface">Hiện chưa có đợt tuyển nào đang mở</h2>
-              <p className="mt-3 text-on-surface-variant leading-relaxed">
-                APC thường mở đợt tuyển thành viên vào đầu mỗi học kỳ. Bạn hãy theo dõi các kênh thông tin chính thức của chúng mình để không bỏ lỡ thông báo mới nhất nhé!
+          // Khối rỗng theo FLOW-03
+          <section className="px-4 py-[clamp(56px,10vh,120px)] text-center md:px-8">
+            <div className="mx-auto max-w-[620px]">
+              <p className="font-code text-[14px] font-bold text-apc-red">{'// chưa có đợt tuyển'}</p>
+              <h2 className="mt-3 font-display text-[clamp(28px,3vw,44px)] font-extrabold leading-[1.05]">Hiện chưa có đợt tuyển nào đang mở</h2>
+              <p className="mt-4 text-[17px] leading-relaxed text-muted">
+                APC thường mở đợt tuyển thành viên vào đầu mỗi học kỳ. Theo dõi các kênh chính thức của tụi mình để không lỡ thông báo nha.
               </p>
-              <div className="mt-6 flex flex-wrap justify-center gap-4 text-sm font-medium">
-                <a
-                  href="https://facebook.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-apc-blue hover:underline"
-                >
-                  Fanpage Facebook <span className="material-symbols-outlined text-base">open_in_new</span>
+              <p className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-[16px] font-extrabold">
+                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-apc-blue underline decoration-2 underline-offset-4">
+                  Fanpage Facebook ↗<span className="sr-only"> (mở tab mới)</span>
                 </a>
-                <span className="text-outline-variant">•</span>
-                <a href="mailto:contact@apc.club" className="text-apc-blue hover:underline">
+                <a href="mailto:contact@apc.club" className="text-apc-blue underline decoration-2 underline-offset-4">
                   contact@apc.club
                 </a>
-              </div>
+              </p>
             </div>
           </section>
         ) : (
-          <section className="mt-10">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <section className="px-4 py-[clamp(40px,7vh,80px)] md:px-8">
+            <div className="mx-auto w-full max-w-container-max border-t-2 border-ink">
               {sortedRounds.map((round) => (
                 <RecruitmentCard key={round.id} round={round} />
               ))}
