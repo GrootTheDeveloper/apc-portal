@@ -1,18 +1,23 @@
+import { randomUUID } from 'node:crypto'
+
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
 import { loadConfig } from '../../config.js'
 import { db } from '../../db/client.js'
 import {
+  AUDIT_ACTIONS,
   AuditActorType,
   AuditCategory,
   AuditResult,
   audit,
   cleanSensitiveData,
 } from './service.js'
-import { requireRole } from '../auth/rbac.js'
+import { requireAuth, requireRole } from '../auth/rbac.js'
 
 describe('B1: Audit Log Service', () => {
   const testUserId = 'test-user-b1'
+  // Mỗi lần chạy một tên route riêng để đếm đúng dòng của lần chạy này.
+  const run = randomUUID().slice(0, 8)
 
   beforeAll(async () => {
     // Tạo user mẫu cho test audit liên kết khóa ngoại
@@ -31,14 +36,13 @@ describe('B1: Audit Log Service', () => {
 
   afterAll(async () => {
     // Dọn dẹp logs và user sau test
+    // Chỉ dọn dòng do test này tạo (không đụng nhật ký thật).
     await db.auditLog.deleteMany({
       where: {
         OR: [
           { actorId: testUserId },
-          { serviceName: 'test-job' },
-          { action: 'auth.denied' },
-          { targetType: 'TEST_TARGET' },
-          { targetType: 'TX_ROLLBACK_TEST' },
+          { serviceName: { in: ['test-job', 'test-audit'] } },
+          { targetId: { contains: run } },
         ],
       },
     })
@@ -112,10 +116,8 @@ describe('B1: Audit Log Service', () => {
       url: '/admin/test-board-only',
     })
 
+    // denied() chờ ghi xong trước khi trả 403, nên đọc ngay được dòng nhật ký.
     expect(res.statusCode).toBe(403)
-
-    // Đợi log bất đồng bộ hoàn thành
-    await new Promise((r) => setTimeout(r, 100))
 
     const deniedLogs = await db.auditLog.findMany({
       where: {
@@ -173,8 +175,8 @@ describe('B1: Audit Log Service', () => {
     })
 
     // Lưu vào database thực tế và kiểm tra
-    const log = await audit(null, {
-      action: 'account.create',
+    const log = await audit({ service: 'test-audit' }, {
+      action: AUDIT_ACTIONS.ACCOUNT_CREATE,
       targetType: 'TEST_TARGET',
       category: AuditCategory.BUSINESS,
       result: AuditResult.SUCCESS,
@@ -195,18 +197,19 @@ describe('B1: Audit Log Service', () => {
   })
 
   it('audit(...) thành công trong transaction bị rollback thì không còn dòng nhật ký; dòng FAILURE ghi ngoài transaction vẫn còn', async () => {
-    const uniqueActionSuccess = 'test.tx_rollback_success'
-    const uniqueActionFailure = 'test.tx_rollback_failure'
+    const successTarget = `tx-success-${run}`
+    const failureTarget = `tx-failure-${run}`
 
     // Mô phỏng transaction nghiệp vụ gặp lỗi và rollback
     try {
       await db.$transaction(async (tx) => {
         // Ghi nhật ký thành công TRONG transaction
         await audit(
-          null,
+          { service: 'test-audit' },
           {
-            action: uniqueActionSuccess,
+            action: AUDIT_ACTIONS.POST_PUBLISH,
             targetType: 'TX_ROLLBACK_TEST',
+            targetId: successTarget,
             category: AuditCategory.BUSINESS,
             result: AuditResult.SUCCESS,
             reason: 'Ghi cùng transaction',
@@ -216,10 +219,11 @@ describe('B1: Audit Log Service', () => {
 
         // Mô phỏng thao tác thất bại: ghi nhật ký FAILURE NGOÀI transaction (dùng client chính db)
         await audit(
-          null,
+          { service: 'test-audit' },
           {
-            action: uniqueActionFailure,
+            action: AUDIT_ACTIONS.POST_PUBLISH,
             targetType: 'TX_ROLLBACK_TEST',
+            targetId: failureTarget,
             category: AuditCategory.BUSINESS,
             result: AuditResult.FAILURE,
             reason: 'Thao tác gặp lỗi nghiệp vụ',
@@ -235,21 +239,11 @@ describe('B1: Audit Log Service', () => {
     }
 
     // Kiểm tra dòng SUCCESS trong transaction bị rollback: KHÔNG còn
-    const successLog = await db.auditLog.findFirst({
-      where: {
-        action: uniqueActionSuccess,
-        targetType: 'TX_ROLLBACK_TEST',
-      },
-    })
+    const successLog = await db.auditLog.findFirst({ where: { targetId: successTarget } })
     expect(successLog).toBeNull()
 
     // Kiểm tra dòng FAILURE ngoài transaction: VẪN CÒN
-    const failureLog = await db.auditLog.findFirst({
-      where: {
-        action: uniqueActionFailure,
-        targetType: 'TX_ROLLBACK_TEST',
-      },
-    })
+    const failureLog = await db.auditLog.findFirst({ where: { targetId: failureTarget } })
     expect(failureLog).not.toBeNull()
     expect(failureLog?.result).toBe(AuditResult.FAILURE)
   })
@@ -273,5 +267,22 @@ describe('B1: Audit Log Service', () => {
     expect(log.actorRole).toBeNull()
     expect(log.action).toBe('retention.dry_run')
     expect(log.category).toBe(AuditCategory.OPERATIONS)
+  })
+
+  it('401 của khách không có cookie phiên không ghi nhật ký; cookie phiên sai thì ghi SECURITY / FAILURE', async () => {
+    const app = buildApp(loadConfig({ NODE_ENV: 'test' }))
+    const route = `/portal/test-auth-${run}`
+    app.get(route, { preHandler: requireAuth }, async () => ({ ok: true }))
+
+    const guest = await app.inject({ method: 'GET', url: route })
+    expect(guest.statusCode).toBe(401)
+    expect(await db.auditLog.count({ where: { targetId: route } })).toBe(0)
+
+    const badSession = await app.inject({ method: 'GET', url: route, cookies: { apc_session: 'phien-khong-ton-tai' } })
+    expect(badSession.statusCode).toBe(401)
+    const rows = await db.auditLog.findMany({ where: { targetId: route } })
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ action: AUDIT_ACTIONS.AUTH_DENIED, category: AuditCategory.SECURITY, result: AuditResult.FAILURE, actorId: null })
+    await app.close()
   })
 })

@@ -8,7 +8,6 @@ import {
   type Prisma,
   type PrismaClient,
 } from '../../db/generated/client.js'
-import type { AuthUser } from '../auth/rbac.js'
 
 export { AuditActorType, AuditCategory, AuditResult }
 
@@ -93,7 +92,7 @@ export const AUDIT_ACTIONS = {
   AUTH_TWO_FACTOR_RESET: 'auth.two_factor_reset',
 } as const
 
-export type AuditActionName = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS] | string
+export type AuditActionName = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS]
 
 const SENSITIVE_KEY_PATTERNS = [
   'password',
@@ -108,9 +107,6 @@ const SENSITIVE_KEY_PATTERNS = [
   'content',
   'noidung',
   'noi_dung',
-  'tep',
-  'filecontent',
-  'file_content',
   'body',
 ]
 
@@ -124,6 +120,9 @@ export function cleanSensitiveData<T = Record<string, any>>(data?: T | null): T 
   if (Array.isArray(data)) {
     return data.map((item) => cleanSensitiveData(item)) as unknown as T
   }
+
+  // Date là object nhưng không có khóa riêng: giữ dạng chuỗi ISO thay vì thành {}.
+  if (data instanceof Date) return data.toISOString() as unknown as T
 
   const cleaned: Record<string, any> = {}
   for (const [key, value] of Object.entries(data as Record<string, any>)) {
@@ -141,25 +140,12 @@ export function cleanSensitiveData<T = Record<string, any>>(data?: T | null): T 
   return cleaned as T
 }
 
-// Giữ alias cho tương thích ngược
-export const maskSensitiveData = cleanSensitiveData
-
 export type ServiceIdentity = {
   service: string
 }
 
-export type AuditRequestLike =
-  | FastifyRequest
-  | ServiceIdentity
-  | {
-      user?: AuthUser | null
-      ip?: string
-      headers?: Record<string, any>
-      routeOptions?: { url?: string }
-      url?: string
-    }
-  | null
-  | undefined
+/** Request của người dùng (để lấy người thực hiện, IP, trình duyệt) hoặc định danh tác vụ nền. Luôn phải có một trong hai. */
+export type AuditRequestLike = Pick<FastifyRequest, 'user' | 'ip' | 'headers'> | ServiceIdentity
 
 export type AuditParams = {
   action: AuditActionName
@@ -170,7 +156,6 @@ export type AuditParams = {
   reason?: string | null
   incidentId?: string | null
   metadata?: Record<string, any> | null
-  details?: Record<string, any> | null
 }
 
 function resolveUserRole(roles?: { role: Role }[]): Role | null {
@@ -187,15 +172,25 @@ function resolveUserRole(roles?: { role: Role }[]): Role | null {
  * - Thành công: truyền `tx` để ghi chung transaction nghiệp vụ.
  * - Thất bại/bị từ chối: luôn ghi ngoài transaction (dùng `db`) để không bị rollback mất dấu vết.
  * - Tác vụ nền: truyền `{ service: '<tên>' }` thay cho `request`.
+ *
+ * Thành công, ghi cùng transaction:
+ *   await db.$transaction(async (tx) => {
+ *     await tx.post.update({ where: { id }, data: { status: 'PUBLISHED' } })
+ *     await audit(request, { action: AUDIT_ACTIONS.POST_PUBLISH, targetType: 'POST', targetId: id,
+ *                            category: AuditCategory.BUSINESS, result: AuditResult.SUCCESS }, tx)
+ *   })
+ * Thất bại, ghi ngoài transaction rồi ném lỗi:
+ *   await audit(request, { action: AUDIT_ACTIONS.APPLICATION_STATUS_CHANGE, targetType: 'APPLICATION', targetId: id,
+ *                          category: AuditCategory.BUSINESS, result: AuditResult.FAILURE, reason: 'Sai bước chuyển' })
+ *   throw conflict()
+ * Tác vụ nền: audit({ service: 'role-expiry' }, { ... }, tx)
  */
 export async function audit(
   request: AuditRequestLike,
   params: AuditParams,
   tx?: Prisma.TransactionClient | PrismaClient,
 ) {
-  const isService = Boolean(
-    request && typeof request === 'object' && 'service' in request && typeof request.service === 'string',
-  )
+  const isService = 'service' in request
 
   let actorType: AuditActorType = AuditActorType.USER
   let actorId: string | null = null
@@ -207,21 +202,15 @@ export async function audit(
   if (isService) {
     actorType = AuditActorType.SERVICE
     serviceName = (request as ServiceIdentity).service
-  } else if (request && typeof request === 'object') {
-    const req = request as {
-      user?: AuthUser | null
-      ip?: string
-      headers?: Record<string, any>
-    }
-    actorType = AuditActorType.USER
-    actorId = req.user?.id ?? null
-    actorRole = resolveUserRole(req.user?.roles)
-    ipAddress = req.ip ?? (req.headers?.['x-forwarded-for'] as string) ?? null
-    userAgent = (req.headers?.['user-agent'] as string) ?? null
+  } else {
+    // ip lấy từ Fastify (tôn trọng cấu hình trustProxy), không đọc thẳng x-forwarded-for vì client tự đặt được.
+    actorId = request.user?.id ?? null
+    actorRole = resolveUserRole(request.user?.roles)
+    ipAddress = request.ip ?? null
+    userAgent = request.headers['user-agent']?.slice(0, 500) ?? null
   }
 
-  const rawMetadata = params.metadata ?? params.details ?? null
-  const cleanedMetadata = cleanSensitiveData(rawMetadata)
+  const cleanedMetadata = cleanSensitiveData(params.metadata ?? null)
 
   // Ghi trong transaction nếu thành công và có tx; thất bại thì luôn ghi qua db chính
   const client = params.result === AuditResult.SUCCESS && tx ? tx : db
