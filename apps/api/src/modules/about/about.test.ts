@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { buildApp } from '../../app.js'
@@ -6,15 +8,16 @@ import { db } from '../../db/client.js'
 
 const config = loadConfig({ NODE_ENV: 'test' })
 const app = buildApp(config)
+// Mã ban ngẫu nhiên để chạy song song / chạy lại không đụng nhau.
+const run = randomUUID().slice(0, 8)
 
-// Lưu id để dọn sau test
 let activeDeptId: string
 let archivedDeptId: string
 
 beforeAll(async () => {
   await app.ready()
 
-  // Đảm bảo SiteSetting singleton tồn tại
+  // Đảm bảo SiteSetting singleton tồn tại (DB test có thể chưa seed)
   await db.siteSetting.upsert({
     where: { id: 'singleton' },
     update: {},
@@ -32,15 +35,13 @@ beforeAll(async () => {
     },
   })
 
-  // Tạo một ban ACTIVE
   const activeDept = await db.department.create({
-    data: { name: 'Ban Test Active', code: 'TEST-ACTIVE', contactPoint: 'test@apc.vn', order: 99 },
+    data: { name: 'Ban Test Active', code: `test-active-${run}`, contactPoint: 'Email ban: test@example.com', order: 99 },
   })
   activeDeptId = activeDept.id
 
-  // Tạo một ban ARCHIVED — phải bị loại khỏi kết quả
   const archivedDept = await db.department.create({
-    data: { name: 'Ban Test Archived', code: 'TEST-ARCH', status: 'ARCHIVED', order: 100 },
+    data: { name: 'Ban Test Archived', code: `test-arch-${run}`, status: 'ARCHIVED', order: 100 },
   })
   archivedDeptId = archivedDept.id
 })
@@ -51,33 +52,42 @@ afterAll(async () => {
 })
 
 describe('GET /public/about', () => {
-  it('trả thông tin CLB và chỉ ban ACTIVE, không có termEndsAt', async () => {
+  it('trả thông tin CLB và ban ACTIVE, chỉ các trường công khai (không termEndsAt, không thông tin cá nhân)', async () => {
     const res = await app.inject({ method: 'GET', url: '/public/about' })
     expect(res.statusCode).toBe(200)
 
-    const body = res.json<Record<string, unknown>>()
-    // Có các trường thông tin CLB
-    expect(body).toHaveProperty('name')
-    expect(body).toHaveProperty('description')
-    expect(body).toHaveProperty('mission')
-    expect(body).toHaveProperty('contactEmail')
-    expect(body).toHaveProperty('fanpage')
-    expect(body).toHaveProperty('officialLinks')
-    // Có departments
-    expect(Array.isArray(body['departments'])).toBe(true)
-    // Ban ACTIVE test xuất hiện
-    const depts = body['departments'] as { id: string }[]
-    expect(depts.some((d) => d.id === activeDeptId)).toBe(true)
-    // termEndsAt KHÔNG được trả ra (QĐ-6)
-    expect(body).not.toHaveProperty('termEndsAt')
+    const body = res.json()
+    expect(Object.keys(body).sort()).toEqual(
+      ['contactEmail', 'departments', 'description', 'fanpage', 'mission', 'name', 'officialLinks'].sort(),
+    )
+    const dept = body.departments.find((d: { id: string }) => d.id === activeDeptId)
+    // Ban chỉ có đầu mối liên hệ chung, không có trường thành viên (BR-20)
+    expect(dept).toEqual({
+      id: activeDeptId,
+      name: 'Ban Test Active',
+      description: '',
+      contact: 'Email ban: test@example.com',
+      order: 99,
+    })
+    const orders = body.departments.map((d: { order: number }) => d.order)
+    expect(orders).toEqual([...orders].sort((a, b) => a - b))
   })
 
   it('ban ARCHIVED bị loại khỏi danh sách departments', async () => {
     const res = await app.inject({ method: 'GET', url: '/public/about' })
     expect(res.statusCode).toBe(200)
+    expect(res.json().departments.some((d: { id: string }) => d.id === archivedDeptId)).toBe(false)
+  })
 
-    const body = res.json<Record<string, unknown>>()
-    const depts = body['departments'] as { id: string }[]
-    expect(depts.some((d) => d.id === archivedDeptId)).toBe(false)
+  it('chưa có SiteSetting thì 404', async () => {
+    const saved = await db.siteSetting.findUniqueOrThrow({ where: { id: 'singleton' } })
+    await db.siteSetting.delete({ where: { id: 'singleton' } })
+    try {
+      const res = await app.inject({ method: 'GET', url: '/public/about' })
+      expect(res.statusCode).toBe(404)
+      expect(res.json().error).toBe('not_found')
+    } finally {
+      await db.siteSetting.create({ data: { id: saved.id, info: saved.info ?? {}, termEndsAt: saved.termEndsAt } })
+    }
   })
 })

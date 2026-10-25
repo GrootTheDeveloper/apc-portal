@@ -2,15 +2,15 @@ import { useEffect } from 'react'
 
 import { AsyncState } from '../../components/AsyncState'
 import { useApi } from '../../hooks/useApi'
-import type { AboutData } from './types'
 import { ContactSection } from './sections/ContactSection'
 import { DepartmentsSection } from './sections/DepartmentsSection'
 import { IntroSection } from './sections/IntroSection'
+import type { AboutData } from './types'
 
 const PAGE_PATH = '/about'
 const DEFAULT_TITLE = 'APC Portal - Từ ý tưởng đến sản phẩm thật'
 
-/** PAGE-PUB-02 — Trang Về APC. Dữ liệu từ GET /public/about (T2). */
+/** PAGE-PUB-02 — Trang Về APC, dữ liệu từ GET /public/about (T2). */
 export function AboutPage() {
   const about = useApi<AboutData>('/public/about')
 
@@ -75,10 +75,7 @@ function setMeta(attr: 'name' | 'property', key: string, content: string) {
 
 function setCanonical(href: string) {
   const existing = document.head.querySelector('link[rel="canonical"]')
-  const el =
-    existing instanceof HTMLLinkElement
-      ? existing
-      : document.head.appendChild(document.createElement('link'))
+  const el = existing instanceof HTMLLinkElement ? existing : document.head.appendChild(document.createElement('link'))
   el.rel = 'canonical'
   el.href = href
 }

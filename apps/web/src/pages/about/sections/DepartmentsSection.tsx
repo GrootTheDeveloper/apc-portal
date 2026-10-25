@@ -1,7 +1,7 @@
 import { Eyebrow } from '../../../components/Eyebrow'
-import type { AboutDepartment } from '../types'
+import type { Department } from '../types'
 
-export function DepartmentsSection({ departments }: { departments: AboutDepartment[] }) {
+export function DepartmentsSection({ departments }: { departments: Department[] }) {
   const items = [...departments].sort((a, b) => a.order - b.order)
 
   return (
@@ -26,10 +26,12 @@ export function DepartmentsSection({ departments }: { departments: AboutDepartme
               >
                 <h3 className="font-headline-sm text-xl font-bold text-on-surface">{department.name}</h3>
                 <p className="flex-1 leading-relaxed text-on-surface-variant">{department.description}</p>
-                <p className="text-sm text-on-surface-variant">
-                  <span className="font-medium text-on-surface">Đầu mối liên hệ: </span>
-                  {department.contact}
-                </p>
+                {department.contact && (
+                  <p className="text-sm text-on-surface-variant">
+                    <span className="font-medium text-on-surface">Đầu mối liên hệ: </span>
+                    {department.contact}
+                  </p>
+                )}
               </li>
             ))}
           </ul>

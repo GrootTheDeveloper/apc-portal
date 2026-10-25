@@ -1,55 +1,42 @@
+import { z } from 'zod'
+
 import { db } from '../../db/client.js'
 import { notFound } from '../../lib/errors.js'
 
-export type OfficialLink = { label: string; url: string }
+const httpUrl = z.string().regex(/^https?:\/\//i)
 
-export type AboutDepartment = {
-  id: string
-  name: string
-  description: string
-  contact: string
-  order: number
-}
-
-export type AboutInfo = {
-  name: string
-  description: string
-  mission: string
-  contactEmail: string
-  fanpage: string
-  officialLinks: OfficialLink[]
-}
-
-export type AboutResponse = AboutInfo & { departments: AboutDepartment[] }
+/** Hình dạng cột JSON `site_settings.info`. Trang quản trị sau này ghi đúng hình dạng này. */
+const aboutInfo = z.object({
+  name: z.string(),
+  description: z.string(),
+  mission: z.string(),
+  contactEmail: z.string(),
+  fanpage: httpUrl,
+  officialLinks: z.array(z.object({ label: z.string(), url: httpUrl })).default([]),
+})
 
 /**
  * GET /public/about — thông tin CLB và các ban ACTIVE theo thứ tự `order`.
  * termEndsAt KHÔNG trả ra ngoài (QĐ-6).
  */
-export async function getAbout(): Promise<AboutResponse> {
+export async function getAbout() {
   const [setting, departments] = await Promise.all([
     db.siteSetting.findUnique({ where: { id: 'singleton' } }),
     db.department.findMany({
       where: { status: 'ACTIVE' },
       select: { id: true, name: true, description: true, contactPoint: true, order: true },
-      orderBy: { order: 'asc' },
+      orderBy: [{ order: 'asc' }, { name: 'asc' }],
     }),
   ])
+  if (!setting) throw notFound('Chưa có thông tin giới thiệu.')
 
-  if (!setting) {
-    throw notFound()
-  }
-
-  const info = setting.info as AboutInfo
+  // Dữ liệu trong DB sai hình dạng là lỗi máy chủ (500), không phải lỗi người gọi (422).
+  const info = aboutInfo.safeParse(setting.info)
+  if (!info.success) throw new Error('site_settings.info sai định dạng', { cause: info.error })
 
   return {
-    name: info.name,
-    description: info.description,
-    mission: info.mission,
-    contactEmail: info.contactEmail,
-    fanpage: info.fanpage,
-    officialLinks: info.officialLinks ?? [],
-    departments: departments.map((d: { id: string; name: string; description: string | null; contactPoint: string | null; order: number }) => ({
+    ...info.data,
+    departments: departments.map((d) => ({
       id: d.id,
       name: d.name,
       description: d.description ?? '',
