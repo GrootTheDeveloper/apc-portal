@@ -2,45 +2,41 @@ import { Link, useParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
 import { Breadcrumb } from '../../../components/Breadcrumb'
-import { useMockApi } from '../../../hooks/useMockApi'
+import { Seo } from '../../../components/Seo'
+import { useApi } from '../../../hooks/useApi'
+import { getProjectTypeColorClass, safeHttpUrl, type ProjectItem } from '../../../lib/content'
 import { NotFound } from '../../NotFound'
-import { getProjectDetail, type ProjectItem, type ProjectType } from '../list/mock'
-
-function getTypeColorClass(type: ProjectType): string {
-  switch (type) {
-    case 'Nền tảng':
-      return 'text-apc-red'
-    case 'Công cụ':
-      return 'text-apc-blue'
-    case 'Sản phẩm':
-      return 'text-apc-gold'
-    default:
-      return 'text-apc-blue'
-  }
-}
 
 /** Trang chi tiết dự án */
 export function ProjectDetailPage() {
   const { slug } = useParams<{ slug: string }>()
 
-  const { data, loading, error, reload } = useMockApi<ProjectItem | null>(
-    () => (slug ? getProjectDetail(slug) : Promise.resolve(null)),
-    [slug],
+  const { data: item, loading, error, reload } = useApi<ProjectItem>(
+    slug ? `/public/projects/${slug}` : null,
   )
+
 
   if (!slug) {
     return <NotFound />
   }
 
-  // data là null nghĩa là slug hợp lệ nhưng không tìm thấy dự án.
-  if (!loading && !error && data === null) {
+  // Khi API trả về 404 (dự án không tồn tại hoặc là DRAFT, ARCHIVED)
+  if (!loading && error?.status === 404) {
     return <NotFound />
   }
 
-  // Alias để dùng tên quen thuộc trong JSX bên dưới.
-  const item = data
+  // Không tải, không lỗi nhưng không có dữ liệu
+  if (!loading && !error && !item) {
+    return <NotFound />
+  }
 
-  const typeColorClass = item ? getTypeColorClass(item.type) : 'text-apc-blue'
+  const title = item?.title || item?.name || ''
+  const typeText = item?.type || 'Dự án'
+  const typeColorClass = getProjectTypeColorClass(typeText)
+  const imageUrl = item?.thumbnailUrl || item?.imageUrl
+  const productLink = safeHttpUrl(item?.projectUrl || item?.productUrl)
+  const sourceLink = safeHttpUrl(item?.sourceUrl)
+  const technologies = Array.isArray(item?.technologies) ? item.technologies : []
 
   return (
     <main className="w-full min-h-[60vh] py-12 px-gutter bg-white">
@@ -53,12 +49,13 @@ export function ProjectDetailPage() {
         >
           {item && (
             <article className="flex flex-col gap-8">
+              <Seo title={title} description={item.description} path={`/projects/${slug}`} imageUrl={imageUrl} />
               {/* Breadcrumb */}
               <Breadcrumb
                 items={[
                   { label: 'Trang chủ', to: '/' },
                   { label: 'Dự án', to: '/projects' },
-                  { label: item.name },
+                  { label: title },
                 ]}
               />
 
@@ -66,18 +63,18 @@ export function ProjectDetailPage() {
               <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 border-b border-outline-variant/20 pb-6">
                 <div>
                   <span className={`${typeColorClass} text-xs font-bold uppercase tracking-wider block mb-2`}>
-                    {item.type}
+                    {typeText}
                   </span>
                   <h1 className="font-headline-md text-3xl sm:text-4xl lg:text-5xl font-bold text-on-surface leading-tight">
-                    {item.name}
+                    {title}
                   </h1>
                 </div>
 
                 {/* Các nút liên kết sản phẩm / mã nguồn */}
                 <div className="flex flex-wrap items-center gap-3">
-                  {item.productUrl && (
+                  {productLink && (
                     <a
-                      href={item.productUrl}
+                      href={productLink}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 px-6 py-2.5 rounded-apc bg-apc-red text-white font-medium hover:bg-[#a0220b] transition-colors shadow-sm text-sm"
@@ -85,9 +82,9 @@ export function ProjectDetailPage() {
                       Trải nghiệm ngay <span className="material-symbols-outlined text-sm">open_in_new</span>
                     </a>
                   )}
-                  {item.sourceUrl && (
+                  {sourceLink && (
                     <a
-                      href={item.sourceUrl}
+                      href={sourceLink}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 px-6 py-2.5 rounded-apc bg-white text-on-surface border border-outline-variant/30 hover:bg-surface-container-low transition-colors shadow-sm font-medium text-sm"
@@ -99,14 +96,12 @@ export function ProjectDetailPage() {
               </div>
 
               {/* Ảnh dự án */}
-              {item.imageUrl ? (
+              {imageUrl ? (
                 <div className="w-full aspect-[16/9] max-h-[460px] rounded-2xl overflow-hidden shadow-sm border border-outline-variant/20">
-                  <img alt={item.name} className="w-full h-full object-cover" src={item.imageUrl} />
+                  <img alt={title} className="w-full h-full object-cover" src={imageUrl} />
                 </div>
               ) : (
-                <div
-                  className={`w-full aspect-[16/9] max-h-[460px] rounded-2xl flex items-center justify-center bg-gradient-to-br ${item.coverClass || 'from-apc-blue/15 to-surface-container-high'} border border-outline-variant/20 shadow-sm`}
-                >
+                <div className="w-full aspect-[16/9] max-h-[460px] rounded-2xl flex items-center justify-center bg-gradient-to-br from-apc-blue/15 to-surface-container-high border border-outline-variant/20 shadow-sm">
                   <span className="material-symbols-outlined text-7xl text-apc-blue/50">rocket_launch</span>
                 </div>
               )}
@@ -114,15 +109,15 @@ export function ProjectDetailPage() {
               {/* Mô tả dự án */}
               <section className="bg-surface-container-low/40 rounded-2xl p-6 sm:p-8 border border-outline-variant/20">
                 <h2 className="text-xl font-bold text-on-surface mb-3">Mô tả dự án</h2>
-                <p className="text-on-surface-variant leading-relaxed text-base sm:text-lg">{item.description}</p>
+                <p className="text-on-surface-variant leading-relaxed text-base sm:text-lg whitespace-pre-line">{item.description}</p>
               </section>
 
               {/* Công nghệ */}
-              {item.technologies && item.technologies.length > 0 && (
+              {technologies.length > 0 && (
                 <section className="bg-white rounded-2xl p-6 sm:p-8 border border-outline-variant/20">
                   <h2 className="text-xl font-bold text-on-surface mb-4">Công nghệ sử dụng</h2>
                   <div className="flex flex-wrap gap-2">
-                    {item.technologies.map((tech) => (
+                    {technologies.map((tech) => (
                       <span
                         key={tech}
                         className="px-3.5 py-1.5 bg-surface-container-highest text-on-surface-variant rounded-full text-sm font-medium"
@@ -134,7 +129,7 @@ export function ProjectDetailPage() {
                 </section>
               )}
 
-              {/* Thành viên */}
+              {/* Thành viên (nếu có) */}
               {item.members && item.members.length > 0 && (
                 <section className="bg-white rounded-2xl p-6 sm:p-8 border border-outline-variant/20">
                   <h2 className="text-xl font-bold text-on-surface mb-4">Thành viên tham gia</h2>

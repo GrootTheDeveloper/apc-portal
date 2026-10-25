@@ -1,39 +1,29 @@
 import { useSearchParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
-import { Button } from '../../../components/Button'
 import { Eyebrow } from '../../../components/Eyebrow'
 import { Pagination } from '../../../components/Pagination'
 import { ProjectCard } from '../../../components/ProjectCard'
-import { useMockApi } from '../../../hooks/useMockApi'
-import { getProjectList, PROJECT_TYPES, type ProjectItem } from './mock'
+import { useApi } from '../../../hooks/useApi'
 import type { Page } from '../../../lib/api'
+import type { ProjectItem } from '../../../lib/content'
 
 const PAGE_SIZE = 12
 
-/** Trang danh sách dự án (hỗ trợ phân trang, lọc theo thể loại, đủ 5 trạng thái) */
+/** Trang danh sách dự án (phân trang, đủ 4 trạng thái async). Bộ lọc loại `?type=` thêm ở C4 khi có trường `type`. */
 export function ProjectListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const currentType = searchParams.get('type') || undefined
   const pageParam = searchParams.get('page')
   const currentPage = Math.max(1, parseInt(pageParam || '1', 10) || 1)
 
-  const { data, loading, error, reload } = useMockApi<Page<ProjectItem>>(
-    () => getProjectList({ page: currentPage, pageSize: PAGE_SIZE, type: currentType }),
-    [currentPage, currentType],
-  )
+  const queryParams = new URLSearchParams()
+  queryParams.set('page', currentPage.toString())
+  queryParams.set('pageSize', PAGE_SIZE.toString())
 
-  const handleTypeChange = (type?: string) => {
-    const nextParams = new URLSearchParams(searchParams)
-    if (type) {
-      nextParams.set('type', type)
-    } else {
-      nextParams.delete('type')
-    }
-    nextParams.delete('page')
-    setSearchParams(nextParams)
-  }
+  const { data, loading, error, reload } = useApi<Page<ProjectItem>>(
+    `/public/projects?${queryParams.toString()}`,
+  )
 
   const handlePageChange = (page: number) => {
     const nextParams = new URLSearchParams(searchParams)
@@ -49,8 +39,6 @@ export function ProjectListPage() {
   const items = data?.items ?? []
   const total = data?.total ?? 0
   const totalPages = Math.ceil(total / PAGE_SIZE)
-  const hasFilter = Boolean(currentType)
-  const isEmpty = !loading && !error && items.length === 0
 
   return (
     <main className="w-full min-h-[60vh] py-12 px-gutter bg-white">
@@ -66,45 +54,12 @@ export function ProjectListPage() {
           </p>
         </div>
 
-        {/* Bộ lọc thể loại */}
-        <div className="flex flex-wrap items-center gap-2 mb-8">
-          <button
-            type="button"
-            onClick={() => handleTypeChange(undefined)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              !currentType
-                ? 'bg-apc-blue text-white shadow-sm'
-                : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high border border-outline-variant/30'
-            }`}
-          >
-            Tất cả
-          </button>
-          {PROJECT_TYPES.map((type) => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => handleTypeChange(type)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                currentType === type
-                  ? 'bg-apc-blue text-white shadow-sm'
-                  : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high border border-outline-variant/30'
-              }`}
-            >
-              {type}
-            </button>
-          ))}
-        </div>
-
         {/* Trạng thái dữ liệu */}
         <AsyncState
           loading={loading}
           error={error}
           empty={items.length === 0}
-          emptyText={
-            hasFilter
-              ? 'Không có dự án nào trong thể loại này.'
-              : 'Chưa có dự án nào.'
-          }
+          emptyText="Chưa có dự án nào."
           onRetry={reload}
         >
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -124,14 +79,6 @@ export function ProjectListPage() {
           )}
         </AsyncState>
 
-        {/* Nút Xóa bộ lọc khi lọc không có kết quả */}
-        {isEmpty && hasFilter && (
-          <div className="text-center -mt-8 pb-16">
-            <Button variant="outline" onClick={() => handleTypeChange(undefined)}>
-              Xóa bộ lọc
-            </Button>
-          </div>
-        )}
       </div>
     </main>
   )

@@ -3,11 +3,19 @@ import { Link } from 'react-router-dom'
 import { Button } from '../../../components/Button'
 import { Eyebrow } from '../../../components/Eyebrow'
 import { ProjectCard } from '../../../components/ProjectCard'
-import { MOCK_PROJECTS } from '../../projects/list/mock'
+import { useApi } from '../../../hooks/useApi'
+import type { Page } from '../../../lib/api'
+import type { ProjectItem } from '../../../lib/content'
 
 export function ProjectsSection() {
-  const umtoj = MOCK_PROJECTS.find((p) => p.slug === 'umt-online-judge') ?? MOCK_PROJECTS[0]!
-  const eventManager = MOCK_PROJECTS.find((p) => p.slug === 'apc-event-manager') ?? MOCK_PROJECTS[1]!
+  const { data, loading, error } = useApi<Page<ProjectItem>>('/public/projects?page=1&pageSize=3')
+
+  // Nếu đang tải, lỗi, hoặc danh sách rỗng: ẩn toàn bộ khối, không để khoảng trống (FLOW-01)
+  if (loading || error || !data?.items || data.items.length === 0) {
+    return null
+  }
+
+  const items = data.items.slice(0, 3)
 
   return (
     <section className="w-full justify-start pt-24 pb-16 px-gutter bg-white text-on-surface">
@@ -25,12 +33,24 @@ export function ProjectsSection() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* UMTOJ — card nổi bật, ảnh trái / nội dung phải */}
-          <ProjectCard item={umtoj} layout="featured" className="lg:col-span-8" />
+          {items.length === 1 && (
+            <ProjectCard item={items[0]!} layout="featured" className="lg:col-span-12" />
+          )}
 
-          {/* Event Manager — card dọc */}
-          <ProjectCard item={eventManager} layout="standard" className="lg:col-span-4" />
+          {items.length === 2 && (
+            <>
+              <ProjectCard item={items[0]!} layout="featured" className="lg:col-span-8" />
+              <ProjectCard item={items[1]!} layout="standard" className="lg:col-span-4" />
+            </>
+          )}
 
+          {items.length >= 3 && (
+            <>
+              {items.map((item) => (
+                <ProjectCard key={item.slug} item={item} layout="standard" className="lg:col-span-4" />
+              ))}
+            </>
+          )}
 
           {/* CTA — dải ngang toàn chiều rộng */}
           <div className="lg:col-span-12 bg-apc-red rounded-2xl p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative overflow-hidden shadow-xl">
