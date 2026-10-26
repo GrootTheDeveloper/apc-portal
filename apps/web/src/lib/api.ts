@@ -25,7 +25,10 @@ type Options = { method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'; body?: un
 
 export async function api<T = unknown>(path: string, { method, body }: Options = {}): Promise<T> {
   const init: RequestInit = { method: method ?? (body === undefined ? 'GET' : 'POST') }
-  if (body !== undefined) {
+  if (body instanceof FormData) {
+    // Upload tệp (D2): để trình duyệt tự đặt Content-Type kèm boundary multipart.
+    init.body = body
+  } else if (body !== undefined) {
     init.headers = { 'Content-Type': 'application/json' }
     init.body = JSON.stringify(body)
   }

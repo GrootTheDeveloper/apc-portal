@@ -19,13 +19,17 @@
     "db:erd": "node scripts/erd.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1156.0",
+    "@aws-sdk/s3-request-presigner": "^3.1156.0",
     "@fastify/cookie": "^11.1.2",
     "@fastify/cors": "^11.1.0",
+    "@fastify/multipart": "^10.1.6",
     "@fastify/rate-limit": "^11.2.0",
     "@node-rs/argon2": "^2.2.1",
     "@prisma/client": "^6.19.3",
     "dotenv": "^17.2.2",
     "fastify": "^5.6.1",
+    "file-type": "^22.2.0",
     "nodemailer": "^10.2.1",
     "pg": "^8.16.3",
     "zod": "^4.1.11"
