@@ -217,6 +217,7 @@ model User {
   departmentId String? // Ban đang hoạt động; khác phạm vi quản lý trong user_roles
   department   Department?  @relation(fields: [departmentId], references: [id])
   memberStatus MemberStatus @default(ACTIVE) // MEM-11: độc lập AccountStatus, trừ LEFT kéo theo INACTIVE
+  deactivatedAt DateTime? // A5: lúc chuyển INACTIVE; B7 dùng để tính hạn lưu giữ dữ liệu
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

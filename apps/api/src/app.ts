@@ -7,6 +7,7 @@ import type { AppConfig } from './config.js'
 import { registerErrorHandler } from './lib/errors.js'
 import { aboutRoutes } from './modules/about/routes.js'
 import { registerAuth } from './modules/auth/rbac.js'
+import { accountRoutes } from './modules/accounts/routes.js'
 import { authRoutes } from './modules/auth/routes.js'
 import { contentRoutes } from './modules/content/routes.js'
 import { registerSession } from './modules/auth/session.js'
@@ -32,6 +33,7 @@ export function buildApp(config: AppConfig, deps: AppDeps = {}) {
 
   app.get('/health', async () => ({ status: 'ok', service: 'apc-api' }))
   app.register(authRoutes(config))
+  app.register(accountRoutes(config))
   app.register(emailRoutes)
   app.register(contentRoutes())
   app.register(aboutRoutes)

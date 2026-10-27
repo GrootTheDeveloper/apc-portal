@@ -77,6 +77,7 @@ erDiagram
     Json interestAreas "tùy chọn"
     String departmentId FK "tùy chọn. Ban đang hoạt động; khác phạm vi quản lý trong user_roles"
     MemberStatus memberStatus "ACTIVE / PAUSED / LEFT. MEM-11: độc lập AccountStatus, trừ LEFT kéo theo INACTIVE"
+    DateTime deactivatedAt "tùy chọn. A5: lúc chuyển INACTIVE; B7 dùng để tính hạn lưu giữ dữ liệu"
     DateTime createdAt
     DateTime updatedAt
   }
