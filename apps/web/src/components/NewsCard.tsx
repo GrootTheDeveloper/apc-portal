@@ -1,51 +1,34 @@
 import { Link } from 'react-router-dom'
 
-import {
-  getNewsCategoryChipClass,
-  getNewsCategoryVisual,
-  type NewsItem,
-} from '../lib/content'
+import { newsCategoryStyle, type NewsItem } from '../lib/content'
 import { formatDate } from '../lib/format'
 
-type NewsCardProps = {
-  item: NewsItem
-}
-
-/** Card hiển thị bài viết tin tức, giữ nguyên phong cách visual từ NewsSection */
-export function NewsCard({ item }: NewsCardProps) {
-  const chipClass = getNewsCategoryChipClass(item.category)
-  const visual = getNewsCategoryVisual(item.category)
-  const formattedDate = item.publishedAt ? formatDate(item.publishedAt) : ''
-  const imageUrl = item.thumbnailUrl || item.coverUrl
-  const summaryText = item.summary || item.excerpt || ''
+/** Card bài viết: ảnh bìa (chưa có thì mảng màu theo chuyên mục), chuyên mục, ngày, tiêu đề, tóm tắt. */
+export function NewsCard({ item }: { item: NewsItem }) {
+  const style = newsCategoryStyle(item.category)
 
   return (
-    <Link
-      to={`/news/${item.slug}`}
-      className="group bg-white rounded-2xl overflow-hidden shadow-sm border border-outline-variant/20 flex flex-col hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer"
-    >
-      {imageUrl ? (
-        <div className="aspect-[16/10] overflow-hidden">
-          <img src={imageUrl} alt={item.title} className="w-full h-full object-cover" />
+    <Link to={`/news/${item.slug}`} className="group flex min-w-0 flex-col">
+      {item.thumbnailUrl ? (
+        <div className="photo aspect-[16/10] bg-soft">
+          <img alt="" className="h-full" loading="lazy" src={item.thumbnailUrl} />
         </div>
       ) : (
-        <div className={`aspect-[16/10] flex items-center justify-center bg-gradient-to-br ${visual.coverClass}`}>
-          <span className={`material-symbols-outlined text-5xl ${visual.iconClass}`}>{visual.icon}</span>
+        <div className={`grid aspect-[16/10] place-items-center rounded-[20px] ${style.field}`}>
+          <span aria-hidden className="material-symbols-outlined text-[72px] transition-transform duration-500 group-hover:scale-110">
+            {style.icon}
+          </span>
         </div>
       )}
 
-      <div className="p-6 flex flex-col gap-3 flex-1">
-        <div className="flex items-center justify-between">
-          <span className={`px-3 py-1 rounded-full text-xs font-bold ${chipClass}`}>{item.category}</span>
-          <span className="text-on-surface-variant text-xs">{formattedDate}</span>
-        </div>
-
-        <h3 className="font-bold text-lg text-on-surface leading-tight group-hover:text-apc-blue transition-colors">
-          {item.title}
-        </h3>
-
-        <p className="text-on-surface-variant text-sm line-clamp-2 flex-1">{summaryText}</p>
-      </div>
+      <p className="mt-4 flex items-center justify-between gap-3 font-code text-[13px] font-bold">
+        <span className={style.label}>{item.category}</span>
+        {item.publishedAt && <span className="text-muted">{formatDate(item.publishedAt)}</span>}
+      </p>
+      <h3 className="mt-1 line-clamp-2 font-display text-[22px] font-bold leading-[1.15] transition-colors group-hover:text-apc-red">
+        {item.title}
+      </h3>
+      <p className="mt-2 line-clamp-2 text-[15px] leading-relaxed text-muted">{item.summary}</p>
     </Link>
   )
 }

@@ -1,73 +1,55 @@
 import { Link } from 'react-router-dom'
+
 import { formatDateTime } from '../../../lib/format'
 import type { RecruitmentRoundItem } from '../mock'
 import { roundPhase } from '../roundPhase'
 
+// Class literal để Tailwind JIT nhận diện được.
+const PHASE_CHIPS = {
+  open: { label: 'đang nhận đơn', className: 'bg-apc-red text-paper' },
+  upcoming: { label: 'sắp mở', className: 'bg-apc-gold text-ink' },
+  closed: { label: 'đã đóng', className: 'bg-ink/10 text-ink/70' },
+} as const
+
+/** Nhãn giai đoạn của đợt tuyển; dùng cho danh sách và trang chi tiết. */
+export function PhaseChip({ round }: { round: RecruitmentRoundItem }) {
+  const chip = PHASE_CHIPS[roundPhase(round)]
+  return <span className={`rounded-md px-2 py-1 font-code text-[13px] font-bold ${chip.className}`}>{chip.label}</span>
+}
+
+/** Một hàng trong danh sách đợt tuyển: cả hàng bấm được, rê chuột thì tên đổi màu và mũi tên nhích sang. */
 export function RecruitmentCard({ round }: { round: RecruitmentRoundItem }) {
-  const phase = roundPhase(round)
-  const isOpen = phase === 'open'
-  const isUpcoming = phase === 'upcoming'
-  const isClosed = phase === 'closed'
-
   return (
-    <article className="flex flex-col justify-between rounded-apc border border-outline-variant bg-surface-container-lowest p-6 shadow-sm transition-all hover:border-outline-variant/80 hover:shadow-md">
-      <div>
-        <div className="flex items-center justify-between gap-3">
-          <span className="font-label-mono text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-            {round.departments.length} ban đang tuyển
-          </span>
-          {isOpen && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
-              Đang nhận đơn
-            </span>
-          )}
-          {isUpcoming && (
-            <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
-              Sắp mở
-            </span>
-          )}
-          {isClosed && (
-            <span className="inline-flex items-center rounded-full bg-surface-container-high px-2.5 py-1 text-xs font-medium text-on-surface-variant">
-              Đã đóng nhận đơn
-            </span>
-          )}
-        </div>
-
-        <h3 className="mt-4 text-xl font-bold text-on-surface hover:text-apc-red transition-colors">
-          <Link to={`/recruitment/${round.slug}`}>{round.title}</Link>
-        </h3>
-        <p className="mt-2 line-clamp-2 text-sm text-on-surface-variant leading-relaxed">
-          {round.description}
+    <article className="group relative grid gap-5 border-b-2 border-ink py-8 md:grid-cols-[minmax(0,1fr)_minmax(0,360px)_40px] md:items-center md:gap-10">
+      <div className="min-w-0">
+        <p className="flex flex-wrap items-center gap-3">
+          <PhaseChip round={round} />
+          <span className="font-code text-[13px] font-bold text-muted">{round.departments.length} ban đang tuyển</span>
         </p>
-
-        <div className="mt-5 space-y-2 border-t border-outline-variant/40 pt-4 text-xs text-on-surface-variant">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-on-surface">Thời gian:</span>
-            <span>{formatDateTime(round.opensAt)} – {formatDateTime(round.closesAt)}</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {round.departments.map((dept) => (
-              <span
-                key={dept.id}
-                className="rounded bg-surface-container px-2 py-0.5 text-xs text-on-surface-variant"
-              >
-                {dept.name.split('(')[0].trim()}
-              </span>
-            ))}
-          </div>
-        </div>
+        <h3 className="mt-3 font-display text-[clamp(24px,2.4vw,34px)] font-bold leading-[1.1] transition-colors group-hover:text-apc-red">
+          {/* phủ cả hàng để bấm chỗ nào cũng vào chi tiết */}
+          <Link to={`/recruitment/${round.slug}`} className="after:absolute after:inset-0">
+            {round.title}
+          </Link>
+        </h3>
+        <p className="mt-2 line-clamp-2 max-w-[60ch] text-[16px] leading-relaxed text-muted">{round.description}</p>
       </div>
-
-      <div className="mt-6 pt-2">
-        <Link
-          to={`/recruitment/${round.slug}`}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-apc border border-apc-blue px-4 py-2.5 text-sm font-medium text-apc-blue hover:bg-surface-container-low transition-colors"
-        >
-          Xem chi tiết đợt tuyển
-          <span className="material-symbols-outlined text-base">arrow_forward</span>
-        </Link>
+      <div className="text-[15px]">
+        <p className="font-code text-[13px] font-bold text-muted">nhận đơn</p>
+        <b className="mt-0.5 block">
+          {formatDateTime(round.opensAt)} – {formatDateTime(round.closesAt)}
+        </b>
+        <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Ban đang tuyển">
+          {round.departments.map((department) => (
+            <li key={department.id} className="rounded-md bg-ink px-2 py-1 font-code text-[13px] font-bold text-paper" title={department.name}>
+              {department.code}
+            </li>
+          ))}
+        </ul>
       </div>
+      <span aria-hidden className="hidden text-[28px] font-extrabold transition-transform group-hover:translate-x-1 md:block">
+        →
+      </span>
     </article>
   )
 }

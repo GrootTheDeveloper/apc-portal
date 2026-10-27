@@ -30,23 +30,27 @@ export function AsyncState({
 }: AsyncStateProps) {
   if (loading) {
     return (
-      <p role="status" className="py-16 text-center text-on-surface-variant">
-        Đang tải…
+      <p role="status" className="py-20 text-center font-code text-[16px] font-bold text-muted">
+        đang tải
+        <span aria-hidden className="caret" />
       </p>
     )
   }
   if (error) {
     return (
-      <div role="alert" className="flex flex-col items-center gap-4 py-16 text-center">
-        <p className="text-on-surface">{error.message}</p>
+      <div role="alert" className="flex flex-col items-center gap-5 py-20 text-center">
+        <p className="font-code text-[14px] font-bold text-apc-red">{'// lỗi'}</p>
+        <p className="max-w-[48ch] font-display text-[clamp(22px,2.4vw,30px)] font-bold leading-tight">{error.message}</p>
         {onRetry && (
-          <Button variant="outline" className="px-6 py-2" onClick={onRetry}>
+          <Button variant="outline" onClick={onRetry}>
             Thử lại
           </Button>
         )}
       </div>
     )
   }
-  if (empty) return <p className="py-16 text-center text-on-surface-variant">{emptyText}</p>
+  if (empty) {
+    return <p className="py-20 text-center font-display text-[clamp(22px,2.4vw,30px)] font-bold leading-tight text-muted">{emptyText}</p>
+  }
   return <>{children}</>
 }
