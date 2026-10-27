@@ -33,65 +33,88 @@ const FOOTER_COLUMNS = [
     ],
   },
 ] as const
+const MARK_PIECES = ['/assets/home/mark/mark-red.png', '/assets/home/mark/mark-gold.png', '/assets/home/mark/mark-blue.png']
 
 const linkClass =
-  'text-sm text-white opacity-80 hover:opacity-100 hover:text-secondary-container transition-all flex items-center gap-1'
+  'inline-flex min-h-10 items-center gap-1 text-[16px] text-paper/75 transition-colors hover:text-apc-gold-soft'
 
 export function SiteFooter() {
   return (
-    <footer className="bg-apc-dark text-secondary-fixed border-t border-white/10">
-      {/* Dải accent màu brand */}
-      <div className="h-1 w-full bg-gradient-to-r from-apc-red via-apc-gold to-apc-blue" />
-      <div className="max-w-container-max mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 py-12 px-gutter">
-        <div className="col-span-1 md:col-span-1">
-          <img alt="APC Logo White" className="h-12 w-auto mb-6 opacity-90" src="/assets/home/10-apc-logo-white.png" />
-          <p className="text-sm opacity-70 mb-4 text-white">
-            CLB Lập trình Ứng dụng UMT - Nơi kiến tạo những giá trị thực qua công nghệ.
-          </p>
-          <div className="flex flex-col gap-2 mb-4 text-sm text-white/70">
-            <a className="flex items-center gap-2 hover:text-white transition-colors" href={`mailto:${CONTACT_EMAIL}`}>
-              <span className="material-symbols-outlined text-[18px]">mail</span> {CONTACT_EMAIL}
-            </a>
-            <span className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[18px]">location_on</span> Phòng Lab Công Nghệ (Tầng 3), Tòa nhà UMT
-            </span>
-          </div>
-        </div>
-        {FOOTER_COLUMNS.map((column) => (
-          <div key={column.heading}>
-            <h4 className="font-bold text-white mb-4">{column.heading}</h4>
-            <ul className="flex flex-col gap-2">
-              {column.links.map((link) => (
-                <li key={link.label}>
-                  {'to' in link ? (
-                    <Link className={linkClass} to={link.to}>
-                      {link.label}
-                    </Link>
-                  ) : (
-                    <a
-                      className={linkClass}
-                      href={link.href}
-                      {...('external' in link ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                    >
-                      {link.label}
-                      {'external' in link && <span className="material-symbols-outlined text-[14px]">open_in_new</span>}
-                    </a>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
+    <footer className="site-footer relative flex flex-col overflow-hidden bg-ink text-paper">
+      {/* Logo màu thật phóng to, cắt tràn góc phải; rê chuột thì ba mảnh tách ra */}
+      <div
+        aria-hidden
+        className="mark-stack spread absolute bottom-[-12vh] right-[max(16px,calc((100vw-1520px)/2+32px))] hidden w-[min(64vh,600px)] lg:block"
+      >
+        {MARK_PIECES.map((src) => (
+          <img key={src} alt="" loading="lazy" src={src} />
         ))}
       </div>
-      <div className="max-w-container-max mx-auto pb-12 px-gutter pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 relative">
-        <p className="text-xs text-white opacity-60">
-          © {new Date().getFullYear()} Applied Programming Club - Khoa Công Nghệ – UMT
+
+      <div className="relative mx-auto flex w-full max-w-container-max flex-1 flex-col px-4 pb-8 pt-16 md:px-8 lg:pr-[calc(min(64vh,600px)+64px)] lg:pt-[clamp(48px,10vh,112px)]">
+        <p className="font-code text-[15px] font-bold text-apc-gold-soft">
+          <span aria-hidden className="opacity-70">
+            {'// '}
+          </span>
+          hẹn gặp ở Lab Công Nghệ, tầng 3
         </p>
-        <img
-          alt="APC Symbol"
-          className="absolute right-0 bottom-0 h-32 opacity-5 pointer-events-none"
-          src="/assets/home/08-image-08.png"
-        />
+        <p className="mt-3 font-display text-[clamp(36px,min(5.6vw,10vh),100px)] font-extrabold leading-[0.95] tracking-[-0.03em]">
+          Có ý tưởng? <span className="block text-apc-gold">Code cùng tụi mình.</span>
+        </p>
+        <a
+          className="group mt-6 inline-flex items-center gap-3 font-display text-[clamp(22px,2.2vw,32px)] font-bold underline decoration-apc-red decoration-[3px] underline-offset-[6px] hover:text-apc-gold-soft"
+          href={`mailto:${CONTACT_EMAIL}`}
+        >
+          {CONTACT_EMAIL}
+          <span aria-hidden className="transition-transform group-hover:translate-x-1.5">
+            →
+          </span>
+        </a>
+
+        <div className="mt-12 grid grid-cols-2 gap-x-6 gap-y-8 border-t border-paper/15 pt-8 sm:grid-cols-3 lg:mt-auto">
+          {FOOTER_COLUMNS.map((column) => (
+            <div key={column.heading}>
+              <h2 className="font-code text-[14px] font-bold text-paper/55">{column.heading}</h2>
+              <ul className="mt-2 flex flex-col">
+                {column.links.map((link) => (
+                  <li key={link.label}>
+                    {'to' in link ? (
+                      <Link className={linkClass} to={link.to}>
+                        {link.label}
+                      </Link>
+                    ) : (
+                      <a
+                        className={linkClass}
+                        href={link.href}
+                        {...('external' in link ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                      >
+                        {link.label}
+                        {'external' in link && <span aria-hidden>↗</span>}
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-10 flex flex-col gap-2 text-[14px] text-paper/60 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-x-8">
+          <p>
+            © {new Date().getFullYear()} Applied Programming Club · Khoa Công Nghệ, Trường Đại học Quản lý và Công nghệ
+            TP.HCM (UMT)
+          </p>
+          <a className="font-bold text-paper/80 hover:text-apc-gold-soft" href="#top">
+            ↑ Lên đầu trang
+          </a>
+        </div>
+      </div>
+
+      {/* Dải ba màu logo chốt cuối trang, motif cũ của APC */}
+      <div aria-hidden className="relative flex h-2">
+        <span className="flex-1 bg-apc-red" />
+        <span className="flex-1 bg-apc-gold" />
+        <span className="flex-1 bg-apc-blue" />
       </div>
     </footer>
   )

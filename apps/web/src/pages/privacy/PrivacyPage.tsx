@@ -1,6 +1,7 @@
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
-import { Eyebrow } from '../../components/Eyebrow'
+import { PageHero } from '../../components/PageHero'
 import { Seo } from '../../components/Seo'
 import { formatDate } from '../../lib/format'
 
@@ -53,116 +54,121 @@ const RIGHTS = [
   'Tệp dữ liệu xuất cho bạn chỉ bạn tải được và tự xóa sau 24 giờ.',
 ]
 
+// Mỗi mục: tiêu đề Baloo gạch chân mực, nội dung ở cột phải trên màn rộng (DESIGN.md: không card viền, không bóng).
+function PolicySection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="grid gap-4 border-t-2 border-ink py-[clamp(28px,5vh,48px)] lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-12">
+      <h2 data-rv className="font-display text-[clamp(24px,2.2vw,32px)] font-extrabold leading-[1.1]">
+        {title}
+      </h2>
+      <div data-rv className="min-w-0 text-[17px] leading-relaxed">
+        {children}
+      </div>
+    </section>
+  )
+}
+
 /** PAGE-PUB: Chính sách quyền riêng tư (B2), nội dung theo PRD mục 10.5. */
 export function PrivacyPage() {
   return (
-    <main className="w-full bg-white px-gutter py-12 md:py-16">
+    <main>
       <Seo
         title="Chính sách quyền riêng tư"
         description="APC thu thập dữ liệu gì, dùng để làm gì, giữ bao lâu và bạn có những quyền gì."
         path="/privacy"
       />
-      <article className="mx-auto flex w-full max-w-3xl flex-col gap-12">
-        <header className="border-b border-outline-variant/20 pb-8">
-          <Eyebrow className="mb-3 text-apc-blue">Quyền riêng tư</Eyebrow>
-          <h1 className="font-headline-md text-3xl font-bold leading-tight text-on-surface md:text-4xl">
-            Chính sách quyền riêng tư
-          </h1>
-          <p className="mt-4 text-on-surface-variant">
-            Phiên bản <strong className="text-on-surface">{POLICY_VERSION}</strong> · Hiệu lực từ{' '}
-            <strong className="text-on-surface">{formatDate(EFFECTIVE_DATE)}</strong>
-          </p>
-          <p className="mt-4 leading-relaxed text-on-surface-variant">
-            APC Portal chỉ thu thập dữ liệu phục vụ hoạt động và quản lý thành viên của CLB APC. Dữ liệu cá nhân không
-            xuất hiện trên trang công khai nếu bạn chưa đồng ý.
-          </p>
-        </header>
+      <PageHero
+        tone="blue"
+        comment="quyền riêng tư"
+        title="Chính sách quyền riêng tư"
+        lede="APC Portal chỉ thu thập dữ liệu phục vụ hoạt động và quản lý thành viên của CLB APC. Dữ liệu cá nhân không xuất hiện trên trang công khai nếu bạn chưa đồng ý."
+      >
+        <p className="mt-6 font-code text-[14px] font-bold opacity-85">
+          phiên bản {POLICY_VERSION} · hiệu lực từ {formatDate(EFFECTIVE_DATE)}
+        </p>
+      </PageHero>
 
-        <section>
-          <h2 className="font-headline-sm text-2xl font-bold text-on-surface">1. Dữ liệu chúng tôi thu thập</h2>
-          <dl className="mt-6 flex flex-col gap-5">
-            {COLLECTED.map((item) => (
-              <div key={item.title}>
-                <dt className="font-bold text-on-surface">{item.title}</dt>
-                <dd className="mt-1 leading-relaxed text-on-surface-variant">{item.text}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
+      <div className="px-4 py-[clamp(32px,6vh,72px)] md:px-8">
+        <div className="mx-auto w-full max-w-container-max">
+          <PolicySection title="1. Dữ liệu thu thập">
+            <dl className="flex flex-col gap-5">
+              {COLLECTED.map((item) => (
+                <div key={item.title}>
+                  <dt className="font-extrabold">{item.title}</dt>
+                  <dd className="mt-1 text-muted">{item.text}</dd>
+                </div>
+              ))}
+            </dl>
+          </PolicySection>
 
-        <section>
-          <h2 className="font-headline-sm text-2xl font-bold text-on-surface">2. Mục đích sử dụng</h2>
-          <ul className="mt-6 list-disc space-y-2 pl-5 leading-relaxed text-on-surface-variant">
-            {PURPOSES.map((purpose) => (
-              <li key={purpose}>{purpose}</li>
-            ))}
-          </ul>
-        </section>
+          <PolicySection title="2. Mục đích sử dụng">
+            <ul className="list-disc space-y-2 pl-5">
+              {PURPOSES.map((purpose) => (
+                <li key={purpose}>{purpose}</li>
+              ))}
+            </ul>
+          </PolicySection>
 
-        <section>
-          <h2 className="font-headline-sm text-2xl font-bold text-on-surface">3. Ghi nhận sự đồng ý</h2>
-          <p className="mt-6 leading-relaxed text-on-surface-variant">
-            Ứng viên và người đăng ký sự kiện công khai phải đồng ý với mục đích xử lý dữ liệu trước khi gửi. Mỗi lần đồng
-            ý hoặc thu hồi, hệ thống lưu chủ thể, mục đích, phiên bản chính sách này, thời điểm và trạng thái hiệu lực.
-            Thu hồi không xóa lịch sử đồng ý trước đó.
-          </p>
-        </section>
+          <PolicySection title="3. Ghi nhận sự đồng ý">
+            <p>
+              Ứng viên và người đăng ký sự kiện công khai phải đồng ý với mục đích xử lý dữ liệu trước khi gửi. Mỗi lần đồng
+              ý hoặc thu hồi, hệ thống lưu chủ thể, mục đích, phiên bản chính sách này, thời điểm và trạng thái hiệu lực. Thu
+              hồi không xóa lịch sử đồng ý trước đó.
+            </p>
+          </PolicySection>
 
-        <section>
-          <h2 className="font-headline-sm text-2xl font-bold text-on-surface">4. Thời gian lưu giữ</h2>
-          <div className="mt-6 overflow-x-auto">
-            <table className="w-full min-w-[32rem] border-collapse text-left">
-              <thead>
-                <tr className="bg-surface-container-low text-sm text-on-surface">
-                  <th scope="col" className="w-2/5 px-4 py-3 font-bold">Loại dữ liệu</th>
-                  <th scope="col" className="px-4 py-3 font-bold">Thời hạn và cách xử lý</th>
-                </tr>
-              </thead>
-              <tbody>
-                {RETENTION.map(([kind, rule]) => (
-                  <tr key={kind} className="border-b border-outline-variant/20 align-top">
-                    <th scope="row" className="px-4 py-3 font-medium text-on-surface">{kind}</th>
-                    <td className="px-4 py-3 leading-relaxed text-on-surface-variant">{rule}</td>
+          <PolicySection title="4. Thời gian lưu giữ">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[32rem] border-collapse text-left">
+                <thead>
+                  <tr className="font-code text-[13px] font-bold text-muted">
+                    <th scope="col" className="w-2/5 pb-3 pr-6 font-bold">loại dữ liệu</th>
+                    <th scope="col" className="pb-3 font-bold">thời hạn và cách xử lý</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="mt-4 text-sm leading-relaxed text-on-surface-variant">
-            Xóa hoặc ẩn danh áp dụng trên hệ thống đang chạy và các tệp xuất liên quan. Bản sao lưu không sửa từng bản mà
-            hết hạn theo lịch trên; nếu phải khôi phục từ bản sao lưu, các yêu cầu xóa còn hiệu lực được áp lại trước khi
-            mở lại dịch vụ.
-          </p>
-        </section>
+                </thead>
+                <tbody>
+                  {RETENTION.map(([kind, rule]) => (
+                    <tr key={kind} className="border-t-2 border-ink/10 align-top">
+                      <th scope="row" className="py-3 pr-6 font-extrabold">{kind}</th>
+                      <td className="py-3 text-muted">{rule}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-5 text-[15px] text-muted">
+              Xóa hoặc ẩn danh áp dụng trên hệ thống đang chạy và các tệp xuất liên quan. Bản sao lưu không sửa từng bản mà
+              hết hạn theo lịch trên; nếu phải khôi phục từ bản sao lưu, các yêu cầu xóa còn hiệu lực được áp lại trước khi
+              mở lại dịch vụ.
+            </p>
+          </PolicySection>
 
-        <section>
-          <h2 className="font-headline-sm text-2xl font-bold text-on-surface">5. Quyền của bạn</h2>
-          <ul className="mt-6 list-disc space-y-2 pl-5 leading-relaxed text-on-surface-variant">
-            {RIGHTS.map((right) => (
-              <li key={right}>{right}</li>
-            ))}
-          </ul>
-        </section>
+          <PolicySection title="5. Quyền của bạn">
+            <ul className="list-disc space-y-2 pl-5">
+              {RIGHTS.map((right) => (
+                <li key={right}>{right}</li>
+              ))}
+            </ul>
+          </PolicySection>
 
-        <section>
-          <h2 className="font-headline-sm text-2xl font-bold text-on-surface">6. Ai được xem dữ liệu</h2>
-          <p className="mt-6 leading-relaxed text-on-surface-variant">
-            Mỗi người chỉ xem được dữ liệu của mình và dữ liệu thuộc phạm vi quyền được giao (ví dụ quản lý ban chỉ xem
-            thành viên trong ban). Mật khẩu được băm một chiều; mật khẩu và mã khôi phục không bao giờ gửi qua email.
-          </p>
-        </section>
+          <PolicySection title="6. Ai được xem dữ liệu">
+            <p>
+              Mỗi người chỉ xem được dữ liệu của mình và dữ liệu thuộc phạm vi quyền được giao (ví dụ quản lý ban chỉ xem
+              thành viên trong ban). Mật khẩu được băm một chiều; mật khẩu và mã khôi phục không bao giờ gửi qua email.
+            </p>
+          </PolicySection>
 
-        <section>
-          <h2 className="font-headline-sm text-2xl font-bold text-on-surface">7. Liên hệ</h2>
-          <p className="mt-6 leading-relaxed text-on-surface-variant">
-            Câu hỏi hoặc yêu cầu về dữ liệu cá nhân, vui lòng gửi Ban Chủ nhiệm APC qua kênh liên hệ ở trang{' '}
-            <Link to="/about" className="font-medium text-apc-blue hover:underline">
-              Về APC
-            </Link>
-            .
-          </p>
-        </section>
-      </article>
+          <PolicySection title="7. Liên hệ">
+            <p>
+              Câu hỏi hoặc yêu cầu về dữ liệu cá nhân, vui lòng gửi Ban Chủ nhiệm APC qua kênh liên hệ ở trang{' '}
+              <Link to="/about" className="font-extrabold text-apc-red underline decoration-2 underline-offset-4 hover:text-apc-red-deep">
+                Về APC
+              </Link>
+              .
+            </p>
+          </PolicySection>
+        </div>
+      </div>
     </main>
   )
 }

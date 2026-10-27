@@ -1,99 +1,84 @@
-import { Button } from '../../../components/Button'
+import { useEffect, useState, type CSSProperties } from 'react'
+import { Link } from 'react-router-dom'
 
-// chip: class màu literal cho ô icon (không nội suy) để Tailwind JIT nhận diện.
-const HERO_POINTS = [
-  { icon: 'school', label: 'Học qua dự án', chip: 'bg-apc-red/10 text-apc-red' },
-  { icon: 'build', label: 'Xây dựng sản phẩm', chip: 'bg-apc-blue/10 text-apc-blue' },
-  { icon: 'group', label: 'Kết nối workshop/contest', chip: 'bg-apc-gold/10 text-apc-gold' },
-]
+import { buttonClass } from '../../../components/buttonClass'
 
-// Chỉ số mẫu — chờ APC xác nhận số liệu thật.
-const CLUB_STATS = [
-  { value: '20+', label: 'Dự án' },
-  { value: '100+', label: 'Thành viên' },
-  { value: '3', label: 'Ban chuyên môn' },
-  { value: '15+', label: 'Sự kiện/năm' },
-]
+const TYPED = 'đến sản phẩm thật.'
+
+/** Gõ dần `text` từng ký tự như terminal; bỏ qua khi người dùng bật giảm chuyển động. */
+function useTyping(text: string, startMs: number, stepMs: number) {
+  const [reduced] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  const [count, setCount] = useState(reduced ? text.length : 0)
+
+  useEffect(() => {
+    if (reduced) return
+    let timer: number
+    const tick = (n: number) => {
+      setCount(n)
+      if (n < text.length) timer = window.setTimeout(() => tick(n + 1), stepMs)
+    }
+    timer = window.setTimeout(() => tick(1), startMs)
+    return () => window.clearTimeout(timer)
+  }, [reduced, text, startMs, stepMs])
+
+  return text.slice(0, count)
+}
+
+const delay = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties
 
 export function HeroSection() {
+  const typed = useTyping(TYPED, 700, 55)
+
   return (
-    <section className="relative w-full lg:min-h-[calc(100vh-4.5rem)] lg:grid lg:grid-cols-2 lg:grid-rows-1 bg-surface-container-lowest overflow-hidden">
-      {/* Thanh gradient dọc bên trái */}
-      <div
-        aria-hidden
-        className="absolute left-0 top-0 h-full w-[8px] z-20 bg-gradient-to-b from-apc-red via-apc-gold to-apc-blue"
-      />
-      {/* Cột trái: nội dung */}
-      <div className="fade-up flex flex-col justify-center gap-6 px-gutter py-16 lg:pl-16 lg:pr-12 xl:pl-24">
-        {/* Logo + vạch ngăn + nhãn */}
-        <div className="flex items-center gap-4">
-          <img alt="APC Logo" className="h-10 w-auto object-contain" src="/assets/home/00-apc-logo.png" />
-          <div aria-hidden className="h-9 w-px bg-outline-variant" />
-          <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-on-surface-variant leading-tight">
-            Câu lạc bộ Lập trình Ứng dụng
-            <br />
-            Khoa Công Nghệ · UMT
-          </div>
-        </div>
-
-        {/* Tiêu đề 2 màu */}
-        <h1 className="font-display-lg text-[44px] xl:text-[52px] leading-[1.1] font-bold tracking-tight">
-          <span className="text-apc-dark">Từ ý tưởng đến</span>
-          <br />
-          <span className="text-apc-red">sản phẩm thật.</span>
-        </h1>
-
-        {/* Các dòng feature có chip icon màu */}
-        <ul className="flex flex-col gap-4 mt-1">
-          {HERO_POINTS.map((point) => (
-            <li key={point.label} className="flex items-center gap-3">
-              <span className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${point.chip}`}>
-                <span className="material-symbols-outlined text-[20px]">{point.icon}</span>
-              </span>
-              <span className="font-medium text-on-surface">{point.label}</span>
-            </li>
-          ))}
-        </ul>
-
-        {/* CTA phát sáng + link phụ */}
-        <div className="flex flex-wrap items-center gap-5 mt-4">
-          <Button
-            variant="primary"
-            className="px-9 py-3.5 shadow-lg shadow-apc-red/30 hover:shadow-xl hover:shadow-apc-red/40"
-          >
-            Khám phá APC
-          </Button>
-          <a
-            className="inline-flex items-center gap-1 font-medium text-apc-blue hover:gap-2 transition-all"
-            href="#"
-          >
-            Xem hoạt động nổi bật <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-          </a>
-        </div>
-      </div>
-
-      {/* Cột phải: ảnh full-bleed chiếm trọn nửa phải */}
-      <div className="relative min-h-[45vh] lg:min-h-0">
+    <section className="lg:grid lg:h-[calc(100svh-72px)] lg:min-h-[620px] lg:[&>*]:[grid-area:1/1]">
+      <figure className="hero-frame aspect-[5/4] max-h-[52svh] w-full md:aspect-[16/9] md:max-h-[60svh] lg:aspect-auto lg:max-h-none">
         <img
-          alt="Sinh viên APC đang làm việc"
-          className="absolute inset-0 h-full w-full object-cover"
-          src="/assets/home/02-apc-students-working.png"
+          alt="Nhóm sinh viên reo hò quanh chiếc laptop vừa chạy qua hết test"
+          fetchPriority="high"
+          height={1024}
+          src="/assets/home/photos/hero.jpg"
+          width={1536}
         />
-        {/* Scrim làm tối ảnh, đậm hơn ở đáy để đọc rõ chỉ số */}
-        <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10" />
-        {/* 4 chỉ số CLB dưới đáy ảnh */}
-        <div className="absolute inset-x-0 bottom-0 p-5 lg:p-6">
-          <div className="grid grid-cols-4 gap-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 p-4">
-            {CLUB_STATS.map((stat, index) => (
-              <div
-                key={stat.label}
-                className={`flex flex-col items-center text-center ${index > 0 ? 'border-l border-white/15' : ''}`}
-              >
-                <span className="text-white font-bold text-xl lg:text-2xl leading-none">{stat.value}</span>
-                <span className="text-white/70 text-[11px] mt-1 leading-tight">{stat.label}</span>
-              </div>
-            ))}
-          </div>
+      </figure>
+
+      <div className="relative z-10 self-center px-4 pb-4 pt-8 md:px-8 lg:ml-[max(32px,calc((100vw-1520px)/2+32px))] lg:max-w-[min(660px,50vw)] lg:px-0 lg:pb-0 lg:pt-0">
+        <p className="rise font-code text-[clamp(15px,1.2vw,18px)] font-bold text-apc-blue lg:text-paper/85">
+          <span aria-hidden className="opacity-60">
+            {'// '}
+          </span>
+          xin chào, tụi mình là APC
+        </p>
+        <h1
+          aria-label={`Từ ý tưởng ${TYPED}`}
+          className="mt-4 font-display text-[clamp(38px,5vw,80px)] font-extrabold leading-[1.02] tracking-[-0.03em] text-ink lg:text-paper"
+        >
+          <span aria-hidden className="rise block" style={delay(80)}>
+            Từ ý tưởng
+          </span>
+          {/* Dòng hai được gõ dần trên nền đỏ như đoạn chữ đang bôi chọn trong editor;
+              bản đầy đủ ẩn bên dưới giữ chỗ để bố cục không nhảy. */}
+          <span aria-hidden className="relative mt-[0.08em] block w-fit text-paper">
+            <span className="invisible block whitespace-nowrap px-[0.14em]">{TYPED}</span>
+            <span className="absolute left-0 top-0 whitespace-nowrap rounded-[0.12em] bg-apc-red px-[0.14em]">
+              {typed}
+              <span className="caret" />
+            </span>
+          </span>
+        </h1>
+        <p className="rise mt-7 max-w-[44ch] text-[clamp(17px,1.3vw,20px)] leading-relaxed lg:text-paper/90" style={delay(240)}>
+          APC là CLB Lập trình Ứng dụng của Khoa Công Nghệ, UMT. Tụi mình học qua dự án, vận hành hệ thống chấm bài
+          UMTOJ và làm website cho các sự kiện như UMT TechGen.
+        </p>
+        <div className="rise mt-9 flex flex-wrap items-center gap-x-7 gap-y-4" style={delay(320)}>
+          <Link className={buttonClass('primary', 'px-8')} to="/recruitment">
+            Gia nhập APC →
+          </Link>
+          <a
+            className="inline-flex min-h-12 items-center text-[17px] font-extrabold text-apc-red underline decoration-2 underline-offset-4 hover:text-apc-red-deep lg:text-paper lg:hover:text-apc-gold-soft"
+            href="#activities"
+          >
+            Xem tụi mình làm gì
+          </a>
         </div>
       </div>
     </section>
