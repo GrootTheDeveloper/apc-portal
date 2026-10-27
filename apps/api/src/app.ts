@@ -11,9 +11,16 @@ import { authRoutes } from './modules/auth/routes.js'
 import { contentRoutes } from './modules/content/routes.js'
 import { registerSession } from './modules/auth/session.js'
 import { emailRoutes } from './modules/email/routes.js'
+import { filesRoutes } from './modules/files/routes.js'
+import { createScanner } from './modules/files/scan.js'
+import { createS3Storage, type FileStorage } from './modules/files/storage.js'
 
-export function buildApp(config: AppConfig) {
+/** Phụ thuộc thay được khi test (vd kho tệp trong bộ nhớ: `createMemoryStorage()`). */
+export type AppDeps = { storage?: FileStorage }
+
+export function buildApp(config: AppConfig, deps: AppDeps = {}) {
   const app = Fastify({ logger: config.NODE_ENV !== 'test' })
+  const storage = deps.storage ?? createS3Storage(config)
 
   app.register(cors, { origin: config.WEB_URL, credentials: true })
   app.register(cookie)
@@ -28,6 +35,7 @@ export function buildApp(config: AppConfig) {
   app.register(emailRoutes)
   app.register(contentRoutes())
   app.register(aboutRoutes)
+  app.register(filesRoutes({ storage, scanner: createScanner(config) }))
 
   return app
 }

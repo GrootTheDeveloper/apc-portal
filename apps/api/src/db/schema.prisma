@@ -124,6 +124,26 @@ enum ConsentPurpose {
   PUBLIC_PROFILE // thông tin cá nhân khác: kỹ năng, lĩnh vực quan tâm
 }
 
+// Mục đích tệp tải lên (D2)
+enum FilePurpose {
+  CONTENT_IMAGE // Ảnh bài viết, dự án, sự kiện
+  AVATAR // Ảnh đại diện — luôn INTERNAL (MEM-10)
+  DOCUMENT // Tài liệu nội bộ — chỉ tải qua thư viện tài liệu (D4)
+}
+
+// Server quyết định, không nhận từ client (D2)
+enum FileVisibility {
+  PUBLIC
+  INTERNAL
+}
+
+// Trạng thái quét mã độc (SEC-15, STATE-05). PENDING là vùng cách ly: không đường tải nào trả tệp chưa CLEAN.
+enum FileScanStatus {
+  PENDING
+  CLEAN
+  REJECTED
+}
+
 // MODELS — TỔ CHỨC
 
 // Thông tin CLB — singleton (1 dòng duy nhất, id = "singleton")
@@ -217,6 +237,8 @@ model User {
 
   createdProjects          Project[]              @relation("ProjectCreator")
   convertedFromApplication MembershipApplication? @relation("ApplicationConversion")
+
+  uploadedFiles StoredFile[] @relation("FileUploader")
 
   @@map("users")
 }
@@ -495,4 +517,30 @@ model ConsentRecord {
 
   @@index([subjectType, subjectId, purpose])
   @@map("consent_records")
+}
+
+// MODELS — TỆP (D2)
+
+// Một tệp trong kho S3. Khóa kho ngẫu nhiên, không dùng tên gốc; không bao giờ trả khóa/URL kho ra API.
+// Tệp REJECTED đã bị xóa khỏi kho nhưng giữ dòng làm dấu vết bảo mật.
+model StoredFile {
+  id           String         @id @default(cuid())
+  storageKey   String         @unique
+  originalName String
+  mimeType     String // Loại xác định từ nội dung tệp, không theo đuôi file/header
+  size         Int // byte
+  purpose      FilePurpose
+  visibility   FileVisibility @default(INTERNAL)
+  scanStatus   FileScanStatus @default(PENDING)
+  scannedAt    DateTime?
+
+  uploadedById String
+  uploadedBy   User   @relation("FileUploader", fields: [uploadedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([scanStatus, createdAt])
+  @@index([uploadedById])
+  @@map("stored_files")
 }
