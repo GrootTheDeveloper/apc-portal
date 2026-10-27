@@ -79,11 +79,11 @@ export function FileUpload({ purpose, label = 'Chọn tệp', onUploaded, disabl
       <label
         htmlFor={inputId}
         className={`flex flex-col items-center justify-center gap-2 rounded-apc border-2 border-dashed px-6 py-8 text-center transition-colors ${
-          status === 'error' ? 'border-error bg-error-container/30' : 'border-outline hover:border-apc-blue hover:bg-surface-container-low'
+          status === 'error' ? 'border-apc-red bg-apc-red-pale/40' : 'border-muted/40 hover:border-apc-blue hover:bg-soft'
         } ${disabled || uploading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
       >
-        <span className="font-medium text-apc-blue">{label}</span>
-        <span className="text-sm text-on-surface-variant">
+        <span className="font-bold text-apc-blue">{label}</span>
+        <span className="text-sm text-muted">
           {purpose === 'DOCUMENT' ? 'Ảnh, PDF, DOCX, XLSX, PPTX' : 'JPG, PNG, WebP, GIF'} · tối đa 20 MB
         </span>
         <input
@@ -98,13 +98,13 @@ export function FileUpload({ purpose, label = 'Chọn tệp', onUploaded, disabl
       </label>
 
       {preview && (
-        <img src={preview} alt="Xem trước" className="max-h-48 w-auto self-start rounded-apc border border-outline-variant object-contain" />
+        <img src={preview} alt="Xem trước" className="max-h-48 w-auto self-start rounded-apc border border-muted/20 object-contain" />
       )}
 
       <div aria-live="polite" className="text-sm">
-        {uploading && <p className="text-on-surface-variant">Đang tải lên và kiểm tra “{fileName}”…</p>}
+        {uploading && <p className="text-muted">Đang tải lên và kiểm tra “{fileName}”…</p>}
         {status === 'done' && <p className="text-apc-blue">Đã tải lên “{fileName}”.</p>}
-        {status === 'error' && <p role="alert" className="text-error">{error}</p>}
+        {status === 'error' && <p role="alert" className="font-bold text-apc-red">{error}</p>}
       </div>
     </div>
   )
