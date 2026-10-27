@@ -23,7 +23,7 @@ export function authRoutes(config: AppConfig) {
         if (request.sessionId) await revokeSession(request.sessionId)
         const token = await createSession(userId, { ipAddress: request.ip, userAgent: request.headers['user-agent'] })
         reply.setCookie(SESSION_COOKIE, token, sessionCookieOptions(config))
-        return getMe(user)
+        return getMe(user, { twoFactorVerified: true })
       },
     )
 
@@ -33,6 +33,8 @@ export function authRoutes(config: AppConfig) {
       return reply.code(204).send()
     })
 
-    app.get('/auth/me', { preHandler: requireAuth }, async (request) => getMe(currentUser(request)))
+    app.get('/auth/me', { preHandler: requireAuth }, async (request) =>
+      getMe(currentUser(request), { twoFactorVerified: request.twoFactorVerified }),
+    )
   }
 }

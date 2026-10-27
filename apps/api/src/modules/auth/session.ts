@@ -20,6 +20,8 @@ declare module 'fastify' {
   interface FastifyRequest {
     /** id dòng sessions của request hiện tại; null khi chưa đăng nhập. */
     sessionId: string | null
+    /** Phiên hiện tại đã nhập mã 2 lớp chưa (false khi chưa đăng nhập). */
+    twoFactorVerified: boolean
   }
 }
 
@@ -74,6 +76,7 @@ const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
  */
 export function registerSession(app: FastifyInstance, config: AppConfig) {
   app.decorateRequest('sessionId', null)
+  app.decorateRequest('twoFactorVerified', false)
 
   app.addHook('onRequest', async (request) => {
     if (UNSAFE_METHODS.has(request.method) && request.headers.origin !== config.WEB_URL) {
@@ -96,5 +99,6 @@ export function registerSession(app: FastifyInstance, config: AppConfig) {
     }
     request.user = user
     request.sessionId = session.id
+    request.twoFactorVerified = session.twoFactorVerified
   })
 }

@@ -200,6 +200,38 @@ describe('GET /auth/me', () => {
     await db.userRole.deleteMany({ where: { userId: user.id } })
   })
 
+  it('tells the web which two-factor step a privileged account still needs', async () => {
+    const roleRow = (userId: string, role: 'BOARD' | 'TECH_ADMIN', status: 'ACTIVE' | 'PENDING') => ({
+      userId,
+      role,
+      status,
+      startsAt: new Date(Date.now() - 1000),
+      reason: 'test',
+    })
+    const member = await createUser('tf-member')
+    const pendingBoard = await createUser('tf-pending')
+    const activeTech = await createUser('tf-tech')
+    await db.userRole.createMany({
+      data: [roleRow(pendingBoard.id, 'BOARD', 'PENDING'), roleRow(activeTech.id, 'TECH_ADMIN', 'ACTIVE')],
+    })
+
+    const step = async (username: string) => {
+      const token = sessionToken(await login(username, PASSWORD))
+      return { token, twoFactor: (await me(token)).json().twoFactor }
+    }
+    expect((await step(member.username)).twoFactor).toBeNull()
+    // Vai trò còn PENDING = chưa thiết lập 2 lớp → trang thiết lập.
+    expect((await step(pendingBoard.username)).twoFactor).toBe('setup')
+    // Vai trò ACTIVE và phiên đã qua 2 lớp (tạm thời đến B3) → không cần gì.
+    const tech = await step(activeTech.username)
+    expect(tech.twoFactor).toBeNull()
+    // Phiên chưa nhập mã → trang nhập mã 2 lớp.
+    await db.session.updateMany({ where: { userId: activeTech.id }, data: { twoFactorVerified: false } })
+    expect((await me(tech.token)).json().twoFactor).toBe('verify')
+
+    await db.userRole.deleteMany({ where: { userId: { in: [pendingBoard.id, activeTech.id] } } })
+  })
+
   it('returns 401 without a session, with an unknown token or after 8 idle hours', async () => {
     expect((await me()).statusCode).toBe(401)
     expect((await me('token-gia-mao')).statusCode).toBe(401)
