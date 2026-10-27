@@ -20,6 +20,11 @@ import { ProjectDetailPage } from './pages/projects/detail/ProjectDetailPage'
 import { ProjectListPage } from './pages/projects/list/ProjectListPage'
 import { RecruitmentDetailPage } from './pages/recruitment/detail/RecruitmentDetailPage'
 import { RecruitmentListPage } from './pages/recruitment/list/RecruitmentListPage'
+import { AdminRecruitmentDetailPage } from './pages/admin/recruitment/AdminRecruitmentDetailPage'
+import { AdminRecruitmentEditPage } from './pages/admin/recruitment/AdminRecruitmentEditPage'
+import { AdminRecruitmentListPage } from './pages/admin/recruitment/AdminRecruitmentListPage'
+import { AdminRecruitmentNewPage } from './pages/admin/recruitment/AdminRecruitmentNewPage'
+import { AdminRecruitmentPreviewPage } from './pages/admin/recruitment/AdminRecruitmentPreviewPage'
 
 const router = createBrowserRouter([
   {
@@ -65,7 +70,14 @@ const router = createBrowserRouter([
             <Outlet />
           </RequireAuth>
         ),
-        children: [{ index: true, element: <MenuPlaceholder title="Quản trị" menu={ADMIN_MENU} /> }],
+        children: [
+          { index: true, element: <MenuPlaceholder title="Quản trị" menu={ADMIN_MENU} /> },
+          { path: 'recruitment', element: <AdminRecruitmentListPage /> },
+          { path: 'recruitment/new', element: <AdminRecruitmentNewPage /> },
+          { path: 'recruitment/:id', element: <AdminRecruitmentDetailPage /> },
+          { path: 'recruitment/:id/edit', element: <AdminRecruitmentEditPage /> },
+          { path: 'recruitment/:id/preview', element: <AdminRecruitmentPreviewPage /> },
+        ],
       },
       { path: '*', element: <NotFound /> },
     ],

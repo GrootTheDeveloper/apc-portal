@@ -162,6 +162,7 @@ model Department {
   projects     Project[]
   applications MembershipApplication[]
   deliveries   NotificationDelivery[]
+  recruitmentRounds RecruitmentRound[]
 
   @@map("departments")
 }
@@ -368,9 +369,12 @@ model RecruitmentRound {
   title       String
   slug        String                 @unique
   description String
+  audience     String                 @default("") 
+  requirements String                 @default("")
   status      RecruitmentRoundStatus @default(DRAFT)
   opensAt     DateTime
   closesAt    DateTime
+  questions    Json                   @default("[]")
 
   createdById String
   createdBy   User   @relation("RoundCreator", fields: [createdById], references: [id])
@@ -378,6 +382,7 @@ model RecruitmentRound {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  departments  Department[]  
   applications MembershipApplication[]
 
   @@map("recruitment_rounds")

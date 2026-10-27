@@ -162,9 +162,12 @@ erDiagram
     String title
     String slug UK
     String description
+    String audience
+    String requirements
     RecruitmentRoundStatus status "DRAFT / OPEN / CLOSED / ARCHIVED"
     DateTime opensAt
     DateTime closesAt
+    Json questions
     String createdById FK
     DateTime createdAt
     DateTime updatedAt

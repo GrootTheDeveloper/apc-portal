@@ -1,13 +1,15 @@
 import { Link } from 'react-router-dom'
 import { formatDateTime } from '../../../lib/format'
-import type { RecruitmentRoundItem } from '../mock'
-import { roundPhase } from '../roundPhase'
+import type { RecruitmentRound } from '../types'
 
-export function RecruitmentCard({ round }: { round: RecruitmentRoundItem }) {
-  const phase = roundPhase(round)
-  const isOpen = phase === 'open'
-  const isUpcoming = phase === 'upcoming'
-  const isClosed = phase === 'closed'
+export function RecruitmentCard({ round }: { round: RecruitmentRound }) {
+  const now = new Date()
+  const opensAt = new Date(round.opensAt)
+  const closesAt = new Date(round.closesAt)
+
+  const isUpcoming = round.status === 'OPEN' && now < opensAt
+  const isOpen = round.status === 'OPEN' && now >= opensAt && now <= closesAt
+  const isClosed = round.status === 'CLOSED' || now > closesAt
 
   return (
     <article className="flex flex-col justify-between rounded-apc border border-outline-variant bg-surface-container-lowest p-6 shadow-sm transition-all hover:border-outline-variant/80 hover:shadow-md">

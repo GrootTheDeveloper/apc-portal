@@ -1,47 +1,45 @@
 import { Link, useParams } from 'react-router-dom'
-
 import { AsyncState } from '../../../components/AsyncState'
-import { Breadcrumb } from '../../../components/Breadcrumb'
 import { Button } from '../../../components/Button'
 import { Eyebrow } from '../../../components/Eyebrow'
-import { useMockApi } from '../../../hooks/useMockApi'
+import { useApi } from '../../../hooks/useApi'
 import { formatDateTime } from '../../../lib/format'
-import { NotFound } from '../../NotFound'
-import { getRecruitmentRound, type RecruitmentRoundItem } from '../mock'
-import { roundPhase } from '../roundPhase'
+import type { RecruitmentRound } from '../types'
 
 export function RecruitmentDetailPage() {
   const { slug } = useParams<{ slug: string }>()
-  const { data: round, loading, error, reload } = useMockApi(
-    () => (slug ? getRecruitmentRound(slug) : Promise.resolve(null)),
-    [slug],
+  const { data: round, loading, error, reload } = useApi<RecruitmentRound>(
+    slug ? `/public/recruitment-rounds/${slug}` : null,
   )
-
-  if (!loading && !error && !round) return <NotFound />
-
-  return (
-    <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
-      {round && <RoundDetail round={round} />}
-    </AsyncState>
-  )
-}
-
-function RoundDetail({ round }: { round: RecruitmentRoundItem }) {
-  const phase = roundPhase(round)
-  const isOpen = phase === 'open'
-  const isUpcoming = phase === 'upcoming'
-  const isClosed = phase === 'closed'
 
   return (
     <main className="mx-auto max-w-container-max px-gutter py-10 md:py-14">
+      <AsyncState loading={loading} error={error} empty={!round} onRetry={reload} emptyText="Không tìm thấy đợt tuyển.">
+        {round && <RecruitmentDetailContent round={round} />}
+      </AsyncState>
+    </main>
+  )
+}
+
+export function RecruitmentDetailContent({ round }: { round: RecruitmentRound }) {
+  const now = new Date()
+  const opensAt = new Date(round.opensAt)
+  const closesAt = new Date(round.closesAt)
+
+  const isUpcoming = round.status === 'OPEN' && now < opensAt
+  const isOpen = round.status === 'OPEN' && now >= opensAt && now <= closesAt
+  const isClosed = round.status === 'CLOSED' || now > closesAt
+
+  return (
+    <>
       {/* Breadcrumb */}
-      <Breadcrumb
-        items={[
-          { label: 'Trang chủ', to: '/' },
-          { label: 'Gia nhập APC', to: '/recruitment' },
-          { label: round.title },
-        ]}
-      />
+      <nav aria-label="Breadcrumb" className="mb-6 flex items-center gap-2 text-sm text-on-surface-variant">
+        <Link to="/" className="hover:text-apc-red transition-colors">Trang chủ</Link>
+        <span>/</span>
+        <Link to="/recruitment" className="hover:text-apc-red transition-colors">Gia nhập APC</Link>
+        <span>/</span>
+        <span className="text-on-surface font-medium truncate max-w-xs">{round.title}</span>
+      </nav>
 
       {/* Header đợt tuyển */}
       <div className="rounded-apc border border-outline-variant bg-surface-container-lowest p-8 md:p-10 shadow-sm">
@@ -69,7 +67,7 @@ function RoundDetail({ round }: { round: RecruitmentRoundItem }) {
           {round.description}
         </p>
 
-        {/* Action Card: Theo đúng yêu cầu "Đợt chưa mở hoặc đã đóng không có nút Ứng tuyển" */}
+        {/* Action Card */}
         <div className="mt-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-apc bg-surface-container p-6 border border-outline-variant/60">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Thời hạn nhận hồ sơ</p>
@@ -126,22 +124,26 @@ function RoundDetail({ round }: { round: RecruitmentRoundItem }) {
       </div>
 
       {/* Các ban chuyên môn đang tuyển */}
-      <section className="mt-10">
-        <h2 className="text-2xl font-bold text-on-surface mb-6">Các ban chuyên môn tuyển đợt này</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {round.departments.map((dept) => (
-            <div key={dept.id} className="rounded-apc border border-outline-variant bg-surface-container-lowest p-6">
-              <span className="inline-block rounded bg-primary-pale px-2.5 py-1 text-xs font-bold text-apc-red mb-3">
-                {dept.code}
-              </span>
-              <h3 className="text-base font-bold text-on-surface">{dept.name}</h3>
-              <p className="mt-2 text-sm text-on-surface-variant leading-relaxed">{dept.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      {round.departments && round.departments.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-2xl font-bold text-on-surface mb-6">Các ban chuyên môn tuyển đợt này</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {round.departments.map((dept) => (
+              <div key={dept.id} className="rounded-apc border border-outline-variant bg-surface-container-lowest p-6">
+                <span className="inline-block rounded bg-primary-pale px-2.5 py-1 text-xs font-bold text-apc-red mb-3">
+                  {dept.code}
+                </span>
+                <h3 className="text-base font-bold text-on-surface">{dept.name}</h3>
+                {dept.description && (
+                  <p className="mt-2 text-sm text-on-surface-variant leading-relaxed">{dept.description}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
-      {/* Dữ liệu thu thập & Thông báo quyền riêng tư (yêu cầu trong R1 & REC-04) */}
+      {/* Chính sách dữ liệu ứng viên */}
       <section className="mt-12 rounded-apc border border-outline-variant bg-surface-container-lowest p-6 text-sm text-on-surface-variant">
         <p className="flex items-center gap-2 font-semibold text-on-surface mb-1">
           <span className="material-symbols-outlined text-lg text-emerald-600">shield</span>
@@ -155,6 +157,6 @@ function RoundDetail({ round }: { round: RecruitmentRoundItem }) {
           của câu lạc bộ.
         </p>
       </section>
-    </main>
+    </>
   )
 }

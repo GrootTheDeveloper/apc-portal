@@ -11,6 +11,7 @@ import { authRoutes } from './modules/auth/routes.js'
 import { contentRoutes } from './modules/content/routes.js'
 import { registerSession } from './modules/auth/session.js'
 import { emailRoutes } from './modules/email/routes.js'
+import { recruitmentRoutes } from './modules/recruitment/routes.js'
 
 export function buildApp(config: AppConfig) {
   const app = Fastify({ logger: config.NODE_ENV !== 'test' })
@@ -28,6 +29,8 @@ export function buildApp(config: AppConfig) {
   app.register(emailRoutes)
   app.register(contentRoutes())
   app.register(aboutRoutes)
+
+  app.register(recruitmentRoutes)
 
   return app
 }
