@@ -23,7 +23,13 @@ import { SESSION_COOKIE } from './session.js'
  * cộng các dòng user_roles đang hiệu lực. Cách tính nằm ở `loadAuthUser` (service.ts).
  */
 export type RoleGrant = { role: Role; departmentId: string | null }
-export type AuthUser = { id: string; departmentId: string | null; roles: RoleGrant[] }
+export type AuthUser = {
+  id: string
+  departmentId: string | null
+  roles: RoleGrant[]
+  /** Có khi tài khoản còn PENDING_ACTIVATION (FLOW-09): chỉ dùng được các API `requireSession`. */
+  pendingActivation?: true
+}
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -59,9 +65,15 @@ async function denied(request: FastifyRequest, error: AppError): Promise<AppErro
   return error
 }
 
-/** Người đang đăng nhập, hoặc ghi audit rồi ném 401. Dùng trong preHandler. */
-async function authedUser(request: FastifyRequest): Promise<AuthUser> {
+/**
+ * Người đang đăng nhập, hoặc ghi audit rồi ném 401. Dùng trong preHandler.
+ * Tài khoản chưa kích hoạt chỉ qua được khi `allowPending` (FLOW-09 bước 2: chỉ được đổi mật khẩu), còn lại 403.
+ */
+async function authedUser(request: FastifyRequest, allowPending = false): Promise<AuthUser> {
   if (!request.user) throw await denied(request, unauthenticated())
+  if (request.user.pendingActivation && !allowPending) {
+    throw await denied(request, forbidden('Bạn cần đổi mật khẩu tạm thời trước khi dùng tài khoản.'))
+  }
   return request.user
 }
 
@@ -100,9 +112,17 @@ export function assertInScope(user: AuthUser, departmentId: string | null) {
   if (!canAccessDepartment(user, departmentId)) throw notFound()
 }
 
-/** preHandler: bắt buộc đã đăng nhập (401). */
+/** preHandler: bắt buộc đã đăng nhập (401) và tài khoản đã kích hoạt (403). */
 export async function requireAuth(request: FastifyRequest) {
   await authedUser(request)
+}
+
+/**
+ * preHandler: chỉ cần có phiên, kể cả tài khoản chưa kích hoạt. Chỉ dành cho /auth/me, /auth/logout,
+ * /auth/activate — mọi API khác dùng `requireAuth`/`requireRole`.
+ */
+export async function requireSession(request: FastifyRequest) {
+  await authedUser(request, true)
 }
 
 /** preHandler: có ít nhất một trong các vai trò (403). Chưa đăng nhập vẫn là 401. */

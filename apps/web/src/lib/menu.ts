@@ -62,7 +62,13 @@ export const PORTAL_MENU: readonly MenuGroup[] = [
       { label: 'Quyền riêng tư', to: '/portal/privacy', roles: MEMBER },
       { label: 'Dữ liệu cá nhân', to: '/portal/data-requests', roles: MEMBER },
       { label: 'Vai trò và phạm vi của tôi', to: '/portal/account/roles', roles: MEMBER },
-      { label: 'Bảo mật tài khoản', to: '/portal/account/security', roles: MEMBER },
+      {
+        label: 'Bảo mật tài khoản',
+        to: '/portal/account/security',
+        roles: MEMBER,
+        page: () =>
+          import('../pages/portal/account/security/SecurityPage').then((m) => ({ Component: m.SecurityPage })),
+      },
     ],
   },
 ]

@@ -1,8 +1,9 @@
 import { z } from 'zod'
 
 import { db } from '../../db/client.js'
-import { unauthenticated } from '../../lib/errors.js'
+import { conflict, forbidden, unauthenticated } from '../../lib/errors.js'
 import { hashPassword, verifyPassword } from '../../lib/password.js'
+import { fieldError, newPasswordSchema } from './password-policy.js'
 import type { AuthUser, RoleGrant } from './rbac.js'
 
 /** Vai trò đặc quyền chỉ có hiệu lực khi phiên đã nhập mã 2 lớp (RP-13, BR-19). */
@@ -45,16 +46,12 @@ export async function loadAuthUser(
     { role: 'MEMBER', departmentId: user.departmentId },
     ...stored.map((grant) => ({ role: grant.role, departmentId: grant.departmentId })),
   ]
-  return { id: user.id, departmentId: user.departmentId, roles }
+  // Chặn ở API theo trạng thái (A4: "PENDING_ACTIVATION chỉ vào được trang kích hoạt"); web còn xét thêm mustChangePassword.
+  const pending = user.status === 'PENDING_ACTIVATION'
+  return { id: user.id, departmentId: user.departmentId, roles, ...(pending ? { pendingActivation: true as const } : {}) }
 }
 
 // ĐĂNG NHẬP (A2) ─────────────────────────────────────────────────────────────
-
-/** Chính sách mật khẩu khi đặt/đổi mật khẩu (SEC-02): 15–128 ký tự. Dùng lại ở A4, A5. */
-export const passwordSchema = z
-  .string()
-  .min(15, 'Mật khẩu phải có ít nhất 15 ký tự.')
-  .max(128, 'Mật khẩu tối đa 128 ký tự.')
 
 // Khi đăng nhập chỉ chặn độ dài tối đa (tránh băm chuỗi quá dài); mật khẩu ngắn vẫn đi đường "sai mật khẩu".
 export const loginSchema = z.object({
@@ -157,4 +154,78 @@ export async function getMe(user: AuthUser, session: { twoFactorVerified: boolea
   })
   const twoFactor = await twoFactorStep(user.id, session.twoFactorVerified, now)
   return { id: user.id, departmentId: user.departmentId, roles: user.roles, ...profile, twoFactor }
+}
+
+// KÍCH HOẠT & ĐỔI MẬT KHẨU (A4) ──────────────────────────────────────────────
+
+const currentPasswordSchema = z.object({ currentPassword: z.string().min(1).max(1024) })
+
+/**
+ * Đổi mật khẩu tạm thành mật khẩu riêng (FLOW-09). Kích hoạt xong: ACTIVE, bỏ cờ mật khẩu tạm, ghi
+ * passwordChangedAt và thu hồi MỌI phiên (route cấp phiên mới ngay sau đó). Lỗi thì không đổi gì.
+ */
+export async function activateAccount(userId: string, input: unknown, now = new Date()) {
+  const user = await db.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: {
+      username: true,
+      passwordHash: true,
+      status: true,
+      mustChangePassword: true,
+      isTemporaryPassword: true,
+      temporaryPasswordExpiresAt: true,
+    },
+  })
+  if (user.status !== 'PENDING_ACTIVATION' && !user.mustChangePassword) throw conflict('Tài khoản đã được kích hoạt.')
+  if (user.isTemporaryPassword && user.temporaryPasswordExpiresAt && user.temporaryPasswordExpiresAt <= now) {
+    throw forbidden('Mật khẩu tạm thời đã hết hạn. Liên hệ Ban Chủ nhiệm để được cấp lại.')
+  }
+
+  const { newPassword } = newPasswordSchema(user.username).parse(input)
+  if (await verifyPassword(user.passwordHash, newPassword)) {
+    throw fieldError('newPassword', 'Mật khẩu mới phải khác mật khẩu tạm thời.')
+  }
+
+  const passwordHash = await hashPassword(newPassword)
+  await db.$transaction([
+    db.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash,
+        // Chuyển PENDING_ACTIVATION → ACTIVE; tài khoản ACTIVE bị buộc đổi mật khẩu thì giữ ACTIVE.
+        status: 'ACTIVE',
+        mustChangePassword: false,
+        isTemporaryPassword: false,
+        temporaryPasswordExpiresAt: null,
+        passwordChangedAt: now,
+      },
+    }),
+    db.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } }),
+  ])
+}
+
+/**
+ * Thành viên tự đổi mật khẩu (FLOW-10): phải đúng mật khẩu hiện tại; xong thì thu hồi mọi phiên KHÁC,
+ * giữ phiên đang dùng. Sai mật khẩu hiện tại hoặc mật khẩu mới không đạt thì mật khẩu cũ vẫn dùng được.
+ */
+export async function changePassword(userId: string, currentSessionId: string, input: unknown, now = new Date()) {
+  const user = await db.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: { username: true, passwordHash: true },
+  })
+  const { currentPassword } = currentPasswordSchema.parse(input)
+  const { newPassword } = newPasswordSchema(user.username).parse(input)
+  if (!(await verifyPassword(user.passwordHash, currentPassword))) {
+    throw fieldError('currentPassword', 'Mật khẩu hiện tại không đúng.')
+  }
+  if (newPassword === currentPassword) throw fieldError('newPassword', 'Mật khẩu mới phải khác mật khẩu hiện tại.')
+
+  const passwordHash = await hashPassword(newPassword)
+  await db.$transaction([
+    db.user.update({ where: { id: userId }, data: { passwordHash, passwordChangedAt: now } }),
+    db.session.updateMany({
+      where: { userId, revokedAt: null, id: { not: currentSessionId } },
+      data: { revokedAt: now },
+    }),
+  ])
 }
