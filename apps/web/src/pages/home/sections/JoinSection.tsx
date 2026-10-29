@@ -2,10 +2,12 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 
 import { buttonClass } from '../../../components/buttonClass'
-import { formatDate, formatDateTime } from '../../../lib/format'
-import { MOCK_RECRUITMENT_ROUNDS } from '../../recruitment/mock'
-import { roundPhase } from '../../recruitment/roundPhase'
 import { Eyebrow } from '../../../components/Eyebrow'
+import { useApi } from '../../../hooks/useApi'
+import type { Page } from '../../../lib/api'
+import { formatDate, formatDateTime } from '../../../lib/format'
+import { roundPhase } from '../../recruitment/roundPhase'
+import type { RecruitmentRound } from '../../recruitment/types'
 
 const MARK_PIECES = ['/assets/home/mark/mark-red.png', '/assets/home/mark/mark-gold.png', '/assets/home/mark/mark-blue.png']
 const delay = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties
@@ -33,8 +35,9 @@ function useCountdown(target: string | undefined) {
  * phải nền trắng là lộ trình xét hồ sơ (docs/01 mục 9.2) xếp dọc, logo APC đánh dấu bước đang diễn ra.
  */
 export function JoinSection() {
-  // Đợt tuyển đang mở đơn (mock, R2 thay bằng API).
-  const round = MOCK_RECRUITMENT_ROUNDS.find((item) => roundPhase(item) === 'open')
+  const { data } = useApi<Page<RecruitmentRound>>('/public/recruitment-rounds')
+  const rounds = data?.items ?? []
+  const round = rounds.find((item) => roundPhase(item) === 'open')
   const units = useCountdown(round?.closesAt)
   const open = units.some((unit) => unit.value > 0)
 

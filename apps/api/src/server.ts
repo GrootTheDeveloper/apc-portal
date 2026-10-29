@@ -9,6 +9,7 @@ import { createMailer, processEmailQueue } from './modules/email/service.js'
 import { createScanner } from './modules/files/scan.js'
 import { rescanPendingFiles } from './modules/files/service.js'
 import { createS3Storage } from './modules/files/storage.js'
+import { closeExpiredRecruitmentRounds } from './modules/recruitment/service.js'
 
 // .env nằm ở gốc repo (docs/07). Production truyền biến môi trường trực tiếp, không cần file.
 loadEnvFile({ path: fileURLToPath(new URL('../../../.env', import.meta.url)), quiet: true })
@@ -35,6 +36,7 @@ try {
   if (config.NODE_ENV !== 'test') {
     const mailer = createMailer(config)
     jobs.push(startJob('email', 10_000, () => processEmailQueue(mailer, app.log), app.log))
+    jobs.push(startJob('round-close', 60_000, () => closeExpiredRecruitmentRounds(), app.log))
     // Quét lại tệp PENDING do lúc upload clamd không phản hồi (D2).
     if (config.FILE_SCAN_MODE === 'clamav') {
       const files = { storage, scanner: createScanner(config) }

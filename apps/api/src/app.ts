@@ -14,6 +14,7 @@ import { emailRoutes } from './modules/email/routes.js'
 import { filesRoutes } from './modules/files/routes.js'
 import { createScanner } from './modules/files/scan.js'
 import { createS3Storage, type FileStorage } from './modules/files/storage.js'
+import { recruitmentRoutes } from './modules/recruitment/routes.js'
 
 /** Phụ thuộc thay được khi test (vd kho tệp trong bộ nhớ: `createMemoryStorage()`). */
 export type AppDeps = { storage?: FileStorage }
@@ -36,6 +37,8 @@ export function buildApp(config: AppConfig, deps: AppDeps = {}) {
   app.register(contentRoutes())
   app.register(aboutRoutes)
   app.register(filesRoutes({ storage, scanner: createScanner(config) }))
+
+  app.register(recruitmentRoutes)
 
   return app
 }
