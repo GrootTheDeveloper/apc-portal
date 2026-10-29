@@ -1,14 +1,30 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Bộ ba màu của logo APC (DESIGN.md mục 2) cùng nền trắng, mực xanh than. */
 :root {
-  color: #191c1e;
-  background: #ffffff;
-  font-family: Geist, system-ui, sans-serif;
+  --red: #c23b22;
+  --red-deep: #9a2a16;
+  --blue: #1568c9;
+  --blue-deep: #0f52a0;
+  --gold: #f0a202;
+  --gold-soft: #ffd36b;
+  --blue-pale: #dceafb;
+  --paper: #ffffff;
+  --canvas: #ffffff;
+  --soft: #f3f6fa;
+  --ink: #081f3d;
+  --muted: #4b5b73;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-io: cubic-bezier(0.76, 0, 0.24, 1);
+
+  color: var(--ink);
+  background: var(--canvas);
+  font-family: Nunito, system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -21,10 +37,66 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 /* Focus rõ cho bàn phím (chỉ hiện khi điều hướng bằng phím, không khi click chuột). */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid #1568c9;
-  outline-offset: 2px;
-  border-radius: 4px;
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+  border-radius: 10px;
 }
+
+/* ---------- khung trang: nav ẩn khi cuộn xuống, footer lộ ra dưới nội dung khi cuộn hết trang ---------- */
+.site-nav { transition: translate 260ms var(--ease-out), box-shadow 200ms ease; }
+.site-nav.nav-scrolled { box-shadow: 0 1px 0 rgb(8 31 61 / 0.08); }
+.site-nav.nav-up { translate: 0 calc(-100% - 2px); }
+.site-body { position: relative; z-index: 2; background: var(--canvas); }
+@media (min-width: 1024px) and (min-height: 640px) {
+  .site-footer { position: sticky; bottom: 0; z-index: 1; min-height: 100svh; }
+}
+
+/* ---------- chất liệu dùng chung ---------- */
+@layer components {
+  /* Ảnh phẳng bo góc, rê chuột thì ảnh phóng nhẹ bên trong khung. */
+  .photo { overflow: hidden; border-radius: 20px; }
+  .photo > img { display: block; width: 100%; object-fit: cover; transition: scale 700ms var(--ease-out); }
+  .photo:hover > img, a:hover .photo > img { scale: 1.05; }
+
+  /* Logo ghép từ ba mảnh (ảnh cùng khung, xếp chồng). Rê chuột thì ba mảnh tách ra một chút. */
+  .mark-stack { position: relative; aspect-ratio: 413 / 512; }
+  .mark-stack > img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transition: translate 600ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 350ms ease, scale 400ms var(--ease-out);
+  }
+  .mark-stack.spread:hover > :nth-child(1) { translate: -3% -7%; }
+  .mark-stack.spread:hover > :nth-child(2) { translate: -8% 3%; }
+  .mark-stack.spread:hover > :nth-child(3) { translate: 6% 6%; }
+}
+
+/* ---------- chuyển động ---------- */
+
+/* hiện dần theo section (useReveal): phần tử [data-rv] trồi lên lần lượt theo --d.
+   Mặc định nội dung vẫn hiện, chỉ ẩn khi <html> có rv-on. Dùng translate (thuộc tính riêng) để không đè transform. */
+.rv-on [data-rv] {
+  opacity: 0;
+  translate: 0 28px;
+  transition: opacity 700ms var(--ease-out), translate 700ms var(--ease-out);
+  transition-delay: var(--d, 0ms);
+}
+.rv-on [data-rv='left'] { translate: -40px 0; }
+.rv-on [data-rv='right'] { translate: 40px 0; }
+.rv-on .in [data-rv] { opacity: 1; translate: none; }
+
+/* xuất hiện ngay khi tải trang (hero) */
+@keyframes rise { from { opacity: 0; translate: 0 28px; } to { opacity: 1; translate: none; } }
+.rise { animation: rise 800ms var(--ease-out) both; animation-delay: var(--d, 0ms); }
+
+/* con trỏ gõ chữ nhấp nháy */
+@keyframes blink { 50% { opacity: 0; } }
+.caret { display: inline-block; width: 0.09em; height: 0.82em; margin-left: 0.08em; vertical-align: -0.06em; background: currentColor; animation: blink 1s steps(1) infinite; }
+
+/* ảnh trôi chậm (ken burns) */
+@keyframes drift { to { scale: 1.08; translate: -1.5% -1%; } }
+.drift { animation: drift 22s ease-in-out infinite alternate; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -33,5 +105,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
   }
+  .drift, .caret { animation: none !important; }
 }

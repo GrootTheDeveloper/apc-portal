@@ -2,7 +2,8 @@ import { useSearchParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
 import { Button } from '../../../components/Button'
-import { Eyebrow } from '../../../components/Eyebrow'
+import { pillClass } from '../../../components/buttonClass'
+import { PageHero } from '../../../components/PageHero'
 import { NewsCard } from '../../../components/NewsCard'
 import { Pagination } from '../../../components/Pagination'
 import { useApi } from '../../../hooks/useApi'
@@ -58,87 +59,60 @@ export function NewsListPage() {
   const hasFilter = Boolean(currentCategory)
   const isEmpty = !loading && !error && items.length === 0
 
+  const filters = [{ label: 'Tất cả', value: undefined }, ...NEWS_CATEGORIES.map((category) => ({ label: category, value: category }))]
+
   return (
-    <main className="w-full min-h-[60vh] py-12 px-gutter bg-white">
-      <div className="max-w-container-max mx-auto fade-up w-full">
-        {/* Tiêu đề trang */}
-        <div className="mb-8 border-b border-outline-variant/20 pb-6">
-          <Eyebrow className="text-apc-blue mb-2">BLOG &amp; TIN TỨC</Eyebrow>
-          <h1 className="font-headline-md text-3xl md:text-4xl font-bold text-on-surface">
-            Tin tức &amp; Cập nhật
-          </h1>
-          <p className="mt-2 text-on-surface-variant text-base">
-            Chia sẻ kiến thức công nghệ, câu chuyện hoạt động và thông báo mới nhất từ câu lạc bộ APC.
-          </p>
-        </div>
-
-        {/* Bộ lọc chuyên mục */}
-        <div className="flex flex-wrap items-center gap-2 mb-8">
-          <button
-            type="button"
-            onClick={() => handleCategoryChange(undefined)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              !currentCategory
-                ? 'bg-apc-blue text-white shadow-sm'
-                : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high border border-outline-variant/30'
-            }`}
-          >
-            Tất cả
-          </button>
-          {NEWS_CATEGORIES.map((category) => (
-            <button
-              key={category}
-              type="button"
-              onClick={() => handleCategoryChange(category)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                currentCategory === category
-                  ? 'bg-apc-blue text-white shadow-sm'
-                  : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high border border-outline-variant/30'
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
-
-        {/* Trạng thái dữ liệu */}
-        <AsyncState
-          loading={loading}
-          error={error}
-          empty={items.length === 0}
-          emptyText={
-            hasFilter
-              ? 'Không có bài viết nào trong chuyên mục này.'
-              : 'Chưa có bài viết nào.'
-          }
-          onRetry={reload}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {items.map((item) => (
-              <NewsCard key={item.slug} item={item} />
+    <main>
+      <PageHero
+        tone="gold"
+        comment="blog & tin tức"
+        title="Tin tức & chia sẻ"
+        lede="Kiến thức công nghệ, chuyện hoạt động và thông báo mới nhất từ APC."
+      />
+      <section className="px-4 py-[clamp(40px,7vh,80px)] md:px-8">
+        <div className="mx-auto w-full max-w-container-max">
+          <div role="group" aria-label="Lọc theo chuyên mục" className="flex flex-wrap gap-2">
+            {filters.map((filter) => (
+              <button
+                key={filter.label}
+                type="button"
+                aria-pressed={currentCategory === filter.value}
+                onClick={() => handleCategoryChange(filter.value)}
+                className={pillClass(currentCategory === filter.value)}
+              >
+                {filter.label}
+              </button>
             ))}
           </div>
 
-          {totalPages > 1 && (
-            <div className="mt-12 flex justify-center">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-              />
+          <AsyncState
+            loading={loading}
+            error={error}
+            empty={items.length === 0}
+            emptyText={hasFilter ? 'Không có bài viết nào trong chuyên mục này.' : 'Chưa có bài viết nào.'}
+            onRetry={reload}
+          >
+            <div className="mt-10 grid gap-x-8 gap-y-14 md:grid-cols-2 lg:grid-cols-3">
+              {items.map((item) => (
+                <NewsCard key={item.slug} item={item} />
+              ))}
+            </div>
+            {totalPages > 1 && (
+              <div className="mt-16">
+                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+              </div>
+            )}
+          </AsyncState>
+
+          {isEmpty && hasFilter && (
+            <div className="-mt-8 pb-16 text-center">
+              <Button variant="outline" onClick={() => handleCategoryChange(undefined)}>
+                Xóa bộ lọc
+              </Button>
             </div>
           )}
-        </AsyncState>
-
-        {/* Nút Xóa bộ lọc khi lọc không có kết quả */}
-        {isEmpty && hasFilter && (
-          <div className="text-center -mt-8 pb-16">
-            <Button variant="outline" onClick={() => handleCategoryChange(undefined)}>
-              Xóa bộ lọc
-            </Button>
-          </div>
-        )}
-      </div>
+        </div>
+      </section>
     </main>
   )
 }

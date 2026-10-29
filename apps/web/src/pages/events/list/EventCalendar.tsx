@@ -1,14 +1,15 @@
 import { Link } from 'react-router-dom'
 
+import { buttonClass } from '../../../components/buttonClass'
 import type { EventListItem } from '../mock'
 import { formatTime, vnParts } from '../../../lib/format'
 import { addMonths, calendarCells, monthKeyLabel, parseMonthKey, vnTodayParts } from '../../../lib/vnTime'
 
 // Class màu để literal (không nội suy) để Tailwind JIT nhận diện được.
 const STATUS_CHIP: Record<EventListItem['status'], string> = {
-  PUBLISHED: 'bg-apc-blue/10 text-apc-blue hover:bg-apc-blue/20',
+  PUBLISHED: 'bg-apc-blue text-paper hover:bg-apc-blue-deep',
   CANCELLED: 'bg-apc-red/10 text-apc-red line-through hover:bg-apc-red/20',
-  ENDED: 'bg-on-surface-variant/10 text-on-surface-variant hover:bg-on-surface-variant/20',
+  ENDED: 'bg-ink/10 text-ink/70 hover:bg-ink/15',
 }
 
 const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
@@ -46,29 +47,23 @@ export function EventCalendar({ monthKey, events, onMonthChange }: EventCalendar
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <button
-          type="button"
-          aria-label="Tháng trước"
-          onClick={() => onMonthChange(addMonths(monthKey, -1))}
-          className="inline-flex items-center gap-1 rounded-apc border border-outline-variant/40 px-4 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-low transition-colors"
-        >
-          <span className="material-symbols-outlined text-base">chevron_left</span> Tháng trước
-        </button>
-        <h2 className="font-bold text-lg text-on-surface">{monthKeyLabel(monthKey)}</h2>
-        <button
-          type="button"
-          aria-label="Tháng sau"
-          onClick={() => onMonthChange(addMonths(monthKey, 1))}
-          className="inline-flex items-center gap-1 rounded-apc border border-outline-variant/40 px-4 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-low transition-colors"
-        >
-          Tháng sau <span className="material-symbols-outlined text-base">chevron_right</span>
-        </button>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <h2 className="font-display text-[clamp(28px,3vw,40px)] font-extrabold capitalize leading-none tracking-[-0.02em]">
+          {monthKeyLabel(monthKey)}
+        </h2>
+        <div className="flex gap-3">
+          <button type="button" onClick={() => onMonthChange(addMonths(monthKey, -1))} className={buttonClass('outline', 'px-5')}>
+            ← Tháng trước
+          </button>
+          <button type="button" onClick={() => onMonthChange(addMonths(monthKey, 1))} className={buttonClass('outline', 'px-5')}>
+            Tháng sau →
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1" role="grid" aria-label={monthKeyLabel(monthKey)}>
+      <div className="grid grid-cols-7 gap-1.5" role="grid" aria-label={monthKeyLabel(monthKey)}>
         {WEEKDAYS.map((weekday) => (
-          <div key={weekday} className="pb-1 text-center text-xs font-bold uppercase text-on-surface-variant" role="columnheader">
+          <div key={weekday} className="pb-1 text-center font-code text-[13px] font-bold text-muted" role="columnheader">
             {weekday}
           </div>
         ))}
@@ -78,11 +73,11 @@ export function EventCalendar({ monthKey, events, onMonthChange }: EventCalendar
           return (
             <div
               key={index}
-              className={`rounded-lg border p-1.5 min-h-20 flex flex-col gap-1 ${
-                cell.inMonth ? 'border-outline-variant/20 bg-white' : 'border-outline-variant/10 bg-surface-container-low'
-              } ${isToday ? 'border-apc-red' : ''}`}
+              className={`flex min-h-24 flex-col gap-1 rounded-xl p-1.5 md:p-2 ${cell.inMonth ? 'bg-soft' : ''} ${
+                isToday ? 'shadow-[inset_0_0_0_2px_#C23B22]' : ''
+              }`}
             >
-              <span className={`text-xs font-bold ${cell.inMonth ? 'text-on-surface' : 'text-on-surface-variant/50'} ${isToday ? 'text-apc-red' : ''}`}>
+              <span className={`font-code text-[13px] font-bold ${cell.inMonth ? '' : 'text-ink/30'} ${isToday ? 'text-apc-red' : ''}`}>
                 {cell.day}
               </span>
               {dayEvents.slice(0, MAX_CHIPS_PER_DAY).map((event) => (
@@ -90,13 +85,13 @@ export function EventCalendar({ monthKey, events, onMonthChange }: EventCalendar
                   key={event.slug}
                   to={`/events/${event.slug}`}
                   title={event.title}
-                  className={`block rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-tight truncate transition-colors ${STATUS_CHIP[event.status]}`}
+                  className={`block truncate rounded-md px-1.5 py-0.5 text-[11px] font-bold leading-tight transition-colors ${STATUS_CHIP[event.status]}`}
                 >
                   {formatTime(event.startAt)} {event.title}
                 </Link>
               ))}
               {dayEvents.length > MAX_CHIPS_PER_DAY && (
-                <span className="text-[10px] text-on-surface-variant">+{dayEvents.length - MAX_CHIPS_PER_DAY} nữa</span>
+                <span className="font-code text-[11px] font-bold text-muted">+{dayEvents.length - MAX_CHIPS_PER_DAY} nữa</span>
               )}
             </div>
           )

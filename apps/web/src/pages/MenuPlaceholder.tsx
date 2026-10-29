@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 
-import { Eyebrow } from '../components/Eyebrow'
+import { PageHero } from '../components/PageHero'
 import { useAuth } from '../hooks/useAuth'
 import { type MenuItem, visibleMenu } from '../lib/menu'
 
@@ -10,24 +10,27 @@ export function MenuPlaceholder({ title, menu }: { title: string; menu: readonly
   const items = visibleMenu(menu, user)
 
   return (
-    <main className="mx-auto flex min-h-[60vh] max-w-container-max flex-col px-gutter py-16">
-      <Eyebrow>APC Portal</Eyebrow>
-      <h1 className="mt-4 text-3xl font-bold text-on-surface md:text-4xl">{title}</h1>
-      <p className="mt-3 text-on-surface-variant">Xin chào {user?.fullName}. Các trang đang được xây dựng.</p>
-      <nav aria-label={title} className="mt-8">
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((item) => (
-            <li key={item.to}>
-              <Link
-                to={item.to}
-                className="block rounded-apc border border-outline-variant bg-surface-container-lowest px-5 py-4 text-on-surface transition-colors hover:border-apc-blue hover:text-apc-blue"
-              >
-                {item.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
+    <main>
+      <PageHero comment="apc portal" title={title} lede={`Xin chào ${user?.fullName ?? ''}. Các trang đang được xây dựng.`} />
+      <section className="px-4 py-[clamp(40px,7vh,80px)] md:px-8">
+        <nav aria-label={title} className="mx-auto w-full max-w-container-max">
+          <ul className="grid border-t-2 border-ink sm:grid-cols-2 sm:gap-x-10 lg:grid-cols-3">
+            {items.map((item) => (
+              <li key={item.to} className="border-b-2 border-ink">
+                <Link
+                  to={item.to}
+                  className="group flex min-h-16 items-center justify-between gap-4 py-4 font-display text-[22px] font-bold transition-colors hover:text-apc-red"
+                >
+                  {item.label}
+                  <span aria-hidden className="transition-transform group-hover:translate-x-1">
+                    →
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </section>
     </main>
   )
 }

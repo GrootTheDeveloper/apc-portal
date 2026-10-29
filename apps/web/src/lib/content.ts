@@ -1,114 +1,60 @@
-// Kiểu dữ liệu và hằng số cho module nội dung (Tin tức & Dự án) trên web.
+// Kiểu dữ liệu và hằng số cho module nội dung (Tin tức & Dự án) trên web, khớp GET /public/news, /public/projects.
 // Dùng chung cho các trang danh sách, chi tiết và các section ở trang chủ.
 
 export type NewsItem = {
-  id?: string
+  id: string
   title: string
   slug: string
   summary: string
-  excerpt?: string // Tương thích ngược nếu còn component cũ gọi
-  thumbnailUrl?: string | null
-  coverUrl?: string | null // Tương thích ngược
+  thumbnailUrl: string | null
   category: string
-  publishedAt?: string | null
-  metaTitle?: string | null
-  metaDescription?: string | null
+  publishedAt: string | null
 }
 
 export type NewsDetailItem = NewsItem & {
   content: string
+  metaTitle: string | null
+  metaDescription: string | null
 }
 
 export const NEWS_CATEGORIES = ['Chuyên môn', 'Thông báo', 'Chia sẻ'] as const
-export type NewsCategory = (typeof NEWS_CATEGORIES)[number]
-
-export type ProjectMember = {
-  initials: string
-  name: string
-  role: string
-}
 
 export type ProjectItem = {
-  id?: string
+  id: string
   title: string
-  name?: string // Tương thích ngược nếu còn component cũ gọi
   slug: string
   description: string
-  thumbnailUrl?: string | null
-  imageUrl?: string | null // Tương thích ngược
-  technologies?: string[] | null
-  projectUrl?: string | null
-  productUrl?: string | null // Tương thích ngược
-  sourceUrl?: string | null
-  publishedAt?: string | null
-  type?: string
-  members?: ProjectMember[]
-  featured?: boolean
+  thumbnailUrl: string | null
+  technologies: string[] | null
+  projectUrl: string | null
+  sourceUrl: string | null
+  publishedAt: string | null
 }
 
-/** Lấy style màu sắc theo loại dự án */
-export function getProjectTypeColorClass(type?: string): string {
-  switch (type) {
-    case 'Nền tảng':
-      return 'text-apc-red'
-    case 'Công cụ':
-      return 'text-apc-blue'
-    case 'Sản phẩm':
-      return 'text-apc-gold'
-    default:
-      return 'text-apc-blue'
-  }
+type CategoryStyle = {
+  /** Mảng màu nhạt thay ảnh bìa khi bài chưa có ảnh */
+  field: string
+  /** Chữ chuyên mục */
+  label: string
+  /** Chấm màu (dòng thời gian ở trang chủ) */
+  dot: string
+  /** Biểu tượng Material Symbols trên mảng màu */
+  icon: string
+}
+
+// Mỗi chuyên mục một màu logo (class literal để Tailwind JIT nhận diện).
+const CATEGORY_STYLES: Record<string, CategoryStyle> = {
+  'Chuyên môn': { field: 'bg-apc-blue-pale text-apc-blue', label: 'text-apc-blue', dot: 'bg-apc-blue', icon: 'database' },
+  'Thông báo': { field: 'bg-apc-gold-pale text-apc-gold-deep', label: 'text-apc-gold-deep', dot: 'bg-apc-gold', icon: 'campaign' },
+  'Chia sẻ': { field: 'bg-apc-red-pale text-apc-red', label: 'text-apc-red', dot: 'bg-apc-red', icon: 'lightbulb' },
+}
+const FALLBACK_STYLE: CategoryStyle = { field: 'bg-soft text-muted', label: 'text-muted', dot: 'bg-ink', icon: 'article' }
+
+export function newsCategoryStyle(category: string): CategoryStyle {
+  return CATEGORY_STYLES[category] ?? FALLBACK_STYLE
 }
 
 /** Chỉ nhận link http(s) từ dữ liệu nhập tay; chặn `javascript:` và scheme lạ. */
 export function safeHttpUrl(url?: string | null): string | undefined {
   return url && /^https?:\/\//i.test(url) ? url : undefined
-}
-
-/** Lấy style chip phân loại chuyên mục tin tức */
-export function getNewsCategoryChipClass(category: string): string {
-  switch (category) {
-    case 'Chuyên môn':
-      return 'bg-apc-blue/10 text-apc-blue'
-    case 'Thông báo':
-      return 'bg-apc-gold/10 text-apc-gold'
-    case 'Chia sẻ':
-      return 'bg-apc-red/10 text-apc-red'
-    default:
-      return 'bg-surface-container-highest text-on-surface-variant'
-  }
-}
-
-/** Lấy hình ảnh / gradient và biểu tượng đại diện theo chuyên mục tin tức khi chưa có thumbnail */
-export function getNewsCategoryVisual(category: string): {
-  coverClass: string
-  icon: string
-  iconClass: string
-} {
-  switch (category) {
-    case 'Chuyên môn':
-      return {
-        coverClass: 'from-apc-blue/15 to-surface-container-high',
-        icon: 'database',
-        iconClass: 'text-apc-blue/50',
-      }
-    case 'Thông báo':
-      return {
-        coverClass: 'from-apc-gold/20 to-surface-container-high',
-        icon: 'campaign',
-        iconClass: 'text-apc-gold/60',
-      }
-    case 'Chia sẻ':
-      return {
-        coverClass: 'from-apc-red/15 to-surface-container-high',
-        icon: 'lightbulb',
-        iconClass: 'text-apc-red/50',
-      }
-    default:
-      return {
-        coverClass: 'from-apc-blue/15 to-surface-container-high',
-        icon: 'article',
-        iconClass: 'text-apc-blue/50',
-      }
-  }
 }

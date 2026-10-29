@@ -30,6 +30,7 @@ erDiagram
   membership_applications |o--|o users : "convertedUser"
   notification_deliveries }o--|o departments : "department"
   audit_logs }o--|o users : "actor"
+  stored_files }o--|| users : "uploadedBy"
 ```
 
 ## Chi tiết từng bảng
@@ -240,6 +241,20 @@ erDiagram
     DateTime grantedAt
     DateTime revokedAt "tùy chọn"
   }
+  stored_files {
+    String id PK
+    String storageKey UK
+    String originalName
+    String mimeType "Loại xác định từ nội dung tệp, không theo đuôi file/header"
+    Int size "byte"
+    FilePurpose purpose
+    FileVisibility visibility "PUBLIC / INTERNAL"
+    FileScanStatus scanStatus "PENDING / CLEAN / REJECTED"
+    DateTime scannedAt "tùy chọn"
+    String uploadedById FK
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
   users }o--|o departments : "department"
   user_roles }o--|| users : "user"
@@ -261,6 +276,7 @@ erDiagram
   membership_applications |o--|o users : "convertedUser"
   notification_deliveries }o--|o departments : "department"
   audit_logs }o--|o users : "actor"
+  stored_files }o--|| users : "uploadedBy"
 ```
 
 ## Giá trị trạng thái (enum)
@@ -283,3 +299,6 @@ erDiagram
 | `AuditResult` | `SUCCESS`, `FAILURE` |
 | `ConsentSubjectType` | `APPLICATION`, `EVENT_REGISTRATION`, `USER` |
 | `ConsentPurpose` | `RECRUITMENT_PROCESSING`, `EVENT_REGISTRATION`, `PUBLIC_NAME`, `PUBLIC_PHOTO` |
+| `FilePurpose` |  |
+| `FileVisibility` | `PUBLIC`, `INTERNAL` |
+| `FileScanStatus` | `PENDING`, `CLEAN`, `REJECTED` |
