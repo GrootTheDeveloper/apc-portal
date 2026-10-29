@@ -5,6 +5,7 @@ import { config as loadEnvFile } from 'dotenv'
 import { buildApp } from './app.js'
 import { loadConfig } from './config.js'
 import { startJob, type Job } from './lib/jobs.js'
+import { endPastEvents } from './modules/events/service.js'
 import { createMailer, processEmailQueue } from './modules/email/service.js'
 import { createScanner } from './modules/files/scan.js'
 import { rescanPendingFiles } from './modules/files/service.js'
@@ -35,6 +36,8 @@ try {
   if (config.NODE_ENV !== 'test') {
     const mailer = createMailer(config)
     jobs.push(startJob('email', 10_000, () => processEmailQueue(mailer, app.log), app.log))
+    // Chuyển sự kiện PUBLISHED đã qua endAt sang ENDED (E2).
+    jobs.push(startJob('event-end', 60_000, () => endPastEvents(app.log), app.log))
     // Quét lại tệp PENDING do lúc upload clamd không phản hồi (D2).
     if (config.FILE_SCAN_MODE === 'clamav') {
       const files = { storage, scanner: createScanner(config) }
