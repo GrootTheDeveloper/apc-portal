@@ -11,6 +11,9 @@ Chỉ có tên bảng và quan hệ, để nhìn nhanh bảng nào nối với b
 ```mermaid
 erDiagram
   users }o--|o departments : "department"
+  role_decisions }o--|| users : "user"
+  role_decisions }o--|| users : "decidedBy"
+  role_decisions }o--|o users : "executedBy"
   user_roles }o--|| users : "user"
   user_roles }o--|o departments : "department"
   user_roles }o--|o users : "grantedBy"
@@ -78,6 +81,22 @@ erDiagram
     String departmentId FK "tùy chọn. Ban đang hoạt động; khác phạm vi quản lý trong user_roles"
     MemberStatus memberStatus "ACTIVE / PAUSED / LEFT. MEM-11: độc lập AccountStatus, trừ LEFT kéo theo INACTIVE"
     DateTime deactivatedAt "tùy chọn. A5: lúc chuyển INACTIVE; B7 dùng để tính hạn lưu giữ dữ liệu"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  role_decisions {
+    String id PK
+    RoleDecisionAction action "GRANT / REVOKE"
+    Role role "MEMBER / DEPARTMENT_MANAGER / BOARD / TECH_ADMIN. hiện chỉ dùng cho TECH_ADMIN"
+    String userId FK
+    String userRoleId "tùy chọn. REVOKE: dòng user_roles bị thu hồi; GRANT: dòng được tạo khi thực hiện"
+    DateTime expiresAt "tùy chọn. GRANT: ngày hết hạn của vai trò, không muộn hơn SiteSetting.termEndsAt (RP-03)"
+    String reason
+    RoleDecisionStatus status "PENDING / EXECUTED / CANCELLED"
+    String decidedById FK
+    String executedById FK "tùy chọn"
+    DateTime executedAt "tùy chọn"
+    DateTime cancelledAt "tùy chọn"
     DateTime createdAt
     DateTime updatedAt
   }
@@ -255,6 +274,9 @@ erDiagram
   }
 
   users }o--|o departments : "department"
+  role_decisions }o--|| users : "user"
+  role_decisions }o--|| users : "decidedBy"
+  role_decisions }o--|o users : "executedBy"
   user_roles }o--|| users : "user"
   user_roles }o--|o departments : "department"
   user_roles }o--|o users : "grantedBy"
@@ -300,3 +322,5 @@ erDiagram
 | `FilePurpose` |  |
 | `FileVisibility` | `PUBLIC`, `INTERNAL` |
 | `FileScanStatus` | `PENDING`, `CLEAN`, `REJECTED` |
+| `RoleDecisionAction` | `GRANT`, `REVOKE` |
+| `RoleDecisionStatus` | `PENDING`, `EXECUTED`, `CANCELLED` |
