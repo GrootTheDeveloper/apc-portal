@@ -19,11 +19,16 @@ const input = (overrides: { board?: object; tech?: object } = {}) => ({
   termEndsAt: '2027-06-30',
 })
 
+/** Số user do file test này tạo (theo hậu tố tag), không bị lệch khi file test khác chạy song song. */
+const ours = (tx: Tx) => tx.user.count({ where: { username: { endsWith: `-${tag}` } } })
+
 async function onEmptyDatabase(check: (tx: Tx) => Promise<void>) {
   const rollback = new Error('rollback')
   await db
     .$transaction(
       async (tx) => {
+        // Chặn file test khác ghi user_roles đến khi rollback, để trạng thái "trống" không bị chen vào.
+        await tx.$executeRaw`LOCK TABLE "user_roles" IN SHARE ROW EXCLUSIVE MODE`
         await tx.userRole.updateMany({ where: { role: { in: ['BOARD', 'TECH_ADMIN'] }, status: 'ACTIVE' }, data: { status: 'EXPIRED' } })
         await tx.userRole.updateMany({ where: { reason: BOOTSTRAP_REASON, status: 'PENDING' }, data: { status: 'REVOKED' } })
         await tx.siteSetting.deleteMany({})
@@ -42,11 +47,10 @@ afterAll(() => db.$disconnect())
 describe('bootstrap (RP-15, AC-RBAC-09)', () => {
   it('creates exactly two PENDING accounts with BOARD and TECH_ADMIN pending until term end, audited as service:bootstrap', async () => {
     await onEmptyDatabase(async (tx) => {
-      const usersBefore = await tx.user.count()
       const result = await runBootstrapInTx(tx, input())
       expect(result.status).toBe('created')
       expect(result.accounts.map((account) => account.role)).toEqual(['BOARD', 'TECH_ADMIN'])
-      expect(await tx.user.count()).toBe(usersBefore + 2)
+      expect(await ours(tx)).toBe(2)
 
       const users = await tx.user.findMany({
         where: { username: { in: result.accounts.map((account) => account.username) } },
@@ -76,20 +80,17 @@ describe('bootstrap (RP-15, AC-RBAC-09)', () => {
         data: { username: `da-co-${tag}`, email: `da-co-${tag}@test.local`, passwordHash: 'x', fullName: 'Đã có', status: 'ACTIVE' },
       })
       await tx.userRole.create({ data: { userId: existing.id, role: 'TECH_ADMIN', status: 'ACTIVE', startsAt: new Date(), reason: 'test' } })
-      const usersBefore = await tx.user.count()
       await expect(runBootstrapInTx(tx, input())).rejects.toBeInstanceOf(BootstrapRefused)
-      expect(await tx.user.count()).toBe(usersBefore)
-      expect(await tx.siteSetting.count()).toBe(0)
+      expect(await ours(tx)).toBe(1) // chỉ tài khoản "đã có" ở trên, bootstrap không tạo thêm
     })
   })
 
   it('on a re-run while both bootstrap accounts are still pending, only issues new temporary passwords', async () => {
     await onEmptyDatabase(async (tx) => {
       const first = await runBootstrapInTx(tx, input())
-      const usersBefore = await tx.user.count()
       const again = await runBootstrapInTx(tx, null)
       expect(again.status).toBe('reissued')
-      expect(await tx.user.count()).toBe(usersBefore)
+      expect(await ours(tx)).toBe(2)
       expect(again.accounts.map((account) => account.username).sort()).toEqual(first.accounts.map((account) => account.username).sort())
       for (const account of again.accounts) {
         const previous = first.accounts.find((item) => item.username === account.username)!
@@ -103,12 +104,11 @@ describe('bootstrap (RP-15, AC-RBAC-09)', () => {
 
   it('rejects the same username or email for both people before writing anything', async () => {
     await onEmptyDatabase(async (tx) => {
-      const usersBefore = await tx.user.count()
       await expect(runBootstrapInTx(tx, input({ tech: { username: `chu.nhiem-${tag}` } }))).rejects.toBeInstanceOf(ZodError)
       await expect(runBootstrapInTx(tx, input({ tech: { email: `chu.nhiem-${tag}@test.local` } }))).rejects.toBeInstanceOf(ZodError)
       await expect(runBootstrapInTx(tx, { ...input(), termEndsAt: '30/06/2027' })).rejects.toBeInstanceOf(ZodError)
       await expect(runBootstrapInTx(tx, null)).rejects.toBeInstanceOf(BootstrapRefused)
-      expect(await tx.user.count()).toBe(usersBefore)
+      expect(await ours(tx)).toBe(0)
     })
   })
 })
