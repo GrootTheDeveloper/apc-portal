@@ -263,6 +263,8 @@ describe('privileged minimum (RP-06, RP-07) with ENFORCE_PRIVILEGED_MINIMUM', ()
     const rollback = new Error('rollback')
     await db
       .$transaction(async (tx) => {
+        // Chặn file test khác ghi user_roles đến khi rollback, để trạng thái "trống" không bị chen vào.
+        await tx.$executeRaw`LOCK TABLE "user_roles" IN SHARE ROW EXCLUSIVE MODE`
         await tx.userRole.updateMany({ where: { role: 'BOARD', status: 'ACTIVE' }, data: { status: 'EXPIRED' } })
         await check(tx)
         throw rollback
