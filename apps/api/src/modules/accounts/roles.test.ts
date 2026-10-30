@@ -66,6 +66,8 @@ async function isolated(termEndsAt: Date | null, check: (tx: Tx) => Promise<void
   await db
     .$transaction(
       async (tx) => {
+        // Chặn file test khác ghi user_roles đến khi rollback, để trạng thái "trống" không bị chen vào.
+        await tx.$executeRaw`LOCK TABLE "user_roles" IN SHARE ROW EXCLUSIVE MODE`
         await tx.siteSetting.deleteMany({})
         if (termEndsAt) await tx.siteSetting.create({ data: { info: {}, termEndsAt } })
         await check(tx)
