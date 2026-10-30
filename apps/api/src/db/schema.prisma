@@ -203,6 +203,11 @@ model User {
   failedLoginAttempts Int       @default(0) // SEC-05
   lockoutUntil        DateTime?
 
+  // Xác thực 2 lớp TOTP (B3, SEC-12, SEC-16)
+  totpSecret       String? // Secret đã mã hóa AES-256-GCM với TOTP_ENCRYPTION_KEY
+  totpEnabledAt    DateTime?
+  totpLastTimeStep BigInt? // Time step của mã 6 số hợp lệ gần nhất, chống replay
+
   // Hồ sơ (MEM-02) — gộp trực tiếp
   fullName      String
   studentId     String? @unique // Optional: tài khoản bootstrap đầu tiên có thể chưa gắn MSSV
@@ -226,6 +231,7 @@ model User {
   revokedRoles UserRole[] @relation("RoleRevoker")
   sessions     Session[]
   auditLogs    AuditLog[]
+  recoveryCodes TwoFactorRecoveryCode[]
 
   authoredPosts  Post[] @relation("PostAuthor")
   publishedPosts Post[] @relation("PostPublisher")
@@ -289,6 +295,19 @@ model Session {
 
   @@index([userId])
   @@map("sessions")
+}
+
+// Bảng mã khôi phục TOTP (B3, SEC-12). Chỉ lưu bản băm SHA-256; mỗi mã chỉ dùng một lần.
+model TwoFactorRecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String    @unique // SHA-256 của mã khôi phục dạng chuẩn hóa
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, usedAt])
+  @@map("two_factor_recovery_codes")
 }
 
 // MODELS — NỘI DUNG (CMS)

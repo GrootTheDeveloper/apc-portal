@@ -33,12 +33,28 @@ export async function createSession(userId: string, meta: { ipAddress: string; u
       tokenHash: hashToken(token),
       ipAddress: meta.ipAddress,
       userAgent: meta.userAgent ?? null,
-      // TODO(B3): tạm coi mọi phiên đã qua 2 lớp để tài khoản BOARD mẫu dùng được trang quản trị khi phát triển.
-      // B3 đổi thành false và chỉ bật sau khi người dùng nhập đúng mã 2 lớp (docs/plan/A-dang-nhap.md, A2).
-      twoFactorVerified: true,
+      // B3: Mọi phiên đăng nhập mới ban đầu chưa qua bước 2FA.
+      // Chỉ khi người dùng xác thực mã 6 số hoặc mã khôi phục mới đặt twoFactorVerified = true.
+      twoFactorVerified: false,
     },
   })
   return token
+}
+
+/** Đánh dấu phiên hiện tại đã qua bước xác thực 2 lớp (B3, FLOW-27). */
+export async function markSessionTwoFactorVerified(sessionId: string) {
+  await db.session.update({
+    where: { id: sessionId },
+    data: { twoFactorVerified: true },
+  })
+}
+
+/** Thu hồi toàn bộ phiên của một người dùng (B3 khi đổi 2FA, A5 khi khóa/đổi mật khẩu). */
+export async function revokeAllUserSessions(userId: string) {
+  await db.session.updateMany({
+    where: { userId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  })
 }
 
 /** Phiên còn hiệu lực ứng với token trong cookie, hoặc null (không có, đã thu hồi, quá 8 giờ không hoạt động). */

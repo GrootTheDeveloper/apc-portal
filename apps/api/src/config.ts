@@ -23,6 +23,8 @@ const environmentSchema = z.object({
   FILE_SCAN_MODE: z.enum(['clamav', 'skip']).default('skip'),
   CLAMAV_HOST: z.string().default('127.0.0.1'),
   CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
+  // Khóa mã hóa secret TOTP (B3, SEC-16): chuỗi hex 64 ký tự (32 bytes).
+  TOTP_ENCRYPTION_KEY: z.string().default('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'),
 }).refine((env) => env.NODE_ENV !== 'production' || env.FILE_SCAN_MODE === 'clamav', {
   // API không khởi động ở production khi chưa bật quét mã độc (D2).
   message: 'Production bắt buộc FILE_SCAN_MODE=clamav.',

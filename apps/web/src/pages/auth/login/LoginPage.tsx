@@ -32,9 +32,12 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [submit, setSubmit] = useState<SubmitState>({ phase: 'idle' })
 
-  // Đã đăng nhập (kể cả ngay sau khi bấm Đăng nhập): về trang đang định vào, mặc định /portal.
+  // Đã đăng nhập (kể cả ngay sau khi bấm Đăng nhập): kiểm tra 2FA hoặc về trang đang định vào.
   if (status === 'authenticated' && user) {
-    const destination = user.mustChangePassword ? '/account/activate' : safeReturnTo(searchParams.get('returnTo'))
+    if (user.mustChangePassword) return <Navigate to="/account/activate" replace />
+    if (user.twoFactorEnabled && !user.twoFactorVerified) return <Navigate to="/account/two-factor" replace />
+    if (user.hasPrivilegedRole && !user.twoFactorEnabled) return <Navigate to="/account/setup-two-factor" replace />
+    const destination = safeReturnTo(searchParams.get('returnTo'))
     return <Navigate to={destination} replace />
   }
 

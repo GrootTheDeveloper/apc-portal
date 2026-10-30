@@ -14,6 +14,9 @@ export type Me = {
   departmentId: string | null
   roles: RoleGrant[]
   mustChangePassword: boolean
+  twoFactorEnabled?: boolean
+  twoFactorVerified?: boolean
+  hasPrivilegedRole?: boolean
 }
 
 /** Vai trò được vào khu /admin (sitemap PAGE-MGT-01). */

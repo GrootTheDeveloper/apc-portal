@@ -65,6 +65,7 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
+  await db.userRole.deleteMany({ where: { userId: { in: createdUserIds } } })
   await db.session.deleteMany({ where: { userId: { in: createdUserIds } } })
   await db.user.deleteMany({ where: { id: { in: createdUserIds } } })
   await app.close()
@@ -179,6 +180,13 @@ describe('GET /auth/me', () => {
     })
     const token = sessionToken(await login(user.username, PASSWORD))
 
+    // B3 (FLOW-27, RP-13): Phiên mới tạo chưa qua 2FA (twoFactorVerified = false)
+    expect((await db.session.findFirstOrThrow({ where: { userId: user.id } })).twoFactorVerified).toBe(false)
+    // Phiên chưa qua 2 lớp thì chỉ có vai trò nền MEMBER, chưa nhận quyền BOARD (RP-13)
+    expect((await me(token)).json().roles).toEqual([{ role: 'MEMBER', departmentId: null }])
+
+    // Sau khi phiên đã qua xác thực 2 lớp: có quyền BOARD đầy đủ
+    await db.session.updateMany({ where: { userId: user.id }, data: { twoFactorVerified: true } })
     const response = await me(token)
     expect(response.statusCode).toBe(200)
     expect(response.json()).toMatchObject({
@@ -191,12 +199,6 @@ describe('GET /auth/me', () => {
         { role: 'BOARD', departmentId: null },
       ],
     })
-    // Tạm đến B3: phiên mới coi như đã qua 2 lớp.
-    expect((await db.session.findFirstOrThrow({ where: { userId: user.id } })).twoFactorVerified).toBe(true)
-
-    // Phiên chưa qua 2 lớp thì mất BOARD (RP-13).
-    await db.session.updateMany({ where: { userId: user.id }, data: { twoFactorVerified: false } })
-    expect((await me(token)).json().roles).toEqual([{ role: 'MEMBER', departmentId: null }])
     await db.userRole.deleteMany({ where: { userId: user.id } })
   })
 

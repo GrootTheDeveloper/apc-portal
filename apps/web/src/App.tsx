@@ -7,6 +7,9 @@ import { ADMIN_ROLES } from './lib/auth'
 import { ADMIN_MENU, PORTAL_MENU } from './lib/menu'
 import { AboutPage } from './pages/about/AboutPage'
 import { LoginPage } from './pages/auth/login/LoginPage'
+import { RecoveryCodesPage } from './pages/auth/twoFactor/RecoveryCodesPage'
+import { SetupTwoFactorPage } from './pages/auth/twoFactor/SetupTwoFactorPage'
+import { TwoFactorChallengePage } from './pages/auth/twoFactor/TwoFactorChallengePage'
 import { EventDetailPage } from './pages/events/detail/EventDetailPage'
 import { EventsListPage } from './pages/events/list/EventsListPage'
 import { HomePage } from './pages/home/HomePage'
@@ -41,6 +44,30 @@ const router = createBrowserRouter([
       { path: 'recruitment/:slug', element: <RecruitmentDetailPage /> },
       { path: 'privacy', element: <PrivacyPage /> },
       { path: 'login', element: <LoginPage /> },
+      {
+        path: 'account/setup-two-factor',
+        element: (
+          <RequireAuth>
+            <SetupTwoFactorPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'account/recovery-codes',
+        element: (
+          <RequireAuth>
+            <RecoveryCodesPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'account/two-factor',
+        element: (
+          <RequireAuth>
+            <TwoFactorChallengePage />
+          </RequireAuth>
+        ),
+      },
       {
         path: 'account/activate',
         element: (

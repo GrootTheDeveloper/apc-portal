@@ -22,6 +22,7 @@ export const forbidden = (message = 'Bạn không có quyền thực hiện thao
 export const notFound = (message = 'Không tìm thấy dữ liệu.') => new AppError(404, 'not_found', message)
 export const conflict = (message = 'Dữ liệu đã thay đổi hoặc bị trùng. Vui lòng tải lại.') =>
   new AppError(409, 'conflict', message)
+export const validation = (message = 'Dữ liệu không hợp lệ.') => new AppError(422, 'validation', message)
 export const rateLimited = (message = 'Bạn thao tác quá nhanh. Vui lòng thử lại sau.') =>
   new AppError(429, 'rate_limited', message)
 

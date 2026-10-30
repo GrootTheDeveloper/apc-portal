@@ -126,11 +126,45 @@ export async function verifyLogin(input: z.infer<typeof loginSchema>, now = new 
   return user.id
 }
 
-/** Thông tin trả về cho web ở /auth/login và /auth/me. Không bao giờ chứa passwordHash. */
-export async function getMe(user: AuthUser) {
+/** Thông tin trả về cho web ở /auth/login và /auth/me. Không bao giờ chứa passwordHash hay totpSecret. */
+export async function getMe(user: AuthUser, sessionId?: string | null) {
   const profile = await db.user.findUniqueOrThrow({
     where: { id: user.id },
-    select: { username: true, fullName: true, status: true, mustChangePassword: true },
+    select: {
+      username: true,
+      fullName: true,
+      status: true,
+      mustChangePassword: true,
+      totpEnabledAt: true,
+      roles: {
+        where: { role: { in: ['BOARD', 'TECH_ADMIN'] } },
+        select: { role: true, status: true },
+      },
+    },
   })
-  return { id: user.id, departmentId: user.departmentId, roles: user.roles, ...profile }
+
+  let twoFactorVerified = false
+  if (sessionId) {
+    const session = await db.session.findUnique({
+      where: { id: sessionId },
+      select: { twoFactorVerified: true },
+    })
+    twoFactorVerified = Boolean(session?.twoFactorVerified)
+  }
+
+  const hasPrivilegedRole = profile.roles.some((r) => r.status === 'ACTIVE' || r.status === 'PENDING')
+  const twoFactorEnabled = Boolean(profile.totpEnabledAt)
+
+  return {
+    id: user.id,
+    departmentId: user.departmentId,
+    roles: user.roles,
+    username: profile.username,
+    fullName: profile.fullName,
+    status: profile.status,
+    mustChangePassword: profile.mustChangePassword,
+    twoFactorEnabled,
+    twoFactorVerified,
+    hasPrivilegedRole,
+  }
 }
