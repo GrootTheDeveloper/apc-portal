@@ -8,14 +8,15 @@ type StatusScreenProps = {
   action?: ReactNode
   /** bản gọn trong khung portal/quản trị: không chiếm cả màn hình */
   compact?: boolean
-  /** đặt bên trong một <main> có sẵn (vd. <AsyncState>): bản gọn, bọc bằng <section> thay vì <main> */
+  /** đặt bên trong một <main> có sẵn (vd. <AsyncState>): bản gọn, bọc bằng <div> thay vì <main>
+   *  (không dùng <section>: home.css có luật `main > section { min-height: 100vh }`) */
   inline?: boolean
 }
 
 /** Màn hình trạng thái (không tìm thấy, không có quyền, đang xây): mã cỡ lớn màu đỏ cạnh lời giải thích. */
 export function StatusScreen({ code, title, text, action, compact = false, inline = false }: StatusScreenProps) {
   if (compact || inline) {
-    const Root = inline ? 'section' : 'main'
+    const Root = inline ? 'div' : 'main'
     return (
       <Root className="grid items-center gap-4 py-12 md:grid-cols-[auto_minmax(0,1fr)] md:gap-10">
         <p aria-hidden className="font-display text-[clamp(72px,10vw,140px)] font-extrabold leading-[0.8] tracking-[-0.05em] text-apc-red">
