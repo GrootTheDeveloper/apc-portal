@@ -4,18 +4,15 @@ import { Link, useParams } from 'react-router-dom'
 import { AsyncState } from '../../../../components/AsyncState'
 import { Button } from '../../../../components/Button'
 import { ConfirmDialog, type ConfirmValues } from '../../../../components/ConfirmDialog'
+import { inputClass, labelClass } from '../../../../components/formClass'
 import { useApi } from '../../../../hooks/useApi'
 import { useAuth } from '../../../../hooks/useAuth'
 import { api, ApiError } from '../../../../lib/api'
 import { hasRole } from '../../../../lib/auth'
 import { formatDate, formatDateTime, vnParts } from '../../../../lib/format'
 import { fieldErrors } from '../../../../lib/formErrors'
-import { NotFound } from '../../../NotFound'
 import { type AccountRoles, type ManagedRole, ROLE_LABEL, ROLE_STATUS_LABEL, type RoleRow } from '../accountTypes'
 
-const inputClass =
-  'w-full rounded-xl bg-paper px-4 py-3 text-[17px] text-ink shadow-[inset_0_0_0_2px_#081F3D] outline-none focus:shadow-[inset_0_0_0_2px_#1568C9,0_0_0_4px_rgba(21,104,201,0.2)] aria-[invalid=true]:shadow-[inset_0_0_0_2px_#C23B22]'
-const labelClass = 'flex flex-col gap-2 font-code text-[13px] font-bold'
 const ROLES = Object.keys(ROLE_LABEL) as ManagedRole[]
 
 /** yyyy-mm-dd theo giờ Việt Nam, dùng cho ô chọn ngày. */
@@ -23,8 +20,14 @@ const vnDate = (value: string | Date) => {
   const { year, month, day } = vnParts(value)
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
-/** Hết ngày đã chọn theo giờ Việt Nam (23:59:59 +07:00). */
-const endOfVnDay = (date: string) => new Date(`${date}T23:59:59+07:00`).toISOString()
+/**
+ * Ngày hết hạn gửi lên API: hết ngày đã chọn theo giờ Việt Nam (23:59:59 +07:00), nhưng không muộn hơn
+ * `termEndsAt` (RP-03). Chọn đúng ngày kết thúc nhiệm kỳ thì gửi chính `termEndsAt`, API không báo 422.
+ */
+const expiryFor = (date: string, termEndsAt: string | null) => {
+  const endOfDay = new Date(`${date}T23:59:59+07:00`)
+  return termEndsAt && endOfDay > new Date(termEndsAt) ? new Date(termEndsAt).toISOString() : endOfDay.toISOString()
+}
 
 function ErrorList({ messages }: { messages?: string[] | undefined }) {
   return messages?.map((message) => (
@@ -52,7 +55,7 @@ function GrantForm({ data, accountId, onDone }: { data: AccountRoles; accountId:
       const body = {
         role,
         reason,
-        ...(privileged ? { expiresAt: expiresOn ? endOfVnDay(expiresOn) : null } : { departmentId: departmentId || null }),
+        ...(privileged ? { expiresAt: expiresOn ? expiryFor(expiresOn, data.termEndsAt) : null } : { departmentId: departmentId || null }),
       }
       const result = await api<{ kind: 'role' | 'decision'; status: string }>(`/admin/accounts/${accountId}/roles`, { body })
       onDone(
@@ -155,7 +158,6 @@ export function AccountRolesPage() {
   const [action, setAction] = useState<{ kind: 'revoke' | 'move'; row: RoleRow } | null>(null)
   const [moveTo, setMoveTo] = useState('')
 
-  if (roles.error?.status === 404) return <NotFound />
   const data = roles.data
   const self = data?.user.id === user?.id
   const current = data?.roles.filter((row) => row.status === 'PENDING' || row.status === 'ACTIVE') ?? []
@@ -216,7 +218,10 @@ export function AccountRolesPage() {
                       {board && !self && (
                         <span className="flex flex-wrap gap-2">
                           {row.role === 'DEPARTMENT_MANAGER' && row.status === 'ACTIVE' && (
-                            <Button variant="outline" onClick={() => setAction({ kind: 'move', row })}>
+                            <Button variant="outline" onClick={() => {
+                              setMoveTo('') // mở lại hộp "Đổi ban" không giữ lựa chọn cũ
+                              setAction({ kind: 'move', row })
+                            }}>
                               Đổi ban
                             </Button>
                           )}

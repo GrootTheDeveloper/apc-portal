@@ -7,6 +7,7 @@ import { loadConfig } from '../../config.js'
 import { db } from '../../db/client.js'
 import { hashPassword } from '../../lib/password.js'
 import { SESSION_COOKIE } from '../auth/session.js'
+import { lockPrivilegedRoles } from './privileged.js'
 import { assertPrivilegedMinimum, deactivateAccount, generateTemporaryPassword } from './service.js'
 
 // A5 — quản lý tài khoản, test với Postgres thật.
@@ -364,6 +365,8 @@ describe('privileged minimum (RP-06, RP-07) with ENFORCE_PRIVILEGED_MINIMUM', ()
     await db
       .$transaction(async (tx) => {
         // Chặn file test khác ghi user_roles đến khi rollback, để trạng thái "trống" không bị chen vào.
+        // Khóa advisory trước, khóa bảng sau: cùng thứ tự với route, không deadlock với file test khác.
+        await lockPrivilegedRoles(tx)
         await tx.$executeRaw`LOCK TABLE "user_roles" IN SHARE ROW EXCLUSIVE MODE`
         await tx.userRole.updateMany({ where: { role: 'BOARD', status: 'ACTIVE' }, data: { status: 'EXPIRED' } })
         await check(tx)

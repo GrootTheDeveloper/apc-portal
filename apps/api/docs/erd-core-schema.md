@@ -12,6 +12,7 @@ Chỉ có tên bảng và quan hệ, để nhìn nhanh bảng nào nối với b
 erDiagram
   users }o--|o departments : "department"
   role_decisions }o--|| users : "user"
+  role_decisions }o--|o user_roles : "userRole"
   role_decisions }o--|| users : "decidedBy"
   role_decisions }o--|o users : "executedBy"
   user_roles }o--|| users : "user"
@@ -92,7 +93,7 @@ erDiagram
     RoleDecisionAction action "GRANT / REVOKE"
     Role role "MEMBER / DEPARTMENT_MANAGER / BOARD / TECH_ADMIN. hiện chỉ dùng cho TECH_ADMIN"
     String userId FK
-    String userRoleId "tùy chọn. REVOKE: dòng user_roles bị thu hồi; GRANT: dòng được tạo khi thực hiện"
+    String userRoleId FK "tùy chọn. REVOKE: dòng user_roles bị thu hồi; GRANT: dòng được tạo khi thực hiện"
     DateTime expiresAt "tùy chọn. GRANT: ngày hết hạn của vai trò, không muộn hơn SiteSetting.termEndsAt (RP-03)"
     String reason
     RoleDecisionStatus status "PENDING / EXECUTED / CANCELLED"
@@ -301,6 +302,7 @@ erDiagram
 
   users }o--|o departments : "department"
   role_decisions }o--|| users : "user"
+  role_decisions }o--|o user_roles : "userRole"
   role_decisions }o--|| users : "decidedBy"
   role_decisions }o--|o users : "executedBy"
   user_roles }o--|| users : "user"

@@ -88,7 +88,8 @@ async function transitionAccount(
   if (count === 0) throw conflict(message)
 }
 
-async function revokeAllSessions(tx: Tx, userId: string, now: Date) {
+/** Thu hồi mọi phiên đang mở của tài khoản; trả số phiên bị thu hồi. Dùng chung cho A5, A6. */
+export async function revokeAllSessions(tx: Tx, userId: string, now: Date) {
   const { count } = await tx.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } })
   return count
 }
@@ -149,8 +150,10 @@ export async function deactivateAccount(
   const actorId = 'service' in actor ? null : (actor.user?.id ?? null)
   const roles = await tx.userRole.updateMany({
     where: { userId, status: { in: ['PENDING', 'ACTIVE'] } },
-    data: { status: 'REVOKED', revokedAt: now, revokedById: actorId },
+    data: { status: 'REVOKED', revokedAt: now, revokedById: actorId, revokeReason: reason },
   })
+  // Quyết định TECH_ADMIN đang chờ về người này không còn thực hiện được nữa: hủy luôn (A6).
+  const decisions = await tx.roleDecision.updateMany({ where: { userId, status: 'PENDING' }, data: { status: 'CANCELLED', cancelledAt: now } })
   await audit(
     actor,
     {
@@ -160,7 +163,7 @@ export async function deactivateAccount(
       category: AuditCategory.SECURITY,
       result: AuditResult.SUCCESS,
       reason,
-      metadata: { revokedSessions: sessions, revokedRoles: roles.count },
+      metadata: { revokedSessions: sessions, revokedRoles: roles.count, cancelledDecisions: decisions.count },
     },
     tx,
   )

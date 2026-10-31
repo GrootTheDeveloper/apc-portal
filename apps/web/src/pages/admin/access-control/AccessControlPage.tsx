@@ -73,6 +73,8 @@ export function AccessControlPage() {
             <ul className="flex flex-col divide-y-2 divide-ink/10 border-y-2 border-ink">
               {decisions.data?.pending.map((decision) => {
                 const own = decision.user?.id === user?.id
+                // Quyết định gán đã quá ngày hết hạn của vai trò: API trả 409, nên không cho bấm Thực hiện.
+                const expired = decision.action === 'GRANT' && !!decision.expiresAt && new Date(decision.expiresAt) <= new Date()
                 return (
                   <li key={decision.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
                     <span className="min-w-0">
@@ -83,7 +85,8 @@ export function AccessControlPage() {
                       </span>
                     </span>
                     <span className="flex flex-wrap gap-2">
-                      {tech && !own && <Button onClick={() => setAction({ kind: 'execute', decision })}>Thực hiện</Button>}
+                      {tech && !own && !expired && <Button onClick={() => setAction({ kind: 'execute', decision })}>Thực hiện</Button>}
+                      {expired && <span className="text-[14px] font-bold text-apc-red">Đã quá ngày hết hạn: Ban Chủ nhiệm cần hủy và ghi quyết định mới.</span>}
                       {tech && own && <span className="text-[14px] text-muted">Quyết định về chính bạn: cần người khác thực hiện.</span>}
                       {board && (
                         <Button variant="outline" onClick={() => setAction({ kind: 'cancel', decision })}>
