@@ -4,10 +4,22 @@ import type { AppConfig } from '../../config.js'
 import { unauthenticated } from '../../lib/errors.js'
 import { currentUser, requireAuth, requireSession } from './rbac.js'
 import { activateAccount, changePassword, getMe, loadAuthUser, loginSchema, verifyLogin } from './service.js'
-import { clearSessionCookie, createSession, revokeSession, SESSION_COOKIE, sessionCookieOptions } from './session.js'
+import { clearSessionCookie, createSession, hashToken, revokeSession, SESSION_COOKIE, sessionCookieOptions } from './session.js'
 
-// Đổi mật khẩu cần đúng mật khẩu hiện tại: giới hạn để không dò được (SEC-05).
-const PASSWORD_CHANGE_LIMIT = { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }
+// Đổi mật khẩu cần đúng mật khẩu hiện tại: giới hạn để không dò được (SEC-05). Đếm theo PHIÊN (băm token cookie),
+// nên đổi IP cũng không lách được; request không có phiên thì đếm theo IP.
+const PASSWORD_CHANGE_LIMIT = {
+  config: {
+    rateLimit: {
+      max: 10,
+      timeWindow: '1 minute',
+      keyGenerator: (request: FastifyRequest) => {
+        const token = request.cookies?.[SESSION_COOKIE]
+        return token ? `session:${hashToken(token)}` : `ip:${request.ip}`
+      },
+    },
+  },
+}
 
 export function authRoutes(config: AppConfig) {
   return async function registerAuthRoutes(app: FastifyInstance) {
@@ -47,13 +59,13 @@ export function authRoutes(config: AppConfig) {
     // A4 — FLOW-09: đổi mật khẩu tạm, thu hồi phiên cũ (kể cả phiên đang dùng) và cấp phiên mới.
     app.post('/auth/activate', { preHandler: requireSession, ...PASSWORD_CHANGE_LIMIT }, async (request, reply) => {
       const userId = currentUser(request).id
-      await activateAccount(userId, request.body)
+      await activateAccount(request, userId, request.body)
       return startSession(userId, request, reply)
     })
 
     // A4 — FLOW-10: đổi mật khẩu khi đang đăng nhập; các phiên khác bị đăng xuất, phiên này giữ nguyên.
     app.post('/auth/change-password', { preHandler: requireAuth, ...PASSWORD_CHANGE_LIMIT }, async (request, reply) => {
-      await changePassword(currentUser(request).id, request.sessionId ?? '', request.body)
+      await changePassword(request, currentUser(request).id, request.sessionId ?? '', request.body)
       return reply.code(204).send()
     })
   }

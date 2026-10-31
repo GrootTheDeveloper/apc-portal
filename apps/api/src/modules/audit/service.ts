@@ -22,6 +22,9 @@ export const AUDIT_ACTIONS = {
   ACCOUNT_RESET_PASSWORD: 'account.reset_password',
   ACCOUNT_DEACTIVATE: 'account.deactivate',
   ACCOUNT_REVOKE_SESSION: 'account.revoke_session',
+  // A4: thành viên tự kích hoạt (đổi mật khẩu tạm) và tự đổi mật khẩu
+  ACCOUNT_ACTIVATE: 'account.activate',
+  ACCOUNT_CHANGE_PASSWORD: 'account.change_password',
   // Phân quyền
   ROLE_GRANT: 'role.grant',
   ROLE_REVOKE: 'role.revoke',

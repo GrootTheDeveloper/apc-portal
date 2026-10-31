@@ -3,7 +3,8 @@ import { z } from 'zod'
 import { db } from '../../db/client.js'
 import { conflict, forbidden, unauthenticated } from '../../lib/errors.js'
 import { hashPassword, verifyPassword } from '../../lib/password.js'
-import { fieldError, newPasswordSchema } from './password-policy.js'
+import { AUDIT_ACTIONS, audit, AuditCategory, type AuditRequestLike, AuditResult } from '../audit/service.js'
+import { fieldError, newPasswordSchema, normalizePassword } from './password-policy.js'
 import type { AuthUser, RoleGrant } from './rbac.js'
 
 /** Vai trò đặc quyền chỉ có hiệu lực khi phiên đã nhập mã 2 lớp (RP-13, BR-19). */
@@ -26,6 +27,7 @@ export async function loadAuthUser(
     select: {
       id: true,
       status: true,
+      mustChangePassword: true,
       departmentId: true,
       roles: {
         where: {
@@ -46,8 +48,9 @@ export async function loadAuthUser(
     { role: 'MEMBER', departmentId: user.departmentId },
     ...stored.map((grant) => ({ role: grant.role, departmentId: grant.departmentId })),
   ]
-  // Chặn ở API theo trạng thái (A4: "PENDING_ACTIVATION chỉ vào được trang kích hoạt"); web còn xét thêm mustChangePassword.
-  const pending = user.status === 'PENDING_ACTIVATION'
+  // Chờ kích hoạt hoặc đang dùng mật khẩu tạm (kể cả tài khoản ACTIVE vừa được cấp lại mật khẩu tạm ở A5):
+  // chỉ được gọi /auth/me, /auth/logout, /auth/activate (FLOW-09 bước 2).
+  const pending = user.status === 'PENDING_ACTIVATION' || user.mustChangePassword
   return { id: user.id, departmentId: user.departmentId, roles, ...(pending ? { pendingActivation: true as const } : {}) }
 }
 
@@ -97,7 +100,7 @@ export async function verifyLogin(input: z.infer<typeof loginSchema>, now = new 
     throw invalidCredentials()
   }
 
-  if (!(await verifyPassword(user.passwordHash, input.password))) {
+  if (!(await verifyPassword(user.passwordHash, normalizePassword(input.password)))) {
     const { failedLoginAttempts } = await db.user.update({
       where: { id: user.id },
       data: { failedLoginAttempts: { increment: 1 } },
@@ -160,11 +163,20 @@ export async function getMe(user: AuthUser, session: { twoFactorVerified: boolea
 
 const currentPasswordSchema = z.object({ currentPassword: z.string().min(1).max(1024) })
 
+const passwordAudit = (action: typeof AUDIT_ACTIONS.ACCOUNT_ACTIVATE | typeof AUDIT_ACTIONS.ACCOUNT_CHANGE_PASSWORD, userId: string, revokedSessions: number) => ({
+  action,
+  targetType: 'USER',
+  targetId: userId,
+  category: AuditCategory.SECURITY,
+  result: AuditResult.SUCCESS,
+  metadata: { revokedSessions },
+})
+
 /**
  * Đổi mật khẩu tạm thành mật khẩu riêng (FLOW-09). Kích hoạt xong: ACTIVE, bỏ cờ mật khẩu tạm, ghi
- * passwordChangedAt và thu hồi MỌI phiên (route cấp phiên mới ngay sau đó). Lỗi thì không đổi gì.
+ * passwordChangedAt, thu hồi MỌI phiên (route cấp phiên mới ngay sau đó) và ghi audit. Lỗi thì không đổi gì.
  */
-export async function activateAccount(userId: string, input: unknown, now = new Date()) {
+export async function activateAccount(actor: AuditRequestLike, userId: string, input: unknown, now = new Date()) {
   const user = await db.user.findUniqueOrThrow({
     where: { id: userId },
     select: {
@@ -181,14 +193,14 @@ export async function activateAccount(userId: string, input: unknown, now = new 
     throw forbidden('Mật khẩu tạm thời đã hết hạn. Liên hệ Ban Chủ nhiệm để được cấp lại.')
   }
 
-  const { newPassword } = newPasswordSchema(user.username).parse(input)
+  const newPassword = normalizePassword(newPasswordSchema(user.username).parse(input).newPassword)
   if (await verifyPassword(user.passwordHash, newPassword)) {
     throw fieldError('newPassword', 'Mật khẩu mới phải khác mật khẩu tạm thời.')
   }
 
   const passwordHash = await hashPassword(newPassword)
-  await db.$transaction([
-    db.user.update({
+  await db.$transaction(async (tx) => {
+    await tx.user.update({
       where: { id: userId },
       data: {
         passwordHash,
@@ -199,33 +211,35 @@ export async function activateAccount(userId: string, input: unknown, now = new 
         temporaryPasswordExpiresAt: null,
         passwordChangedAt: now,
       },
-    }),
-    db.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } }),
-  ])
+    })
+    const { count } = await tx.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } })
+    await audit(actor, passwordAudit(AUDIT_ACTIONS.ACCOUNT_ACTIVATE, userId, count), tx)
+  })
 }
 
 /**
  * Thành viên tự đổi mật khẩu (FLOW-10): phải đúng mật khẩu hiện tại; xong thì thu hồi mọi phiên KHÁC,
- * giữ phiên đang dùng. Sai mật khẩu hiện tại hoặc mật khẩu mới không đạt thì mật khẩu cũ vẫn dùng được.
+ * giữ phiên đang dùng, ghi audit. Sai mật khẩu hiện tại hoặc mật khẩu mới không đạt thì mật khẩu cũ vẫn dùng được.
  */
-export async function changePassword(userId: string, currentSessionId: string, input: unknown, now = new Date()) {
+export async function changePassword(actor: AuditRequestLike, userId: string, currentSessionId: string, input: unknown, now = new Date()) {
   const user = await db.user.findUniqueOrThrow({
     where: { id: userId },
     select: { username: true, passwordHash: true },
   })
-  const { currentPassword } = currentPasswordSchema.parse(input)
-  const { newPassword } = newPasswordSchema(user.username).parse(input)
+  const currentPassword = normalizePassword(currentPasswordSchema.parse(input).currentPassword)
+  const newPassword = normalizePassword(newPasswordSchema(user.username).parse(input).newPassword)
   if (!(await verifyPassword(user.passwordHash, currentPassword))) {
     throw fieldError('currentPassword', 'Mật khẩu hiện tại không đúng.')
   }
   if (newPassword === currentPassword) throw fieldError('newPassword', 'Mật khẩu mới phải khác mật khẩu hiện tại.')
 
   const passwordHash = await hashPassword(newPassword)
-  await db.$transaction([
-    db.user.update({ where: { id: userId }, data: { passwordHash, passwordChangedAt: now } }),
-    db.session.updateMany({
+  await db.$transaction(async (tx) => {
+    await tx.user.update({ where: { id: userId }, data: { passwordHash, passwordChangedAt: now } })
+    const { count } = await tx.session.updateMany({
       where: { userId, revokedAt: null, id: { not: currentSessionId } },
       data: { revokedAt: now },
-    }),
-  ])
+    })
+    await audit(actor, passwordAudit(AUDIT_ACTIONS.ACCOUNT_CHANGE_PASSWORD, userId, count), tx)
+  })
 }
