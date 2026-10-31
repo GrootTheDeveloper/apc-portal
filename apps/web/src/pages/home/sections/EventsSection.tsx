@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom'
 
 import { eventPhoto } from '../../../lib/eventVisual'
 import { formatDateTime, formatTime, vnParts } from '../../../lib/format'
-import { homeEvents } from '../../events/mock'
 import { Eyebrow } from '../../../components/Eyebrow'
+import { useApi } from '../../../hooks/useApi'
+import type { Page } from '../../../lib/api'
+import type { EventListItem } from '../../events/types'
 
 // Màu quét ngang khi rê vào từng hàng, xoay vòng theo bộ ba màu logo (gold thay bằng xanh than để chữ trắng đọc rõ).
 const SWEEPS = ['#C23B22', '#1568C9', '#081F3D']
@@ -19,7 +21,12 @@ function followPointer(event: MouseEvent<HTMLElement>) {
 }
 
 export function EventsSection() {
-  const events = homeEvents()
+  // 3 sự kiện sắp diễn ra gần nhất (E2); T4 sẽ chuyển khối này sang GET /public/home (QĐ-4).
+  const { data } = useApi<Page<EventListItem>>('/public/events?pageSize=3&upcoming=1')
+  const events = data?.items ?? []
+
+  // Đang tải, lỗi hoặc chưa có sự kiện sắp diễn ra: ẩn cả khối, không để khoảng trống (FLOW-01)
+  if (events.length === 0) return null
 
   return (
     <section className="screen flex items-center bg-paper px-4 py-[clamp(40px,8vh,96px)] md:px-8">
