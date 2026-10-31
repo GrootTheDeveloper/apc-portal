@@ -35,7 +35,7 @@ function areaRoutes(menu: readonly MenuGroup[], root: string): RouteObject[] {
     return {
       ...(path ? { path } : {}),
       element: (
-        <RequireAuth roles={page.roles}>
+        <RequireAuth roles={page.roles} compact>
           <Outlet />
         </RequireAuth>
       ),
@@ -97,7 +97,7 @@ export const appRoutes: RouteObject[] = [
             <PortalLayout />
           </RequireAuth>
         ),
-        children: [...areaRoutes(PORTAL_MENU, '/portal'), { path: '*', element: <NotFound /> }],
+        children: [...areaRoutes(PORTAL_MENU, '/portal'), { path: '*', element: <NotFound compact home="/portal" /> }],
       },
       {
         path: 'admin',
@@ -106,7 +106,7 @@ export const appRoutes: RouteObject[] = [
             <AdminLayout />
           </RequireAuth>
         ),
-        children: [...areaRoutes(ADMIN_MENU, '/admin'), { path: '*', element: <NotFound /> }],
+        children: [...areaRoutes(ADMIN_MENU, '/admin'), { path: '*', element: <NotFound compact home="/admin" /> }],
       },
       { path: '*', element: <NotFound /> },
     ],
