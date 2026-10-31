@@ -21,6 +21,11 @@ export class ApiError extends Error {
   }
 }
 
+/** Chỉ 401 nghĩa là phiên đã hết hạn hoặc bị thu hồi; lỗi mạng hay 502/503 thì không đăng xuất người dùng. */
+export function endsSession(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401
+}
+
 type Options = { method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'; body?: unknown }
 
 // Phiên hết hạn hoặc bị thu hồi giữa chừng: mọi 401 báo về đây một lần, AuthProvider đăng ký xử lý

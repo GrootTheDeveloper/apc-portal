@@ -7,6 +7,7 @@ import type {
   ApplicationStatus,
   ContentScope,
   ContentStatus,
+  EventAudience,
   EventStatus,
   MemberStatus,
   RecruitmentRoundStatus,
@@ -218,25 +219,134 @@ async function main() {
     })
   }
 
-  // 4. Events
-  const events: { slug: string; title: string; status: EventStatus; startAt: Date; endAt: Date }[] = [
-    { slug: 'event-upcoming', title: 'Sự kiện sắp diễn ra', status: 'PUBLISHED', startAt: new Date(Date.now() + 86400000), endAt: new Date(Date.now() + 2 * 86400000) },
-    { slug: 'event-cancelled', title: 'Sự kiện đã hủy', status: 'CANCELLED', startAt: new Date(Date.now() + 86400000), endAt: new Date(Date.now() + 2 * 86400000) },
-    { slug: 'event-ended', title: 'Sự kiện đã kết thúc', status: 'ENDED', startAt: new Date(Date.now() - 2 * 86400000), endAt: new Date(Date.now() - 86400000) },
-    { slug: 'event-draft', title: 'Sự kiện nháp', status: 'DRAFT', startAt: new Date(Date.now() + 86400000), endAt: new Date(Date.now() + 2 * 86400000) },
-    { slug: 'event-archived', title: 'Sự kiện lưu trữ', status: 'ARCHIVED', startAt: new Date(Date.now() - 2 * 86400000), endAt: new Date(Date.now() - 86400000) },
+  // 4. Events (E2: thêm audience, thời gian đăng ký, sức chứa; thêm sự kiện nội bộ Ban A và toàn CLB
+  // để test phạm vi xem của portal, và một sự kiện PUBLISHED đã qua endAt để thấy tác vụ event-end chạy)
+  const now = Date.now()
+  const day = 86_400_000
+  const at = (days: number) => new Date(now + days * day)
+
+  const events: {
+    slug: string
+    title: string
+    status: EventStatus
+    audience: EventAudience
+    eventType: string
+    startAt: Date
+    endAt: Date
+    departmentId?: string
+    location?: string
+    onlineUrl?: string
+    registrationOpensAt?: Date
+    registrationClosesAt?: Date
+    capacity?: number
+    allowGuestRegistration?: boolean
+    cancelReason?: string
+  }[] = [
+    {
+      slug: 'event-upcoming',
+      title: 'Workshop sắp diễn ra (công khai)',
+      status: 'PUBLISHED',
+      audience: 'PUBLIC',
+      eventType: 'Workshop',
+      startAt: at(1),
+      endAt: at(2),
+      departmentId: banA.id,
+      location: 'Hội trường A',
+      registrationOpensAt: at(-7),
+      registrationClosesAt: at(1),
+      capacity: 40,
+      allowGuestRegistration: true,
+    },
+    {
+      slug: 'event-cancelled',
+      title: 'Sự kiện đã hủy',
+      status: 'CANCELLED',
+      audience: 'PUBLIC',
+      eventType: 'Cuộc thi',
+      startAt: at(3),
+      endAt: at(4),
+      departmentId: banB.id,
+      location: 'Hội trường B',
+      cancelReason: 'Trùng lịch kiểm tra giữa kỳ của trường, Ban tổ chức xin phép dời sang học kỳ sau.',
+    },
+    {
+      slug: 'event-ended',
+      title: 'Sự kiện đã kết thúc',
+      status: 'ENDED',
+      audience: 'PUBLIC',
+      eventType: 'Tech Talk',
+      startAt: at(-2),
+      endAt: at(-1),
+      departmentId: banA.id,
+      onlineUrl: 'https://meet.google.com/apc-techtalk',
+    },
+    // PUBLISHED đã qua endAt: tác vụ nền 'event-end' sẽ chuyển sang ENDED sau khi chạy
+    {
+      slug: 'event-past-published',
+      title: 'Sự kiện chờ tác vụ event-end',
+      status: 'PUBLISHED',
+      audience: 'PUBLIC',
+      eventType: 'Training',
+      startAt: at(-2),
+      endAt: at(-1),
+      departmentId: banA.id,
+    },
+    // Nội bộ trong ban quản lý: ở portal chỉ thành viên Ban A xem được (E5), không có trên trang công khai
+    {
+      slug: 'event-internal-ban-a',
+      title: 'Sự kiện nội bộ Ban A',
+      status: 'PUBLISHED',
+      audience: 'DEPARTMENT',
+      eventType: 'Training',
+      startAt: at(5),
+      endAt: at(6),
+      departmentId: banA.id,
+      location: 'Phòng họp Ban A',
+      registrationOpensAt: at(-7),
+      registrationClosesAt: at(4),
+      capacity: 30,
+    },
+    // Nội bộ toàn CLB: thành viên mọi ban xem được (E5), không có trên trang công khai
+    {
+      slug: 'event-club',
+      title: 'Sự kiện toàn CLB',
+      status: 'PUBLISHED',
+      audience: 'CLUB',
+      eventType: 'Hackathon',
+      startAt: at(10),
+      endAt: at(11),
+      departmentId: banB.id,
+      location: 'Hội trường A',
+      registrationOpensAt: at(-7),
+      registrationClosesAt: at(9),
+      capacity: 80,
+    },
+    { slug: 'event-draft', title: 'Sự kiện nháp', status: 'DRAFT', audience: 'PUBLIC', eventType: 'Workshop', startAt: at(1), endAt: at(2), departmentId: banA.id },
+    { slug: 'event-archived', title: 'Sự kiện lưu trữ', status: 'ARCHIVED', audience: 'PUBLIC', eventType: 'Workshop', startAt: at(-2), endAt: at(-1), departmentId: banA.id },
   ]
 
   for (const e of events) {
+    const fields = {
+      title: e.title,
+      status: e.status,
+      audience: e.audience,
+      eventType: e.eventType,
+      departmentId: e.departmentId ?? null,
+      location: e.location ?? null,
+      onlineUrl: e.onlineUrl ?? null,
+      registrationOpensAt: e.registrationOpensAt ?? null,
+      registrationClosesAt: e.registrationClosesAt ?? null,
+      capacity: e.capacity ?? null,
+      allowGuestRegistration: e.allowGuestRegistration ?? false,
+      cancelReason: e.cancelReason ?? null,
+    }
     await db.event.upsert({
       where: { slug: e.slug },
-      update: { status: e.status },
+      update: fields,
       create: {
+        ...fields,
         slug: e.slug,
-        title: e.title,
         description: `Mô tả ${e.title}`,
-        eventType: 'Workshop',
-        status: e.status,
         createdById: boardUser.id,
         startAt: e.startAt,
         endAt: e.endAt,

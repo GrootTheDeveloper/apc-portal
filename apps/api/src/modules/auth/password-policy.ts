@@ -6,6 +6,12 @@ import { COMMON_PASSWORDS } from './common-passwords.js'
 // không bắt buộc trộn loại ký tự. Từ chối mật khẩu phổ biến và mật khẩu trùng tên đăng nhập.
 // Trùng mật khẩu tạm / mật khẩu hiện tại cần so với hash nên kiểm ở service (`samePasswordIssue`).
 
+/**
+ * Chuẩn hóa Unicode NFC trước khi băm hoặc so khớp: "ệ" gõ dựng sẵn hay tổ hợp (e + dấu) đều thành một dạng,
+ * nên người dùng không bị báo sai mật khẩu chỉ vì đổi bàn phím/hệ điều hành. Dùng ở đăng nhập, kích hoạt, đổi mật khẩu.
+ */
+export const normalizePassword = (password: string) => password.normalize('NFC')
+
 export const PASSWORD_MIN = 15
 export const PASSWORD_MAX = 128
 

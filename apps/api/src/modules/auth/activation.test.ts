@@ -150,6 +150,63 @@ describe('POST /auth/activate', () => {
   })
 })
 
+describe('góp ý review A4', () => {
+  it('blocks an ACTIVE account that still has a temporary password from every API except activation (403)', async () => {
+    const user = await createUser('active-temp', false)
+    await db.user.update({ where: { id: user.id }, data: { mustChangePassword: true, isTemporaryPassword: true, temporaryPasswordExpiresAt: new Date(Date.now() + 3600_000) } })
+    const { token } = await login(user.username, TEMP)
+    expect((await me(token)).statusCode).toBe(200)
+    const blocked = await post('/auth/change-password', token, { currentPassword: TEMP, newPassword: NEW, confirmPassword: NEW })
+    expect(blocked.statusCode).toBe(403)
+    const activated = await post('/auth/activate', token, { newPassword: NEW, confirmPassword: NEW })
+    expect(activated.statusCode).toBe(200)
+    expect(activated.json()).toMatchObject({ status: 'ACTIVE', mustChangePassword: false })
+  })
+
+  it('writes an audit row for activation and for a password change, without the password', async () => {
+    const user = await createUser('audited')
+    const first = await login(user.username, TEMP)
+    const activated = await post('/auth/activate', first.token, { newPassword: NEW, confirmPassword: NEW })
+    const token = activated.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? ''
+    const NEWER = 'mot cau mat khau khac nua 2027'
+    expect((await post('/auth/change-password', token, { currentPassword: NEW, newPassword: NEWER, confirmPassword: NEWER })).statusCode).toBe(204)
+
+    const logs = await db.auditLog.findMany({ where: { targetId: user.id }, orderBy: { createdAt: 'asc' } })
+    expect(logs.map((log) => log.action)).toEqual(expect.arrayContaining(['account.activate', 'account.change_password']))
+    expect(logs.every((log) => log.actorId === user.id && log.category === 'SECURITY')).toBe(true)
+    const dump = JSON.stringify(logs)
+    for (const secret of [TEMP, NEW, NEWER]) expect(dump).not.toContain(secret)
+  })
+
+  it('normalizes passwords to NFC: set with decomposed accents, sign in with precomposed ones', async () => {
+    const user = await createUser('nfc')
+    const { token } = await login(user.username, TEMP)
+    const decomposed = 'mật khẩu có dấu tiếng việt'.normalize('NFD')
+    expect((await post('/auth/activate', token, { newPassword: decomposed, confirmPassword: decomposed })).statusCode).toBe(200)
+    expect((await login(user.username, decomposed.normalize('NFC'))).status).toBe(200)
+    expect((await login(user.username, decomposed)).status).toBe(200)
+  })
+
+  it('limits password attempts per session, so switching IP does not help (429)', async () => {
+    const user = await createUser('limit', false)
+    const { token } = await login(user.username, TEMP)
+    const statuses: number[] = []
+    for (let attempt = 0; attempt < 11; attempt++) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/auth/change-password',
+        payload: { currentPassword: 'sai-mat-khau-hien-tai', newPassword: NEW, confirmPassword: NEW },
+        cookies: { [SESSION_COOKIE]: token },
+        headers,
+        remoteAddress: `10.9.2.${attempt + 1}`, // mỗi lần một IP khác
+      })
+      statuses.push(response.statusCode)
+    }
+    expect(statuses.slice(0, 10).every((status) => status === 422)).toBe(true)
+    expect(statuses[10]).toBe(429)
+  })
+})
+
 describe('POST /auth/change-password', () => {
   it('signs out every other session but keeps the current one', async () => {
     const user = await createUser('change', false)
