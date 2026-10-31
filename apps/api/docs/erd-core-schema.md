@@ -11,6 +11,10 @@ Chỉ có tên bảng và quan hệ, để nhìn nhanh bảng nào nối với b
 ```mermaid
 erDiagram
   users }o--|o departments : "department"
+  role_decisions }o--|| users : "user"
+  role_decisions }o--|o user_roles : "userRole"
+  role_decisions }o--|| users : "decidedBy"
+  role_decisions }o--|o users : "executedBy"
   user_roles }o--|| users : "user"
   user_roles }o--|o departments : "department"
   user_roles }o--|o users : "grantedBy"
@@ -84,6 +88,22 @@ erDiagram
     DateTime createdAt
     DateTime updatedAt
   }
+  role_decisions {
+    String id PK
+    RoleDecisionAction action "GRANT / REVOKE"
+    Role role "MEMBER / DEPARTMENT_MANAGER / BOARD / TECH_ADMIN. hiện chỉ dùng cho TECH_ADMIN"
+    String userId FK
+    String userRoleId FK "tùy chọn. REVOKE: dòng user_roles bị thu hồi; GRANT: dòng được tạo khi thực hiện"
+    DateTime expiresAt "tùy chọn. GRANT: ngày hết hạn của vai trò, không muộn hơn SiteSetting.termEndsAt (RP-03)"
+    String reason
+    RoleDecisionStatus status "PENDING / EXECUTED / CANCELLED"
+    String decidedById FK
+    String executedById FK "tùy chọn"
+    DateTime executedAt "tùy chọn"
+    DateTime cancelledAt "tùy chọn"
+    DateTime createdAt
+    DateTime updatedAt
+  }
   user_roles {
     String id PK
     String userId FK
@@ -96,6 +116,7 @@ erDiagram
     String grantedById FK "tùy chọn. null khi tạo bằng bootstrap (RP-15)"
     String revokedById FK "tùy chọn"
     DateTime revokedAt "tùy chọn"
+    String revokeReason "tùy chọn. A6: lý do thu hồi (lý do cấp nằm ở `reason`)"
     DateTime createdAt
     DateTime updatedAt
   }
@@ -280,6 +301,10 @@ erDiagram
   }
 
   users }o--|o departments : "department"
+  role_decisions }o--|| users : "user"
+  role_decisions }o--|o user_roles : "userRole"
+  role_decisions }o--|| users : "decidedBy"
+  role_decisions }o--|o users : "executedBy"
   user_roles }o--|| users : "user"
   user_roles }o--|o departments : "department"
   user_roles }o--|o users : "grantedBy"
@@ -331,3 +356,5 @@ erDiagram
 | `FilePurpose` |  |
 | `FileVisibility` | `PUBLIC`, `INTERNAL` |
 | `FileScanStatus` | `PENDING`, `CLEAN`, `REJECTED` |
+| `RoleDecisionAction` | `GRANT`, `REVOKE` |
+| `RoleDecisionStatus` | `PENDING`, `EXECUTED`, `CANCELLED` |

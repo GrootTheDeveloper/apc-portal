@@ -15,6 +15,7 @@ import {
   revokeSessionsFromAdmin,
   unlockAccount,
 } from './service.js'
+import { cancelDecision, changeDepartment, executeDecision, getAccountRoles, grantRole, listDecisions, revokeRole } from './roles.js'
 
 // Quyền theo Vai trò & quyền §8.2 (phiếu A5):
 //   tạo, cấp lại mật khẩu tạm, mở khóa, ngừng hoạt động: BOARD
@@ -22,8 +23,11 @@ import {
 //   thu hồi toàn bộ phiên, xem danh sách/chi tiết: BOARD và TECH_ADMIN (mỗi bên thấy trường khác nhau)
 const BOARD = requireRole('BOARD')
 const BOARD_OR_TECH = requireRole('BOARD', 'TECH_ADMIN')
+const TECH = requireRole('TECH_ADMIN')
 
 type IdParams = { Params: { id: string } }
+type RoleParams = { Params: { id: string; roleId: string } }
+type DecisionParams = { Params: { decisionId: string } }
 
 export function accountRoutes(config: AppConfig) {
   const options = () => ({ enforcePrivilegedMinimum: config.ENFORCE_PRIVILEGED_MINIMUM })
@@ -68,5 +72,38 @@ export function accountRoutes(config: AppConfig) {
     app.post<IdParams>('/admin/accounts/:id/revoke-sessions', { preHandler: BOARD_OR_TECH }, async (request) =>
       revokeSessionsFromAdmin(request, request.params.id, request.body),
     )
+
+    // ─── A6: vai trò & phạm vi (Vai trò & quyền §8.6) ───────────────────────
+    // Gán/thu hồi DEPARTMENT_MANAGER, BOARD, đổi ban: BOARD. TECH_ADMIN: BOARD ghi quyết định, TECH_ADMIN khác thực hiện.
+
+    app.get<IdParams>('/admin/accounts/:id/roles', { preHandler: BOARD_OR_TECH }, async (request) =>
+      getAccountRoles(currentUser(request), request.params.id),
+    )
+
+    app.post<IdParams>('/admin/accounts/:id/roles', { preHandler: BOARD }, async (request, reply) => {
+      const result = await grantRole(request, request.params.id, request.body, options())
+      // Quyết định TECH_ADMIN chưa có hiệu lực ngay: 202.
+      return reply.code(result.kind === 'decision' ? 202 : 201).send(result)
+    })
+
+    app.post<RoleParams>('/admin/accounts/:id/roles/:roleId/revoke', { preHandler: BOARD }, async (request, reply) => {
+      const result = await revokeRole(request, request.params.id, request.params.roleId, request.body, options())
+      return reply.code(result.kind === 'decision' ? 202 : 200).send(result)
+    })
+
+    app.post<RoleParams>('/admin/accounts/:id/roles/:roleId/change-department', { preHandler: BOARD }, async (request) =>
+      changeDepartment(request, request.params.id, request.params.roleId, request.body, options()),
+    )
+
+    app.get('/admin/access-control', { preHandler: BOARD_OR_TECH }, async () => listDecisions())
+
+    app.post<DecisionParams>('/admin/access-control/:decisionId/execute', { preHandler: TECH }, async (request) =>
+      executeDecision(request, request.params.decisionId, options()),
+    )
+
+    app.post<DecisionParams>('/admin/access-control/:decisionId/cancel', { preHandler: BOARD }, async (request, reply) => {
+      await cancelDecision(request, request.params.decisionId, request.body, options())
+      return reply.code(204).send()
+    })
   }
 }

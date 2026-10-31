@@ -15,8 +15,8 @@ type ConfirmDialogProps = {
   confirmLabel: string
   /** nút xác nhận màu đỏ cho hành động khó hoàn tác */
   danger?: boolean
-  /** lý do: bắt buộc (mặc định) hoặc không hỏi */
-  reason?: 'required' | 'optional'
+  /** lý do: bắt buộc (mặc định), không bắt buộc, hoặc không hỏi */
+  reason?: 'required' | 'optional' | 'none'
   /** mã sự cố INC-YYYYMMDD-NN cho quyền INCIDENT */
   incident?: 'required' | 'optional'
   onConfirm: (values: ConfirmValues) => Promise<void>
@@ -58,9 +58,17 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
       setValues({ reason: '' })
     } catch (caught) {
       const fields = fieldErrors(caught)
+      // Lỗi của ô nằm ngoài hộp (vd chọn ban trong phần mô tả) gộp vào dòng thông báo chung.
+      const others = Object.entries(fields)
+        .filter(([field]) => field !== 'reason' && field !== 'incidentId')
+        .flatMap(([, messages]) => messages)
       const stale = caught instanceof ApiError && caught.status === 409
       const message =
-        caught instanceof ApiError && caught.status !== 422 ? caught.message : 'Kiểm tra lại các ô được đánh dấu.'
+        caught instanceof ApiError && caught.status !== 422
+          ? caught.message
+          : others.length > 0
+            ? others.join(' ')
+            : 'Kiểm tra lại các ô được đánh dấu.'
       setError({ message, fields, stale })
     } finally {
       setPending(false)
@@ -97,22 +105,24 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
           </label>
         )}
 
-        <label className={labelClass}>
-          lý do {reason === 'optional' && '(không bắt buộc)'}
-          <textarea
-            className={`${inputClass} min-h-24 resize-y`}
-            value={values.reason}
-            maxLength={500}
-            onChange={(event) => setValues((current) => ({ ...current, reason: event.target.value }))}
-            aria-invalid={!!fields.reason}
-            required={reason === 'required'}
-          />
-          {fields.reason?.map((message) => (
-            <span key={message} className="font-body text-[15px] text-apc-red">
-              {message}
-            </span>
-          ))}
-        </label>
+        {reason !== 'none' && (
+          <label className={labelClass}>
+            lý do {reason === 'optional' && '(không bắt buộc)'}
+            <textarea
+              className={`${inputClass} min-h-24 resize-y`}
+              value={values.reason}
+              maxLength={500}
+              onChange={(event) => setValues((current) => ({ ...current, reason: event.target.value }))}
+              aria-invalid={!!fields.reason}
+              required={reason === 'required'}
+            />
+            {fields.reason?.map((message) => (
+              <span key={message} className="font-body text-[15px] text-apc-red">
+                {message}
+              </span>
+            ))}
+          </label>
+        )}
 
         {error && (
           <div role="alert" className="flex flex-col gap-3 rounded-xl bg-apc-red/10 px-4 py-3 text-[15px] font-bold text-apc-red">
