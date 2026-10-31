@@ -58,7 +58,8 @@ export async function loadAuthUser(
 
 // Khi đăng nhập chỉ chặn độ dài tối đa (tránh băm chuỗi quá dài); mật khẩu ngắn vẫn đi đường "sai mật khẩu".
 export const loginSchema = z.object({
-  username: z.string().trim().min(1).max(100),
+  // Tên đăng nhập lưu chữ thường (A5 createAccount); đăng nhập gõ hoa hay thường đều khớp.
+  username: z.string().trim().toLowerCase().min(1).max(100),
   password: z.string().min(1).max(128),
 })
 

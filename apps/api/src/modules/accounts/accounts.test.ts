@@ -257,6 +257,33 @@ describe('lock, unlock, temporary password, deactivate', () => {
   })
 })
 
+describe('góp ý review A5', () => {
+  it('lock and deactivate pressed at the same time never end as INACTIVE-then-LOCKED', async () => {
+    for (let round = 0; round < 3; round++) {
+      const target = await createUser(`race-${round}`)
+      const [lock, deactivate] = await Promise.all([
+        call('POST', `/admin/accounts/${target.id}/lock`, tokens.board, { reason: 'Khóa cùng lúc' }),
+        call('POST', `/admin/accounts/${target.id}/deactivate`, tokens.board, { reason: 'Ngừng cùng lúc' }),
+      ])
+      expect([204, 409]).toContain(lock.statusCode)
+      expect(deactivate.statusCode).toBe(204) // ngừng hoạt động hợp lệ từ cả ACTIVE lẫn LOCKED
+      const saved = await db.user.findUniqueOrThrow({ where: { id: target.id } })
+      expect(saved.status).toBe('INACTIVE')
+    }
+  })
+
+  it('does not search accounts by email (the query sits in the URL, OPS-11)', async () => {
+    const byEmail = await call('GET', `/admin/accounts?q=${encodeURIComponent(`member-${tag}@test.local`)}`, tokens.board)
+    expect(byEmail.json().items).toEqual([])
+    const byName = await call('GET', `/admin/accounts?q=member-${tag}`, tokens.board)
+    expect(byName.json().items).toHaveLength(1)
+  })
+
+  it('signs in with the username in any letter case', async () => {
+    expect((await login(`MEMBER-${tag}`.toUpperCase())).status).toBe(200)
+  })
+})
+
 describe('privileged minimum (RP-06, RP-07) with ENFORCE_PRIVILEGED_MINIMUM', () => {
   // Chạy trong transaction rồi rollback để không đụng dữ liệu BOARD thật trong database.
   async function inIsolation(check: (tx: Parameters<Parameters<typeof db.$transaction>[0]>[0]) => Promise<void>) {
