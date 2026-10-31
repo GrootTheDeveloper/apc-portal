@@ -69,6 +69,21 @@ const temporaryPasswordFields = async (password: string, now: Date) => ({
   lockoutUntil: null,
 })
 
+/**
+ * Chuyển trạng thái tài khoản CÓ ĐIỀU KIỆN: chỉ ghi khi trạng thái hiện tại còn nằm trong `from` (BR-16).
+ * Hai thao tác bấm cùng lúc (vd khóa và ngừng hoạt động) không ghi đè nhau: thao tác đến sau thấy 0 dòng → 409.
+ */
+async function transitionAccount(
+  tx: Tx,
+  userId: string,
+  from: readonly AccountStatus[],
+  data: Prisma.UserUpdateManyMutationInput,
+  message: string,
+) {
+  const { count } = await tx.user.updateMany({ where: { id: userId, status: { in: [...from] } }, data })
+  if (count === 0) throw conflict(message)
+}
+
 async function revokeAllSessions(tx: Tx, userId: string, now: Date) {
   const { count } = await tx.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } })
   return count
@@ -124,10 +139,8 @@ export async function deactivateAccount(
 ) {
   const user = await tx.user.findUnique({ where: { id: userId }, select: { status: true } })
   if (!user) throw notFound()
-  if (user.status === 'INACTIVE') throw conflict('Tài khoản đã ngừng hoạt động.')
   if (enforcePrivilegedMinimum) await assertPrivilegedMinimum(tx, userId)
-
-  await tx.user.update({ where: { id: userId }, data: { status: 'INACTIVE', deactivatedAt: now } })
+  await transitionAccount(tx, userId, ['PENDING_ACTIVATION', 'ACTIVE', 'LOCKED'], { status: 'INACTIVE', deactivatedAt: now }, 'Tài khoản đã ngừng hoạt động.')
   const sessions = await revokeAllSessions(tx, userId, now)
   const actorId = 'service' in actor ? null : (actor.user?.id ?? null)
   const roles = await tx.userRole.updateMany({
@@ -153,7 +166,13 @@ export async function deactivateAccount(
  * Ngưỡng tối thiểu (RP-06, RP-07, RP-18): sau thao tác phải còn ít nhất 2 người KHÁC giữ mỗi vai trò đặc quyền
  * mà tài khoản này đang giữ. Truyền `roles` để chỉ xét vai trò sắp bị thu hồi (A6). Không đạt → 409.
  */
+// Khóa advisory dùng chung cho mọi lần kiểm ngưỡng tối thiểu (giữ đến hết transaction).
+const PRIVILEGED_MINIMUM_LOCK = 7_103_001
+
 export async function assertPrivilegedMinimum(tx: Tx, userId: string, roles: readonly Role[] = PRIVILEGED, now = new Date()) {
+  // Các transaction khóa/ngừng hoạt động/thu hồi vai trò đặc quyền xếp hàng tại đây: ba BOARD khóa chéo nhau cùng lúc
+  // thì người sau đếm lại sau khi người trước đã commit, không cùng thấy "còn đủ 2" rồi cùng khóa.
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${PRIVILEGED_MINIMUM_LOCK})`
   const active = { status: 'ACTIVE' as const, startsAt: { lte: now }, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] }
   const held = await tx.userRole.findMany({
     where: { userId, role: { in: roles.filter((role) => PRIVILEGED.includes(role)) }, ...active },
@@ -216,9 +235,11 @@ export async function lockAccount(actor: Actor, userId: string, input: unknown, 
   const now = options.now ?? new Date()
   return db.$transaction(async (tx) => {
     const user = await loadTarget(tx, actor, userId, body.updatedAt)
-    assertFrom(user.status, ['PENDING_ACTIVATION', 'ACTIVE'], 'Chỉ khóa được tài khoản đang chờ kích hoạt hoặc đang hoạt động.')
+    const lockable = ['PENDING_ACTIVATION', 'ACTIVE'] as const
+    const message = 'Chỉ khóa được tài khoản đang chờ kích hoạt hoặc đang hoạt động.'
+    assertFrom(user.status, lockable, message)
     if (options.enforcePrivilegedMinimum) await assertPrivilegedMinimum(tx, userId)
-    await tx.user.update({ where: { id: userId }, data: { status: 'LOCKED' } })
+    await transitionAccount(tx, userId, lockable, { status: 'LOCKED' }, message)
     const revokedSessions = await revokeAllSessions(tx, userId, now)
     await audit(
       actor,
@@ -238,10 +259,13 @@ export async function unlockAccount(actor: Actor, userId: string, input: unknown
   return db.$transaction(async (tx) => {
     const user = await loadTarget(tx, actor, userId, body.updatedAt)
     assertFrom(user.status, ['LOCKED'], 'Chỉ mở khóa được tài khoản đang bị khóa.')
-    await tx.user.update({
-      where: { id: userId },
-      data: { status: 'ACTIVE', failedLoginAttempts: 0, lockoutUntil: null },
-    })
+    await transitionAccount(
+      tx,
+      userId,
+      ['LOCKED'],
+      { status: 'ACTIVE', failedLoginAttempts: 0, lockoutUntil: null },
+      'Chỉ mở khóa được tài khoản đang bị khóa.',
+    )
     await audit(actor, accountAudit(AUDIT_ACTIONS.ACCOUNT_UNLOCK, userId, { reason: body.reason }), tx)
   })
 }
@@ -266,7 +290,8 @@ export async function resetTemporaryPassword(actor: Actor, userId: string, input
 export async function reissueTemporaryPassword(tx: Tx, actor: AuditRequestLike, userId: string, reason: string, now = new Date()) {
   const temporaryPassword = generateTemporaryPassword()
   const fields = await temporaryPasswordFields(temporaryPassword, now)
-  await tx.user.update({ where: { id: userId }, data: fields })
+  // Có điều kiện trạng thái: tài khoản vừa bị ngừng hoạt động bởi thao tác khác thì 409, không ghi đè.
+  await transitionAccount(tx, userId, ['PENDING_ACTIVATION', 'ACTIVE', 'LOCKED'], fields, 'Tài khoản đã ngừng hoạt động.')
   const revokedSessions = await revokeAllSessions(tx, userId, now)
   await audit(actor, accountAudit(AUDIT_ACTIONS.ACCOUNT_RESET_PASSWORD, userId, { reason, metadata: { revokedSessions } }), tx)
   return { temporaryPassword, expiresAt: fields.temporaryPasswordExpiresAt }
@@ -324,7 +349,6 @@ export async function listAccounts(viewer: AuthUser, query: unknown, now = new D
           OR: [
             { username: { contains: params.q, mode: 'insensitive' } },
             { fullName: { contains: params.q, mode: 'insensitive' } },
-            ...(board ? [{ email: { contains: params.q, mode: 'insensitive' as const } }] : []),
           ],
         }
       : {}),

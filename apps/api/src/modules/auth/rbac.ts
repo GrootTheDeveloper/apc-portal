@@ -27,7 +27,7 @@ export type AuthUser = {
   id: string
   departmentId: string | null
   roles: RoleGrant[]
-  /** Có khi tài khoản còn PENDING_ACTIVATION (FLOW-09): chỉ dùng được các API `requireSession`. */
+  /** Có khi tài khoản chờ kích hoạt hoặc phải đổi mật khẩu tạm (FLOW-09): chỉ dùng được các API `requireSession`. */
   pendingActivation?: true
 }
 

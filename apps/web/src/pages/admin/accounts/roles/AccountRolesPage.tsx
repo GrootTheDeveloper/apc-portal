@@ -263,6 +263,10 @@ export function AccountRolesPage() {
                         {row.revokedAt ? ` · thu hồi ${formatDate(row.revokedAt)}` : ''}
                         {row.revokedBy ? ` bởi ${row.revokedBy.fullName}` : ''}
                       </span>
+                      <span className="block text-muted">
+                        Lý do cấp: {row.reason}
+                        {row.revokeReason ? ` · lý do thu hồi: ${row.revokeReason}` : ''}
+                      </span>
                     </li>
                   ))}
                 </ul>

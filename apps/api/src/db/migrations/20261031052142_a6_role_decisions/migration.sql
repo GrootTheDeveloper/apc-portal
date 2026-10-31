@@ -4,6 +4,9 @@ CREATE TYPE "RoleDecisionAction" AS ENUM ('GRANT', 'REVOKE');
 -- CreateEnum
 CREATE TYPE "RoleDecisionStatus" AS ENUM ('PENDING', 'EXECUTED', 'CANCELLED');
 
+-- AlterTable
+ALTER TABLE "user_roles" ADD COLUMN     "revokeReason" TEXT;
+
 -- CreateTable
 CREATE TABLE "role_decisions" (
     "id" TEXT NOT NULL,
