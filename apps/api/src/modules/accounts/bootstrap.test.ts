@@ -6,17 +6,25 @@ import { ZodError } from 'zod'
 import { db } from '../../db/client.js'
 import type { Prisma } from '../../db/generated/client.js'
 import { verifyPassword } from '../../lib/password.js'
-import { BOOTSTRAP_REASON, BootstrapRefused, runBootstrapInTx } from './bootstrap.js'
+import { BootstrapRefused, runBootstrapInTx } from './bootstrap.js'
+import { lockPrivilegedRoles } from './privileged.js'
 
-// A7 — mỗi test chạy trong transaction rồi rollback, giả lập "database trống" (không BOARD/TECH_ADMIN ACTIVE,
-// chưa có tài khoản bootstrap, chưa có termEndsAt) mà không đụng dữ liệu thật.
+// A7 — mỗi test chạy trong transaction rồi rollback, giả lập "database trống" (chưa từng có dòng BOARD/TECH_ADMIN,
+// chưa có termEndsAt) mà không đụng dữ liệu thật.
 type Tx = Prisma.TransactionClient
 const tag = randomUUID().slice(0, 8)
+const DAY = 24 * 3600 * 1000
+
+/** Ngày YYYY-MM-DD theo giờ Việt Nam, cách hôm nay `days` ngày (test không hỏng khi qua một ngày cố định). */
+const vnDay = (days: number) => new Date(Date.now() + days * DAY + 7 * 3600 * 1000).toISOString().slice(0, 10)
+/** 23:59:59 giờ Việt Nam của ngày đó, như bootstrap lưu. */
+const endOfVnDay = (date: string) => new Date(`${date}T23:59:59+07:00`)
+const TERM = vnDay(240)
 
 const input = (overrides: { board?: object; tech?: object } = {}) => ({
   board: { username: `chu.nhiem-${tag}`, email: `chu.nhiem-${tag}@test.local`, fullName: 'Chủ nhiệm đầu tiên', ...overrides.board },
   tech: { username: `van.hanh-${tag}`, email: `van.hanh-${tag}@test.local`, fullName: 'Vận hành đầu tiên', ...overrides.tech },
-  termEndsAt: '2027-06-30',
+  termEndsAt: TERM,
 })
 
 /** Số user do file test này tạo (theo hậu tố tag), không bị lệch khi file test khác chạy song song. */
@@ -28,9 +36,11 @@ async function onEmptyDatabase(check: (tx: Tx) => Promise<void>) {
     .$transaction(
       async (tx) => {
         // Chặn file test khác ghi user_roles đến khi rollback, để trạng thái "trống" không bị chen vào.
+        // Khóa advisory trước, khóa bảng sau: cùng thứ tự với route, không deadlock với file test khác.
+        await lockPrivilegedRoles(tx)
         await tx.$executeRaw`LOCK TABLE "user_roles" IN SHARE ROW EXCLUSIVE MODE`
-        await tx.userRole.updateMany({ where: { role: { in: ['BOARD', 'TECH_ADMIN'] }, status: 'ACTIVE' }, data: { status: 'EXPIRED' } })
-        await tx.userRole.updateMany({ where: { reason: BOOTSTRAP_REASON, status: 'PENDING' }, data: { status: 'REVOKED' } })
+        // "Chưa từng có" vai trò đặc quyền: bỏ hết các dòng BOARD/TECH_ADMIN (rollback sau test).
+        await tx.userRole.deleteMany({ where: { role: { in: ['BOARD', 'TECH_ADMIN'] } } })
         await tx.siteSetting.deleteMany({})
         await check(tx)
         throw rollback
@@ -61,7 +71,7 @@ describe('bootstrap (RP-15, AC-RBAC-09)', () => {
         expect(user).toMatchObject({ status: 'PENDING_ACTIVATION', mustChangePassword: true, isTemporaryPassword: true })
         expect(user.roles).toHaveLength(1)
         expect(user.roles[0]).toMatchObject({ status: 'PENDING', reason: 'bootstrap' })
-        expect(user.roles[0]!.expiresAt!.toISOString()).toBe('2027-06-30T16:59:59.000Z') // 23:59:59 giờ Việt Nam
+        expect(user.roles[0]!.expiresAt!.toISOString()).toBe(endOfVnDay(TERM).toISOString()) // 23:59:59 giờ Việt Nam
       }
       // Database trống chưa có site_settings: không tạo dòng rỗng (sẽ làm /public/about lỗi 500), báo nhập ở trang Thông tin APC.
       expect(result.termEndsAtSaved).toBe(false)
@@ -109,7 +119,7 @@ describe('bootstrap (RP-15, AC-RBAC-09)', () => {
       const result = await runBootstrapInTx(tx, input())
       expect(result.termEndsAtSaved).toBe(true)
       const setting = await tx.siteSetting.findFirstOrThrow()
-      expect(setting.termEndsAt!.toISOString()).toBe('2027-06-30T16:59:59.000Z')
+      expect(setting.termEndsAt!.toISOString()).toBe(endOfVnDay(TERM).toISOString())
       expect(setting.info).toEqual({ name: 'APC' }) // không đụng nội dung giới thiệu
     })
   })
@@ -140,9 +150,63 @@ describe('bootstrap (RP-15, AC-RBAC-09)', () => {
     await onEmptyDatabase(async (tx) => {
       await expect(runBootstrapInTx(tx, input({ tech: { username: `chu.nhiem-${tag}` } }))).rejects.toBeInstanceOf(ZodError)
       await expect(runBootstrapInTx(tx, input({ tech: { email: `chu.nhiem-${tag}@test.local` } }))).rejects.toBeInstanceOf(ZodError)
-      await expect(runBootstrapInTx(tx, { ...input(), termEndsAt: '30/06/2027' })).rejects.toBeInstanceOf(ZodError)
+      await expect(runBootstrapInTx(tx, { ...input(), termEndsAt: '30/06/2099' })).rejects.toBeInstanceOf(ZodError)
       await expect(runBootstrapInTx(tx, null)).rejects.toBeInstanceOf(BootstrapRefused)
       expect(await ours(tx)).toBe(0)
+    })
+  })
+
+  it('refuses for good once any BOARD/TECH_ADMIN row exists that is not a pending bootstrap row (expired, revoked or forged)', async () => {
+    // Bootstrap xong rồi mọi vai trò hết hạn: không mở lại được.
+    await onEmptyDatabase(async (tx) => {
+      await runBootstrapInTx(tx, input())
+      await tx.userRole.updateMany({ where: { role: { in: ['BOARD', 'TECH_ADMIN'] } }, data: { status: 'EXPIRED' } })
+      await expect(runBootstrapInTx(tx, null)).rejects.toBeInstanceOf(BootstrapRefused)
+      await expect(runBootstrapInTx(tx, input({ board: { username: `moi-${tag}`, email: `moi-${tag}@test.local` } }))).rejects.toBeInstanceOf(BootstrapRefused)
+    })
+    // BOARD gõ lý do "bootstrap" ở trang vai trò (A6 ghi người cấp): không bị nhận nhầm là dòng bootstrap.
+    await onEmptyDatabase(async (tx) => {
+      const granter = await tx.user.create({ data: { username: `cap-${tag}`, email: `cap-${tag}@test.local`, passwordHash: 'x', fullName: 'Người cấp', status: 'ACTIVE' } })
+      const forged = await tx.user.create({ data: { username: `gia-${tag}`, email: `gia-${tag}@test.local`, passwordHash: 'x', fullName: 'Giả', status: 'ACTIVE' } })
+      await tx.userRole.create({ data: { userId: forged.id, role: 'BOARD', status: 'PENDING', startsAt: new Date(), reason: 'bootstrap', grantedById: granter.id } })
+      await expect(runBootstrapInTx(tx, null)).rejects.toBeInstanceOf(BootstrapRefused)
+    })
+  })
+
+  it('refuses a partial reissue when the bootstrap pair is no longer exactly one BOARD and one TECH_ADMIN', async () => {
+    await onEmptyDatabase(async (tx) => {
+      const first = await runBootstrapInTx(tx, input())
+      const tech = await tx.user.findUniqueOrThrow({ where: { username: first.accounts.find((account) => account.role === 'TECH_ADMIN')!.username } })
+      await tx.userRole.updateMany({ where: { userId: tech.id }, data: { status: 'REVOKED' } })
+      const before = await tx.user.findMany({ where: { username: { endsWith: `-${tag}` } }, select: { passwordHash: true } })
+      await expect(runBootstrapInTx(tx, null)).rejects.toBeInstanceOf(BootstrapRefused)
+      const after = await tx.user.findMany({ where: { username: { endsWith: `-${tag}` } }, select: { passwordHash: true } })
+      expect(after).toEqual(before)
+    })
+  })
+
+  it('keeps an existing termEndsAt as the single source: a later date is refused, an earlier one is used for the roles', async () => {
+    await onEmptyDatabase(async (tx) => {
+      const saved = endOfVnDay(vnDay(120))
+      await tx.siteSetting.create({ data: { info: { name: 'APC' }, termEndsAt: saved } })
+      await expect(runBootstrapInTx(tx, input())).rejects.toBeInstanceOf(BootstrapRefused) // TERM = +240 ngày > +120
+      expect(await ours(tx)).toBe(0)
+
+      const earlier = vnDay(90)
+      await runBootstrapInTx(tx, { ...input(), termEndsAt: earlier })
+      const roles = await tx.userRole.findMany({ where: { user: { username: { endsWith: `-${tag}` } } } })
+      expect(roles.map((role) => role.expiresAt!.toISOString())).toEqual([endOfVnDay(earlier).toISOString(), endOfVnDay(earlier).toISOString()])
+      expect((await tx.siteSetting.findFirstOrThrow()).termEndsAt!.toISOString()).toBe(saved.toISOString()) // không ghi đè
+    })
+  })
+
+  it('audits writing termEndsAt into site_settings (service:bootstrap, org.update_info)', async () => {
+    await onEmptyDatabase(async (tx) => {
+      const setting = await tx.siteSetting.create({ data: { info: { name: 'APC' }, termEndsAt: null } })
+      await runBootstrapInTx(tx, input())
+      const log = await tx.auditLog.findFirstOrThrow({ where: { action: 'org.update_info', targetId: setting.id } })
+      expect(log).toMatchObject({ actorType: 'SERVICE', serviceName: 'bootstrap', result: 'SUCCESS' })
+      expect(log.metadata).toMatchObject({ field: 'termEndsAt', termEndsAt: endOfVnDay(TERM).toISOString() })
     })
   })
 })
