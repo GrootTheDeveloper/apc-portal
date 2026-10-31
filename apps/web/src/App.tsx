@@ -9,6 +9,8 @@ import { AboutPage } from './pages/about/AboutPage'
 import { LoginPage } from './pages/auth/login/LoginPage'
 import { EventDetailPage } from './pages/events/detail/EventDetailPage'
 import { EventsListPage } from './pages/events/list/EventsListPage'
+import { EventRegisterPage } from './pages/events/register/EventRegisterPage'
+import { RegistrationLookupPage } from './pages/events/lookup/RegistrationLookupPage'
 import { HomePage } from './pages/home/HomePage'
 import { MenuPlaceholder } from './pages/MenuPlaceholder'
 import { NewsDetailPage } from './pages/news/detail/NewsDetailPage'
@@ -31,8 +33,9 @@ const router = createBrowserRouter([
       { path: 'news', element: <NewsListPage /> },
       { path: 'news/:slug', element: <NewsDetailPage /> },
       // Route tĩnh khai báo trước route động /events/:slug (Sitemap §15.1).
-      { path: 'events/registration-lookup', element: <Placeholder title="Tra cứu đăng ký sự kiện" /> },
+      { path: 'events/registration-lookup', element: <RegistrationLookupPage /> },
       { path: 'events', element: <EventsListPage /> },
+      { path: 'events/:slug/register', element: <EventRegisterPage /> },
       { path: 'events/:slug', element: <EventDetailPage /> },
       { path: 'projects', element: <ProjectListPage /> },
       { path: 'projects/:slug', element: <ProjectDetailPage /> },
