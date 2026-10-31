@@ -21,6 +21,11 @@ export class ApiError extends Error {
   }
 }
 
+/** Chỉ 401 nghĩa là phiên đã hết hạn hoặc bị thu hồi; lỗi mạng hay 502/503 thì không đăng xuất người dùng. */
+export function endsSession(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401
+}
+
 type Options = { method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'; body?: unknown }
 
 // Phiên hết hạn hoặc bị thu hồi giữa chừng: mọi 401 báo về đây một lần, AuthProvider đăng ký xử lý
@@ -32,7 +37,10 @@ export function onUnauthorized(handler: (() => void) | null) {
 
 export async function api<T = unknown>(path: string, { method, body }: Options = {}): Promise<T> {
   const init: RequestInit = { method: method ?? (body === undefined ? 'GET' : 'POST') }
-  if (body !== undefined) {
+  if (body instanceof FormData) {
+    // Upload tệp (D2): để trình duyệt tự đặt Content-Type kèm boundary multipart.
+    init.body = body
+  } else if (body !== undefined) {
     init.headers = { 'Content-Type': 'application/json' }
     init.body = JSON.stringify(body)
   }

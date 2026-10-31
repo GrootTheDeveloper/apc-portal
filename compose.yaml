@@ -45,6 +45,19 @@ services:
       timeout: 5s
       retries: 20
 
+  # Quét mã độc tệp tải lên (D2, SEC-15). Dùng khoảng 1,5 GB RAM nên không bật mặc định:
+  #   node scripts/compose.mjs --profile scan up -d clamav   (rồi đặt FILE_SCAN_MODE=clamav trong .env)
+  # Lần đầu cần vài phút tải cơ sở dữ liệu mẫu virus trước khi cổng 3310 nhận kết nối.
+  clamav:
+    image: clamav/clamav:1.4
+    profiles: [scan]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${CLAMAV_PORT:-3310}:3310"
+    volumes:
+      - clamav_data:/var/lib/clamav
+
 volumes:
   postgres_data:
   storage_data:
+  clamav_data:

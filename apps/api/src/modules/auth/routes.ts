@@ -13,12 +13,12 @@ export function authRoutes(config: AppConfig) {
   return async function registerAuthRoutes(app: FastifyInstance) {
     /** Cấp phiên mới cho tài khoản và trả về thông tin như /auth/me. */
     async function startSession(userId: string, request: FastifyRequest, reply: FastifyReply) {
-      // Phiên mới tạo đang tạm đặt twoFactorVerified = true (xem createSession, TODO B3).
-      const user = await loadAuthUser(userId, { twoFactorVerified: true })
+      const session = await createSession(userId, { ipAddress: request.ip, userAgent: request.headers['user-agent'] })
+      // Vai trò tính theo trạng thái 2 lớp của chính phiên vừa tạo (NEW_SESSION_TWO_FACTOR_VERIFIED, không ghi cứng ở đây).
+      const user = await loadAuthUser(userId, { twoFactorVerified: session.twoFactorVerified })
       if (!user) throw unauthenticated()
-      const token = await createSession(userId, { ipAddress: request.ip, userAgent: request.headers['user-agent'] })
-      reply.setCookie(SESSION_COOKIE, token, sessionCookieOptions(config))
-      return getMe(user, { twoFactorVerified: true })
+      reply.setCookie(SESSION_COOKIE, session.token, sessionCookieOptions(config))
+      return getMe(user, { twoFactorVerified: session.twoFactorVerified })
     }
 
     // Giới hạn thô theo IP (SEC-05); khóa 15 phút sau 5 lần sai theo tài khoản nằm trong verifyLogin.
