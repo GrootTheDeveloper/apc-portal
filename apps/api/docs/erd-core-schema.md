@@ -21,6 +21,9 @@ erDiagram
   posts }o--|o users : "publishedBy"
   events }o--|o departments : "department"
   events }o--|| users : "createdBy"
+  events }o--|o users : "attendanceFinalizedBy"
+  event_registrations }o--|| events : "event"
+  event_registrations }o--|o users : "user"
   projects }o--|o departments : "department"
   projects }o--|| users : "createdBy"
   recruitment_rounds }o--|| users : "createdBy"
@@ -30,6 +33,7 @@ erDiagram
   membership_applications |o--|o users : "convertedUser"
   notification_deliveries }o--|o departments : "department"
   audit_logs }o--|o users : "actor"
+  stored_files }o--|| users : "uploadedBy"
 ```
 
 ## Chi tiết từng bảng
@@ -132,14 +136,36 @@ erDiagram
     String coverImageUrl "tùy chọn"
     String eventType "Loại/chuyên mục: Workshop, Training, Contest..."
     EventStatus status "DRAFT / PUBLISHED / CANCELLED / ENDED / ARCHIVED"
+    EventAudience audience "EVT-02; departmentId bên dưới là ban quản lý, không phải đối tượng"
     String departmentId FK "tùy chọn"
     String contactPoint "tùy chọn"
     String createdById FK
     String location "tùy chọn"
+    String onlineUrl "tùy chọn. Link trực tuyến khi không dùng địa điểm; chỉ nhận http/https (FLOW-18)"
     DateTime startAt
     DateTime endAt
+    DateTime registrationOpensAt "tùy chọn"
+    DateTime registrationClosesAt "tùy chọn"
+    Int capacity "tùy chọn. null = không giới hạn"
+    Boolean allowGuestRegistration "Người ngoài APC đăng ký được; chỉ áp dụng khi audience = PUBLIC"
+    String cancelReason "tùy chọn"
+    DateTime attendanceFinalizedAt "tùy chọn"
+    String attendanceFinalizedById FK "tùy chọn"
     DateTime createdAt
     DateTime updatedAt
+  }
+  event_registrations {
+    String id PK
+    String eventId FK
+    String userId FK "tùy chọn"
+    String guestFullName "tùy chọn"
+    String guestEmail "tùy chọn"
+    String guestStudentId "tùy chọn"
+    String registrationCode UK
+    EventRegistrationStatus status "REGISTERED / CANCELLED"
+    EventAttendanceStatus attendanceStatus "NOT_MARKED / PRESENT / EXCUSED / ABSENT"
+    DateTime registeredAt
+    DateTime cancelledAt "tùy chọn"
   }
   projects {
     String id PK
@@ -237,6 +263,20 @@ erDiagram
     DateTime grantedAt
     DateTime revokedAt "tùy chọn"
   }
+  stored_files {
+    String id PK
+    String storageKey UK
+    String originalName
+    String mimeType "Loại xác định từ nội dung tệp, không theo đuôi file/header"
+    Int size "byte"
+    FilePurpose purpose
+    FileVisibility visibility "PUBLIC / INTERNAL"
+    FileScanStatus scanStatus "PENDING / CLEAN / REJECTED"
+    DateTime scannedAt "tùy chọn"
+    String uploadedById FK
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
   users }o--|o departments : "department"
   user_roles }o--|| users : "user"
@@ -249,6 +289,9 @@ erDiagram
   posts }o--|o users : "publishedBy"
   events }o--|o departments : "department"
   events }o--|| users : "createdBy"
+  events }o--|o users : "attendanceFinalizedBy"
+  event_registrations }o--|| events : "event"
+  event_registrations }o--|o users : "user"
   projects }o--|o departments : "department"
   projects }o--|| users : "createdBy"
   recruitment_rounds }o--|| users : "createdBy"
@@ -258,6 +301,7 @@ erDiagram
   membership_applications |o--|o users : "convertedUser"
   notification_deliveries }o--|o departments : "department"
   audit_logs }o--|o users : "actor"
+  stored_files }o--|| users : "uploadedBy"
 ```
 
 ## Giá trị trạng thái (enum)
@@ -273,6 +317,9 @@ erDiagram
 | `ApplicationStatus` | `NEW`, `REVIEWING`, `INTERVIEW`, `ACCEPTED`, `REJECTED`, `WITHDRAWN` |
 | `RoleAssignmentStatus` | `PENDING`, `ACTIVE`, `EXPIRED`, `REVOKED` |
 | `EventStatus` | `DRAFT`, `PUBLISHED`, `CANCELLED`, `ENDED`, `ARCHIVED` |
+| `EventAudience` |  |
+| `EventRegistrationStatus` | `REGISTERED`, `CANCELLED` |
+| `EventAttendanceStatus` | `NOT_MARKED`, `PRESENT`, `EXCUSED`, `ABSENT` |
 | `RecruitmentRoundStatus` | `DRAFT`, `OPEN`, `CLOSED`, `ARCHIVED` |
 | `DeliveryStatus` | `PENDING`, `SENDING`, `RETRY`, `SENT`, `FAILED` |
 | `AuditActorType` | `USER`, `SERVICE` |
@@ -280,3 +327,6 @@ erDiagram
 | `AuditResult` | `SUCCESS`, `FAILURE` |
 | `ConsentSubjectType` | `APPLICATION`, `EVENT_REGISTRATION`, `USER` |
 | `ConsentPurpose` | `RECRUITMENT_PROCESSING`, `EVENT_REGISTRATION`, `PUBLIC_NAME`, `PUBLIC_PHOTO` |
+| `FilePurpose` |  |
+| `FileVisibility` | `PUBLIC`, `INTERNAL` |
+| `FileScanStatus` | `PENDING`, `CLEAN`, `REJECTED` |

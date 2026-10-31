@@ -42,6 +42,7 @@ export const AUDIT_ACTIONS = {
   MEMBER_UPDATE_MANAGED: 'member.update_managed_data',
   // Sự kiện
   EVENT_PUBLISH: 'event.publish',
+  EVENT_END: 'event.end', // Tác vụ nền event-end (E2) chuyển PUBLISHED quá endAt sang ENDED
   EVENT_CANCEL: 'event.cancel',
   EVENT_EXPORT: 'event.export',
   EVENT_CHECKIN: 'event.checkin',
@@ -59,6 +60,8 @@ export const AUDIT_ACTIONS = {
   DOCUMENT_UPDATE_PERMISSION: 'document.update_permission',
   DOCUMENT_ARCHIVE: 'document.archive',
   DOCUMENT_DELETE: 'document.delete',
+  // Tệp (D2)
+  FILE_MALWARE_DETECTED: 'file.malware_detected',
   // Tổ chức
   ORG_UPDATE_INFO: 'org.update_info',
   ORG_UPDATE_DEPARTMENTS: 'org.update_departments',

@@ -301,6 +301,12 @@ Email do API gửi (qua `enqueueEmail`) được worker trong process API gửi 
 
 Lệnh `migrate reset` xóa toàn bộ dữ liệu trong database local. Không dùng `docker compose down -v` trừ khi chủ động muốn xóa cả database lẫn kho tệp local.
 
+**Quét mã độc tệp tải lên (ClamAV).** Mặc định `FILE_SCAN_MODE=skip`: tệp được coi là sạch và log API có cảnh báo. ClamAV dùng khoảng 1,5 GB RAM nên không bật cùng `pnpm infra:up`. Khi cần thử quét thật:
+
+1. `node scripts/compose.mjs --profile scan up -d clamav` (lần đầu chờ vài phút tải mẫu virus; xem bằng `pnpm infra:logs`).
+2. Đặt `FILE_SCAN_MODE=clamav` trong `.env`, chạy lại `pnpm dev`.
+3. Tắt: `node scripts/compose.mjs --profile scan stop clamav`, đổi lại `FILE_SCAN_MODE=skip`.
+
 ### 10.4. Sửa trang chủ
 
 Trang chủ là các component React trong `apps/web/src/pages/home/sections/`; Navbar và Footer nằm ở `apps/web/src/layouts/`. Sửa trực tiếp các file này, rồi chạy `pnpm check` và mở trang `/` để kiểm tra.
