@@ -53,14 +53,26 @@ async function login(username: string, password = PASSWORD) {
   return { status: response.statusCode, token: response.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? '' }
 }
 
-const call = (method: 'GET' | 'POST', url: string, token: string, payload?: object) =>
-  app.inject({
+// Thao tác đổi trạng thái bắt buộc gửi `updatedAt` của bản đang xem (STATE-09). Test không tự ghi `updatedAt`
+// thì helper đọc bản mới nhất, giống trang chi tiết vừa tải xong.
+const STATEFUL_ACTION = /^\/admin\/accounts\/([^/]+)\/(lock|unlock|reset-password|deactivate)$/
+
+async function call(method: 'GET' | 'POST', url: string, token: string, payload?: Record<string, unknown>) {
+  const match = STATEFUL_ACTION.exec(url)
+  let body = payload
+  const id = match?.[1]
+  if (id && payload && !('updatedAt' in payload)) {
+    const user = await db.user.findUnique({ where: { id }, select: { updatedAt: true } })
+    if (user) body = { ...payload, updatedAt: user.updatedAt.toISOString() }
+  }
+  return app.inject({
     method,
     url,
     cookies: token ? { [SESSION_COOKIE]: token } : {},
     headers: origin,
-    ...(payload ? { payload } : {}),
+    ...(body ? { payload: body } : {}),
   })
+}
 const me = (token: string) => call('GET', '/auth/me', token)
 
 let departmentA: { id: string }
@@ -261,14 +273,16 @@ describe('góp ý review A5', () => {
   it('lock and deactivate pressed at the same time never end as INACTIVE-then-LOCKED', async () => {
     for (let round = 0; round < 3; round++) {
       const target = await createUser(`race-${round}`)
+      const updatedAt = target.updatedAt.toISOString() // cả hai quản trị viên mở cùng một bản
       const [lock, deactivate] = await Promise.all([
-        call('POST', `/admin/accounts/${target.id}/lock`, tokens.board, { reason: 'Khóa cùng lúc' }),
-        call('POST', `/admin/accounts/${target.id}/deactivate`, tokens.board, { reason: 'Ngừng cùng lúc' }),
+        call('POST', `/admin/accounts/${target.id}/lock`, tokens.board, { reason: 'Khóa cùng lúc', updatedAt }),
+        call('POST', `/admin/accounts/${target.id}/deactivate`, tokens.board, { reason: 'Ngừng cùng lúc', updatedAt }),
       ])
-      expect([204, 409]).toContain(lock.statusCode)
-      expect(deactivate.statusCode).toBe(204) // ngừng hoạt động hợp lệ từ cả ACTIVE lẫn LOCKED
+      expect([lock.statusCode, deactivate.statusCode]).toContain(204)
+      for (const response of [lock, deactivate]) expect([204, 409]).toContain(response.statusCode)
       const saved = await db.user.findUniqueOrThrow({ where: { id: target.id } })
-      expect(saved.status).toBe('INACTIVE')
+      // Ngừng hoạt động thành công thì kết quả cuối luôn là INACTIVE, không bao giờ bị khóa đè lên.
+      expect(saved.status).toBe(deactivate.statusCode === 204 ? 'INACTIVE' : 'LOCKED')
     }
   })
 
@@ -281,6 +295,65 @@ describe('góp ý review A5', () => {
 
   it('signs in with the username in any letter case', async () => {
     expect((await login(`MEMBER-${tag}`.toUpperCase())).status).toBe(200)
+  })
+
+  it('does not touch updatedAt on a normal sign-in, so an open admin form stays valid', async () => {
+    const target = await createUser('quiet-login')
+    const before = await db.user.findUniqueOrThrow({ where: { id: target.id }, select: { updatedAt: true } })
+    expect((await login(target.username)).status).toBe(200)
+    expect((await login(target.username)).status).toBe(200)
+    const after = await db.user.findUniqueOrThrow({ where: { id: target.id }, select: { updatedAt: true } })
+    expect(after.updatedAt.getTime()).toBe(before.updatedAt.getTime())
+    const lock = await call('POST', `/admin/accounts/${target.id}/lock`, tokens.board, { reason: 'Bản cũ vẫn hợp lệ', updatedAt: before.updatedAt.toISOString() })
+    expect(lock.statusCode).toBe(204)
+  })
+
+  it('requires updatedAt for lock, unlock, temporary password and deactivate (422)', async () => {
+    const target = await createUser('no-version')
+    for (const action of ['lock', 'unlock', 'reset-password', 'deactivate']) {
+      const response = await call('POST', `/admin/accounts/${target.id}/${action}`, tokens.board, { reason: 'Thiếu phiên bản', updatedAt: undefined })
+      expect(response.statusCode).toBe(422)
+    }
+    expect((await db.user.findUniqueOrThrow({ where: { id: target.id } })).status).toBe('ACTIVE')
+  })
+
+  it('refuses invalid transitions with 409: lock a LOCKED or INACTIVE account, reset the password of an INACTIVE one', async () => {
+    const locked = await createUser('already-locked')
+    await db.user.update({ where: { id: locked.id }, data: { status: 'LOCKED' } })
+    expect((await call('POST', `/admin/accounts/${locked.id}/lock`, tokens.board, { reason: 'Khóa lần hai' })).statusCode).toBe(409)
+
+    const inactive = await createUser('already-inactive')
+    await db.user.update({ where: { id: inactive.id }, data: { status: 'INACTIVE', deactivatedAt: new Date() } })
+    expect((await call('POST', `/admin/accounts/${inactive.id}/lock`, tokens.board, { reason: 'Khóa người đã nghỉ' })).statusCode).toBe(409)
+    expect((await call('POST', `/admin/accounts/${inactive.id}/reset-password`, tokens.board, { reason: 'Cấp lại' })).statusCode).toBe(409)
+    expect((await db.user.findUniqueOrThrow({ where: { id: inactive.id } })).isTemporaryPassword).toBe(false)
+  })
+
+  it('never lets BOARD unlock or reset the password of their own account (403)', async () => {
+    const board = await db.user.findFirstOrThrow({ where: { username: `board-${tag}` } })
+    for (const action of ['unlock', 'reset-password']) {
+      expect((await call('POST', `/admin/accounts/${board.id}/${action}`, tokens.board, { reason: 'Tự thao tác' })).statusCode).toBe(403)
+    }
+  })
+
+  it('GET /admin/accounts/:id: BOARD and TECH_ADMIN read it, members and department managers get 403', async () => {
+    const target = await db.user.findFirstOrThrow({ where: { username: `member-${tag}` } })
+    expect((await call('GET', `/admin/accounts/${target.id}`, tokens.board)).statusCode).toBe(200)
+    expect((await call('GET', `/admin/accounts/${target.id}`, tokens.tech)).statusCode).toBe(200)
+    expect((await call('GET', `/admin/accounts/${target.id}`, tokens.member)).statusCode).toBe(403)
+    expect((await call('GET', `/admin/accounts/${target.id}`, tokens.manager)).statusCode).toBe(403)
+  })
+
+  it('GET /admin/accounts/departments: BOARD gets active departments only; others get 403', async () => {
+    const response = await call('GET', '/admin/accounts/departments', tokens.board)
+    expect(response.statusCode).toBe(200)
+    const ids = response.json().map((department: { id: string }) => department.id)
+    expect(ids).toContain(departmentA.id)
+    expect(ids).not.toContain(archived.id)
+    for (const token of [tokens.tech, tokens.manager, tokens.member]) {
+      expect((await call('GET', '/admin/accounts/departments', token)).statusCode).toBe(403)
+    }
+    expect((await call('GET', '/admin/accounts/departments', '')).statusCode).toBe(401)
   })
 })
 

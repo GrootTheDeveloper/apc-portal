@@ -1,101 +1,15 @@
-// Danh sách mật khẩu phổ biến (SEC-11, FLOW-09 bước 4): mỗi dòng một mật khẩu, so sánh không phân biệt hoa thường
-// và bỏ khoảng trắng. Chỉ cần các mật khẩu dài từ 15 ký tự (ngắn hơn đã bị chặn bởi độ dài tối thiểu).
-// Lưu dạng văn bản trong file .ts để bản build (tsc) mang theo được; không gọi dịch vụ ngoài.
-// Thêm mật khẩu: thêm một dòng.
-const LIST = `
-123456789012345
-1234567890123456
-12345678901234567
-123456789012345678
-1234567890123456789
-12345678901234567890
-098765432109876
-0987654321098765
-111111111111111
-000000000000000
-123123123123123
-112233445566778
-1122334455667788
-147258369147258
-159753159753159
-1q2w3e4r5t6y7u8
-1q2w3e4r5t6y7u8i
-1q2w3e4r5t6y7u8i9o
-1qaz2wsx3edc4rfv
-1qaz2wsx3edc4rfv5tgb
-qwertyuiopasdfg
-qwertyuiopasdfgh
-qwertyuiopasdfghjkl
-qwertyuiopasdfghjklzxcvbnm
-qwertyuiop123456
-qwerty123456789
-qwertyqwertyqwerty
-asdfghjklzxcvbnm
-zxcvbnmasdfghjkl
-abcdefghijklmno
-abcdefghijklmnop
-abcdefghijklmnopqrstuvwxyz
-abc123abc123abc
-abc123456789012
-passwordpassword
-password1234567
-password12345678
-password123456789
-passwordpassword123
-mypassword12345
-mypassword123456
-thisismypassword
-mysecretpassword
-supersecretpassword
-changemechangeme
-letmeinletmein1
-iloveyouiloveyou
-iloveyou1234567
-welcome12345678
-welcometoportal
-adminadminadmin
-administrator123
-administrator1234
-correcthorsebatterystaple
-trustno1trustno1
-football1234567
-baseball1234567
-sunshine1234567
-princess1234567
-dragondragon123
-monkeymonkey123
-matkhau12345678
-matkhau123456789
-matkhaucuatoi123
-matkhaumoi12345
-matkhaumoi123456
-matkhaubaomat123
-toilasinhvien123
-sinhvienumt12345
-sinhvienumt2026
-anhyeuem1234567
-anhyeuem12345678
-emyeuanh1234567
-emyeuanh12345678
-yeuemnhieulam123
-toiyeuvietnam123
-vietnamvodich123
-vietnamvodich2026
-hochiminhcity123
-saigon123456789
-hanoi1234567890
-apcportal123456
-apcportal2026apc
-appliedprogramming
-appliedprogrammingclub
-umtapc123456789
-umt123456789012
-caulacboapc2026
-laptrinhungdung123
-`
+import { readFileSync } from 'node:fs'
+
+// Đọc danh sách từ common-passwords.txt nằm cạnh file này. Bản build: `pnpm build` chép file .txt sang dist
+// (scripts/copy-assets.mjs). Không gọi dịch vụ ngoài.
+
+/** Chuẩn hóa để so khớp: NFC, chữ thường, bỏ mọi khoảng trắng. Dùng chung cho danh sách và mật khẩu cần kiểm. */
+export const flattenPassword = (value: string) => value.normalize('NFC').toLowerCase().replace(/\s+/gu, '')
 
 export const COMMON_PASSWORDS: ReadonlySet<string> = new Set(
-  LIST.split('\n')
-    .map((line) => line.trim().toLowerCase())
-    .filter(Boolean),
+  readFileSync(new URL('./common-passwords.txt', import.meta.url), 'utf8')
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#'))
+    .map(flattenPassword),
 )

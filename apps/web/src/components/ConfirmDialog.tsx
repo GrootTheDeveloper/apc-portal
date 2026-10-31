@@ -3,6 +3,7 @@ import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'rea
 import { ApiError } from '../lib/api'
 import { fieldErrors } from '../lib/formErrors'
 import { Button } from './Button'
+import { inputClass, labelClass } from './formClass'
 
 export type ConfirmValues = { reason: string; incidentId?: string }
 
@@ -20,26 +21,31 @@ type ConfirmDialogProps = {
   incident?: 'required' | 'optional'
   onConfirm: (values: ConfirmValues) => Promise<void>
   onClose: () => void
+  /** 409 — dữ liệu vừa bị người khác sửa (STATE-09): hộp hiện nút "Tải lại" gọi hàm này thay vì cho bấm lại */
+  onReload?: () => void
 }
-
-const inputClass =
-  'w-full rounded-xl bg-paper px-4 py-3 text-[17px] text-ink shadow-[inset_0_0_0_2px_#081F3D] outline-none focus:shadow-[inset_0_0_0_2px_#1568C9,0_0_0_4px_rgba(21,104,201,0.2)] aria-[invalid=true]:shadow-[inset_0_0_0_2px_#C23B22]'
 
 /**
  * Hộp xác nhận cho hành động nhạy cảm (khóa, hủy, lưu trữ, chốt…): nêu đối tượng, ảnh hưởng, hỏi lý do.
- * Lỗi API (422 theo ô, 403, 409) hiện ngay trong hộp, giữ nguyên dữ liệu đã nhập.
+ * Lỗi API (422 theo ô, 403) hiện ngay trong hộp, giữ nguyên dữ liệu đã nhập. 409 (dữ liệu đã đổi, STATE-09) thì
+ * khóa nút xác nhận và hiện nút "Tải lại" (`onReload`). Mỗi lần mở hộp, lý do và lỗi cũ được xóa.
  */
 export function ConfirmDialog(props: ConfirmDialogProps) {
-  const { open, title, description, confirmLabel, danger = false, reason = 'required', incident, onConfirm, onClose } = props
+  const { open, title, description, confirmLabel, danger = false, reason = 'required', incident, onConfirm, onClose, onReload } = props
   const ref = useRef<HTMLDialogElement>(null)
   const [values, setValues] = useState<ConfirmValues>({ reason: '' })
   const [pending, setPending] = useState(false)
-  const [error, setError] = useState<{ message: string; fields: Record<string, string[]> } | null>(null)
+  const [error, setError] = useState<{ message: string; fields: Record<string, string[]>; stale: boolean } | null>(null)
 
   useEffect(() => {
     const dialog = ref.current
     if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
+    if (open && !dialog.open) {
+      // Mở lại sau khi bấm Hủy: không giữ lý do, mã sự cố và lỗi của lần trước.
+      setValues({ reason: '' })
+      setError(null)
+      dialog.showModal()
+    }
     if (!open && dialog.open) dialog.close()
   }, [open])
 
@@ -56,13 +62,14 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
       const others = Object.entries(fields)
         .filter(([field]) => field !== 'reason' && field !== 'incidentId')
         .flatMap(([, messages]) => messages)
+      const stale = caught instanceof ApiError && caught.status === 409
       const message =
         caught instanceof ApiError && caught.status !== 422
           ? caught.message
           : others.length > 0
             ? others.join(' ')
             : 'Kiểm tra lại các ô được đánh dấu.'
-      setError({ message, fields })
+      setError({ message, fields, stale })
     } finally {
       setPending(false)
     }
@@ -80,7 +87,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
         <div className="text-[16px] leading-relaxed text-muted">{description}</div>
 
         {incident && (
-          <label className="flex flex-col gap-2 font-code text-[13px] font-bold">
+          <label className={labelClass}>
             mã sự cố {incident === 'optional' && '(nếu có)'}
             <input
               className={inputClass}
@@ -99,7 +106,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
         )}
 
         {reason !== 'none' && (
-          <label className="flex flex-col gap-2 font-code text-[13px] font-bold">
+          <label className={labelClass}>
             lý do {reason === 'optional' && '(không bắt buộc)'}
             <textarea
               className={`${inputClass} min-h-24 resize-y`}
@@ -118,9 +125,16 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
         )}
 
         {error && (
-          <p role="alert" className="rounded-xl bg-apc-red/10 px-4 py-3 text-[15px] font-bold text-apc-red">
-            {error.message}
-          </p>
+          <div role="alert" className="flex flex-col gap-3 rounded-xl bg-apc-red/10 px-4 py-3 text-[15px] font-bold text-apc-red">
+            <p>{error.message}</p>
+            {error.stale && onReload && (
+              <div>
+                <Button type="button" variant="outline" onClick={onReload}>
+                  Tải lại
+                </Button>
+              </div>
+            )}
+          </div>
         )}
 
         <div className="flex flex-wrap justify-end gap-3">
@@ -130,7 +144,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
           <Button
             type="submit"
             variant={danger ? 'primary' : 'light'}
-            disabled={pending || (reason === 'required' && values.reason.trim().length === 0)}
+            disabled={pending || !!error?.stale || (reason === 'required' && values.reason.trim().length === 0)}
           >
             {pending ? 'Đang xử lý…' : confirmLabel}
           </Button>

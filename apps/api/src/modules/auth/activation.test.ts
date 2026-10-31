@@ -88,6 +88,18 @@ describe('password policy (SEC-11)', () => {
     expect(passwordProblems('abcabcabcabcabcabc', 'u').join()).toContain('phổ biến')
     expect(passwordProblems('member.a ngay hom nay', 'member.a').join()).toContain('tên đăng nhập')
   })
+
+  it('blocks a username inside the password only when the username has 4+ characters; an exact match is always blocked', () => {
+    expect(passwordProblems('anh yeu cau mat khau nay', 'anh')).toEqual([])
+    expect(passwordProblems('ngay mai em di hoc som', 'em')).toEqual([])
+    expect(passwordProblems('nguyen van an 2026 ok', 'nguyen')).not.toEqual([])
+    expect(passwordProblems('Thanh.Vien.Moi.2026', 'thanh.vien.moi.2026').join()).toContain('tên đăng nhập')
+  })
+
+  it('reads the common-password list from the .txt file, including Vietnamese entries with accents and spaces', () => {
+    expect(passwordProblems('Tôi Yêu Việt Nam', 'u').join()).toContain('phổ biến')
+    expect(passwordProblems('anhyeuemnhieulam123', 'u').join()).toContain('phổ biến')
+  })
 })
 
 describe('POST /auth/activate', () => {
@@ -172,7 +184,7 @@ describe('góp ý review A4', () => {
     expect((await post('/auth/change-password', token, { currentPassword: NEW, newPassword: NEWER, confirmPassword: NEWER })).statusCode).toBe(204)
 
     const logs = await db.auditLog.findMany({ where: { targetId: user.id }, orderBy: { createdAt: 'asc' } })
-    expect(logs.map((log) => log.action)).toEqual(expect.arrayContaining(['account.activate', 'account.change_password']))
+    expect(logs.map((log) => log.action)).toEqual(expect.arrayContaining(['auth.activate', 'auth.password_change']))
     expect(logs.every((log) => log.actorId === user.id && log.category === 'SECURITY')).toBe(true)
     const dump = JSON.stringify(logs)
     for (const secret of [TEMP, NEW, NEWER]) expect(dump).not.toContain(secret)
@@ -187,15 +199,16 @@ describe('góp ý review A4', () => {
     expect((await login(user.username, decomposed)).status).toBe(200)
   })
 
-  it('limits password attempts per session, so switching IP does not help (429)', async () => {
+  it('limits password requests per session, so switching IP does not help (429)', async () => {
     const user = await createUser('limit', false)
     const { token } = await login(user.username, TEMP)
     const statuses: number[] = []
     for (let attempt = 0; attempt < 11; attempt++) {
+      // Mật khẩu mới quá ngắn → 422 trước khi so mật khẩu hiện tại, nên chỉ bộ giới hạn theo phiên chặn được.
       const response = await app.inject({
         method: 'POST',
         url: '/auth/change-password',
-        payload: { currentPassword: 'sai-mat-khau-hien-tai', newPassword: NEW, confirmPassword: NEW },
+        payload: { currentPassword: TEMP, newPassword: 'ngan', confirmPassword: 'ngan' },
         cookies: { [SESSION_COOKIE]: token },
         headers,
         remoteAddress: `10.9.2.${attempt + 1}`, // mỗi lần một IP khác
@@ -204,6 +217,50 @@ describe('góp ý review A4', () => {
     }
     expect(statuses.slice(0, 10).every((status) => status === 422)).toBe(true)
     expect(statuses[10]).toBe(429)
+  })
+
+  it('counts a wrong current password like a failed login: 5 misses lock the account for 15 minutes (429)', async () => {
+    const user = await createUser('guess', false)
+    const { token } = await login(user.username, TEMP)
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const wrong = await post('/auth/change-password', token, { currentPassword: `sai-${attempt}-mat-khau`, newPassword: NEW, confirmPassword: NEW })
+      expect(wrong.statusCode).toBe(422)
+    }
+    // Đúng mật khẩu hiện tại cũng bị chặn trong 15 phút, đăng nhập cũng vậy.
+    const right = await post('/auth/change-password', token, { currentPassword: TEMP, newPassword: NEW, confirmPassword: NEW })
+    expect(right.statusCode).toBe(429)
+    expect((await login(user.username, TEMP)).status).toBe(401)
+    const saved = await db.user.findUniqueOrThrow({ where: { id: user.id } })
+    expect(saved.lockoutUntil?.getTime()).toBeGreaterThan(Date.now())
+    expect(await verifyPassword(saved.passwordHash, TEMP)).toBe(true)
+  })
+
+  it('refuses activation with 403 when the temporary password expired after sign-in, and changes nothing', async () => {
+    const user = await createUser('expired')
+    const { token } = await login(user.username, TEMP)
+    await db.user.update({ where: { id: user.id }, data: { temporaryPasswordExpiresAt: new Date(Date.now() - 1000) } })
+    const response = await post('/auth/activate', token, { newPassword: NEW, confirmPassword: NEW })
+    expect(response.statusCode).toBe(403)
+    const saved = await db.user.findUniqueOrThrow({ where: { id: user.id } })
+    expect(saved.status).toBe('PENDING_ACTIVATION')
+    expect(await verifyPassword(saved.passwordHash, TEMP)).toBe(true)
+  })
+
+  it('clears every temporary-password flag after a password change', async () => {
+    const user = await createUser('flags', false)
+    await db.user.update({ where: { id: user.id }, data: { isTemporaryPassword: true, temporaryPasswordExpiresAt: new Date(Date.now() + 3600_000) } })
+    const { token } = await login(user.username, TEMP)
+    expect((await post('/auth/change-password', token, { currentPassword: TEMP, newPassword: NEW, confirmPassword: NEW })).statusCode).toBe(204)
+    const saved = await db.user.findUniqueOrThrow({ where: { id: user.id } })
+    expect(saved).toMatchObject({ mustChangePassword: false, isTemporaryPassword: false, temporaryPasswordExpiresAt: null })
+  })
+
+  it('accepts a 128-character passphrase outside the BMP (emoji) at activation and at sign-in', async () => {
+    const user = await createUser('emoji')
+    const { token } = await login(user.username, TEMP)
+    const emoji = Array.from({ length: 128 }, (_, i) => String.fromCodePoint(0x1f400 + i)).join('') // 128 ký tự, 256 đơn vị UTF-16
+    expect((await post('/auth/activate', token, { newPassword: emoji, confirmPassword: emoji })).statusCode).toBe(200)
+    expect((await login(user.username, emoji)).status).toBe(200)
   })
 })
 
@@ -244,5 +301,13 @@ describe('POST /auth/change-password', () => {
     const same = await post('/auth/change-password', token, { currentPassword: TEMP, newPassword: TEMP, confirmPassword: TEMP })
     expect(same.statusCode).toBe(422)
     expect((await post('/auth/change-password', '', { currentPassword: TEMP, newPassword: NEW, confirmPassword: NEW })).statusCode).toBe(401)
+  })
+
+  it('rejects a request without Origin (403) and keeps the old password', async () => {
+    const user = await createUser('no-origin', false)
+    const { token } = await login(user.username, TEMP)
+    const response = await post('/auth/change-password', token, { currentPassword: TEMP, newPassword: NEW, confirmPassword: NEW }, false)
+    expect(response.statusCode).toBe(403)
+    expect((await login(user.username, TEMP)).status).toBe(200)
   })
 })
