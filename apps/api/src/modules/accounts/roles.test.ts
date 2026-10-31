@@ -9,7 +9,7 @@ import type { Prisma } from '../../db/generated/client.js'
 import { hashPassword } from '../../lib/password.js'
 import type { AuthUser } from '../auth/rbac.js'
 import { SESSION_COOKIE } from '../auth/session.js'
-import { cancelDecisionInTx, executeDecisionInTx, grantRoleInTx, revokeRoleInTx } from './roles.js'
+import { cancelDecisionInTx, changeDepartmentInTx, executeDecisionInTx, grantRoleInTx, hasTwoFactorEnrolled, revokeRoleInTx } from './roles.js'
 
 // A6 — vai trò & phạm vi. Test API cho quyền và các thao tác không cần ngày nhiệm kỳ;
 // test service trong transaction rồi rollback cho phần phụ thuộc SiteSetting và số BOARD toàn hệ thống.
@@ -267,6 +267,48 @@ describe('privileged roles and term end (RP-03, QĐ-6)', () => {
       const row = await tx.userRole.findFirstOrThrow({ where: { userId: b.id } })
       await expect(
         revokeRoleInTx(tx, actor(a.id, 'BOARD'), b.id, row.id, { reason: 'Thử ngưỡng' }, { enforcePrivilegedMinimum: true }),
+      ).rejects.toMatchObject({ statusCode: 409 })
+    })
+  })
+})
+
+describe('góp ý review A6', () => {
+  it('reads totpEnabledAt (B3) to decide whether a privileged role is ACTIVE at once', async () => {
+    // Cơ sở dữ liệu hiện chưa có cột của B3: coi như chưa bật 2 lớp, không lỗi transaction.
+    await isolated(null, async (tx) => {
+      const user = await userIn(tx, 'totp-none')
+      expect(await hasTwoFactorEnrolled(tx, user.id)).toBe(false)
+    })
+    // Khi B3 đã thêm cột: đọc đúng giá trị (giả lập phản hồi của database).
+    const fake = (exists: boolean, enabled: boolean) =>
+      ({
+        $queryRaw: async (strings: TemplateStringsArray) =>
+          strings.join('').includes('information_schema') ? [{ exists }] : [{ enabled }],
+      }) as unknown as Tx
+    expect(await hasTwoFactorEnrolled(fake(true, true), 'u')).toBe(true)
+    expect(await hasTwoFactorEnrolled(fake(true, false), 'u')).toBe(false)
+    expect(await hasTwoFactorEnrolled(fake(false, true), 'u')).toBe(false)
+  })
+
+  it('stores the revoke reason separately from the grant reason', async () => {
+    const target = await createUser('reason-target', 'DEPARTMENT_MANAGER', deptA.id)
+    const row = await db.userRole.findFirstOrThrow({ where: { userId: target.id } })
+    await call('POST', `/admin/accounts/${target.id}/roles/${row.id}/revoke`, tokens.board, { reason: 'Hết nhiệm kỳ ban' })
+    const saved = await db.userRole.findUniqueOrThrow({ where: { id: row.id } })
+    expect(saved).toMatchObject({ reason: 'test', revokeReason: 'Hết nhiệm kỳ ban', status: 'REVOKED' })
+    const listed = await call('GET', `/admin/accounts/${target.id}/roles`, tokens.board)
+    expect(listed.json().roles[0]).toMatchObject({ revokeReason: 'Hết nhiệm kỳ ban' })
+  })
+
+  it('refuses moving a manager to a department they already manage (409)', async () => {
+    await isolated(null, async (tx) => {
+      const board = await userIn(tx, 'move-board', 'BOARD')
+      const target = await userIn(tx, 'move-twice')
+      const base = { userId: target.id, role: 'DEPARTMENT_MANAGER' as const, status: 'ACTIVE' as const, startsAt: new Date(Date.now() - 1000), reason: 'test' }
+      const first = await tx.userRole.create({ data: { ...base, departmentId: deptA.id } })
+      await tx.userRole.create({ data: { ...base, departmentId: deptB.id } })
+      await expect(
+        changeDepartmentInTx(tx, actor(board.id, 'BOARD'), target.id, first.id, { departmentId: deptB.id, reason: 'Gộp ban' }, OPTIONS),
       ).rejects.toMatchObject({ statusCode: 409 })
     })
   })

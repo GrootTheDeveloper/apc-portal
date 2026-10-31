@@ -331,6 +331,7 @@ model UserRole {
   revokedById String?
   revokedBy   User?     @relation("RoleRevoker", fields: [revokedById], references: [id])
   revokedAt   DateTime?
+  revokeReason String? // A6: lý do thu hồi (lý do cấp nằm ở `reason`)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

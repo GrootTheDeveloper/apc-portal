@@ -115,6 +115,7 @@ erDiagram
     String grantedById FK "tùy chọn. null khi tạo bằng bootstrap (RP-15)"
     String revokedById FK "tùy chọn"
     DateTime revokedAt "tùy chọn"
+    String revokeReason "tùy chọn. A6: lý do thu hồi (lý do cấp nằm ở `reason`)"
     DateTime createdAt
     DateTime updatedAt
   }

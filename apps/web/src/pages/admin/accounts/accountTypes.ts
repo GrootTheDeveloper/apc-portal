@@ -56,6 +56,7 @@ export type RoleRow = {
   expiresAt: string | null
   reason: string
   revokedAt: string | null
+  revokeReason: string | null
   createdAt: string
   department: { id: string; name: string } | null
   grantedBy: Person
