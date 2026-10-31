@@ -62,7 +62,7 @@ const actor = (id: string, role: 'BOARD' | 'TECH_ADMIN') => ({
 })
 
 /** Chạy trong transaction rồi rollback; đặt sẵn ngày kết thúc nhiệm kỳ (hoặc bỏ trống). */
-async function isolated(termEndsAt: Date | null, check: (tx: Tx) => Promise<void>) {
+async function isolated(termEndsAt: Date | null, check: (tx: Tx) => Promise<void>, beforeTableLock?: (tx: Tx) => Promise<void>) {
   const rollback = new Error('rollback')
   await db
     .$transaction(
@@ -70,6 +70,9 @@ async function isolated(termEndsAt: Date | null, check: (tx: Tx) => Promise<void
         // Chặn file test khác ghi user_roles đến khi rollback, để trạng thái "trống" không bị chen vào.
         // Khóa advisory trước, khóa bảng sau: cùng thứ tự với route, không deadlock với file test khác.
         await lockPrivilegedRoles(tx)
+        // Khóa thêm bảng khác (vd ALTER TABLE users) phải lấy TRƯỚC khóa user_roles, nếu không có thể deadlock với
+        // transaction đang giữ users rồi chờ user_roles.
+        if (beforeTableLock) await beforeTableLock(tx)
         await tx.$executeRaw`LOCK TABLE "user_roles" IN SHARE ROW EXCLUSIVE MODE`
         await tx.siteSetting.deleteMany({})
         if (termEndsAt) await tx.siteSetting.create({ data: { info: {}, termEndsAt } })
@@ -324,8 +327,10 @@ describe('góp ý review A6 — lần 2', () => {
 
   it('gives an ACTIVE role at once (and signs old sessions out) when the person already set up two-factor', async () => {
     // Cột totpEnabledAt của B3 chưa có trên main: thêm tạm trong transaction (DDL của Postgres rollback được).
-    await isolated(new Date(Date.now() + 90 * DAY), async (tx) => {
+    const addTotpColumn = async (tx: Tx) => {
       await tx.$executeRaw`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "totpEnabledAt" TIMESTAMP(3)`
+    }
+    await isolated(new Date(Date.now() + 90 * DAY), async (tx) => {
       const board = await userIn(tx, 'totp-board', 'BOARD')
       const target = await userIn(tx, 'totp-target')
       await tx.$executeRaw`UPDATE "users" SET "totpEnabledAt" = NOW() WHERE "id" = ${target.id}`
@@ -336,7 +341,7 @@ describe('góp ý review A6 — lần 2', () => {
       const granted = await grantRoleInTx(tx, actor(board.id, 'BOARD'), target.id, { role: 'BOARD', expiresAt: until.toISOString(), reason: 'Gia hạn nhiệm kỳ' }, OPTIONS)
       expect(granted).toMatchObject({ kind: 'role', status: 'ACTIVE' })
       expect(await tx.session.count({ where: { userId: target.id, revokedAt: null } })).toBe(0)
-    })
+    }, addTotpColumn)
   })
 
   it('GET /admin/access-control: BOARD and TECH_ADMIN see the queue; managers and members get 403', async () => {
