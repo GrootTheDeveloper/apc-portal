@@ -45,13 +45,15 @@ Nguồn sự thật nghiệp vụ: `docs/01-prd.md` (yêu cầu), `docs/02-roles
 
 ## Quy ước Web (`apps/web`)
 - Trang: `src/pages/<khu>/<trang>/`. Gọi API qua `api(...)` trong `src/lib/api.ts` (không `fetch` rải rác); lỗi là `ApiError` có `status`, `code`, `message`, `issues`.
-- Component dùng chung ở `src/components/`: `Button`/`buttonClass`/`pillClass`, `Eyebrow`, `PageHero` (đầu mỗi trang con), `Breadcrumb`, `Pagination`, `StatusScreen`, `EventCard`/`NewsCard`/`ProjectCard`. Navbar/Footer ở `src/layouts/`.
+- Component dùng chung ở `src/components/`: `Button`/`buttonClass`/`pillClass`, `Eyebrow`, `PageHero` (đầu mỗi trang con), `Breadcrumb`, `Pagination`, `StatusScreen` (`compact` trong khung portal/quản trị), `EventCard`/`NewsCard`/`ProjectCard`. Navbar/Footer ở `src/layouts/`.
 - Hiệu ứng hiện dần: gắn `data-rv` cho phần tử trong `<section>` (độ trễ `style={{ '--d': '90ms' }}`), không tự viết IntersectionObserver.
 - Mọi trang có đủ 4 trạng thái: loading / empty / error / success. Dùng `useApi(...)` (`src/hooks/useApi.ts`) và `<AsyncState>` (`src/components/AsyncState.tsx`).
 - Ngày giờ hiển thị bằng `formatDate`/`formatDateTime` trong `src/lib/format.ts` (giờ Việt Nam), không tự `toLocaleString`.
 - Dữ liệu lặp khai báo mảng rồi `map`. Class Tailwind viết literal đầy đủ (không `text-${x}`).
 - Màu/chữ/nút/chuyển động theo `DESIGN.md`: mảng màu đặc, không card viền mảnh, không đổ bóng, không gradient; dùng lại component có sẵn trước khi tạo mới.
 - Route theo `docs/04-sitemap.md`, URL tiếng Anh.
+- Thêm trang portal/quản trị: **không** sửa `src/routes.tsx`. Thêm một mục vào `PORTAL_MENU`/`ADMIN_MENU` trong `src/lib/menu.ts` với `roles` (ai được mở) và `page: () => import('…').then((m) => ({ Component: m.TenTrang }))`. Router tự sinh route, tự bọc `<RequireAuth roles>` và tự hiện menu theo vai trò. Trang chi tiết/tạo mới/sửa không nằm trong menu thì khai báo trong `children` của mục cha. Trang công khai mới mới khai báo trực tiếp trong `src/routes.tsx`.
+- Thứ tự chặn route (phiên → kích hoạt → 2 lớp → vai trò) nằm trong `guardRedirect` (`src/lib/auth.ts`); `<RequireAuth>` chỉ gọi hàm này. Lỗi API 403/404 để `<AsyncState>` tự hiện màn "không có quyền"/"không tìm thấy".
 
 ## Test tối thiểu
 - API: mỗi endpoint có 1 test thành công và 1 test **bị từ chối** (401/403, hoặc 404 khi sai phạm vi ban).

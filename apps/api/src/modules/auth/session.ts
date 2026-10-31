@@ -20,25 +20,33 @@ declare module 'fastify' {
   interface FastifyRequest {
     /** id dòng sessions của request hiện tại; null khi chưa đăng nhập. */
     sessionId: string | null
+    /** Phiên hiện tại đã nhập mã 2 lớp chưa (false khi chưa đăng nhập). */
+    twoFactorVerified: boolean
   }
 }
 
 export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex')
 
+/**
+ * Trạng thái 2 lớp của mọi phiên mới tạo — MỘT chỗ duy nhất, các nơi khác đọc từ giá trị `createSession` trả về.
+ * TODO(B3): tạm `true` để tài khoản BOARD mẫu dùng được trang quản trị khi phát triển. B3 đổi dòng này thành `false`
+ * và chỉ bật `twoFactorVerified` sau khi người dùng nhập đúng mã 2 lớp (docs/plan/A-dang-nhap.md, A2).
+ */
+export const NEW_SESSION_TWO_FACTOR_VERIFIED = true
+
 export async function createSession(userId: string, meta: { ipAddress: string; userAgent: string | undefined }) {
   const token = randomBytes(32).toString('base64url')
+  const twoFactorVerified = NEW_SESSION_TWO_FACTOR_VERIFIED
   await db.session.create({
     data: {
       userId,
       tokenHash: hashToken(token),
       ipAddress: meta.ipAddress,
       userAgent: meta.userAgent ?? null,
-      // TODO(B3): tạm coi mọi phiên đã qua 2 lớp để tài khoản BOARD mẫu dùng được trang quản trị khi phát triển.
-      // B3 đổi thành false và chỉ bật sau khi người dùng nhập đúng mã 2 lớp (docs/plan/A-dang-nhap.md, A2).
-      twoFactorVerified: true,
+      twoFactorVerified,
     },
   })
-  return token
+  return { token, twoFactorVerified }
 }
 
 /** Phiên còn hiệu lực ứng với token trong cookie, hoặc null (không có, đã thu hồi, quá 8 giờ không hoạt động). */
@@ -74,6 +82,7 @@ const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
  */
 export function registerSession(app: FastifyInstance, config: AppConfig) {
   app.decorateRequest('sessionId', null)
+  app.decorateRequest('twoFactorVerified', false)
 
   app.addHook('onRequest', async (request) => {
     if (UNSAFE_METHODS.has(request.method) && request.headers.origin !== config.WEB_URL) {
@@ -96,5 +105,6 @@ export function registerSession(app: FastifyInstance, config: AppConfig) {
     }
     request.user = user
     request.sessionId = session.id
+    request.twoFactorVerified = session.twoFactorVerified
   })
 }

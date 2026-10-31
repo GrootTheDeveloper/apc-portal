@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 
 import type { ApiError } from '../lib/api'
 import { Button } from './Button'
+import { buttonClass } from './buttonClass'
+import { StatusScreen } from './StatusScreen'
 
 type AsyncStateProps = {
   loading: boolean
@@ -19,6 +22,7 @@ type AsyncStateProps = {
  *               emptyText="Chưa có tin tức nào." onRetry={news.reload}>
  *     {news.data?.items.map(...)}
  *   </AsyncState>
+ * Lỗi 403 hiện màn "không có quyền", 404 (gồm dữ liệu ngoài phạm vi ban, docs/02 §12) hiện "không tìm thấy".
  */
 export function AsyncState({
   loading,
@@ -34,6 +38,22 @@ export function AsyncState({
         đang tải
         <span aria-hidden className="caret" />
       </p>
+    )
+  }
+  if (error?.status === 403 || error?.status === 404) {
+    const forbidden = error.status === 403
+    return (
+      <StatusScreen
+        inline
+        code={forbidden ? '403' : '404'}
+        title={forbidden ? 'Không có quyền truy cập' : 'Không tìm thấy'}
+        text={forbidden ? 'Tài khoản của bạn không có quyền xem nội dung này.' : 'Nội dung không tồn tại hoặc bạn không có quyền xem.'}
+        action={
+          <Link className={buttonClass('outline')} to={forbidden ? '/portal' : '/'}>
+            {forbidden ? 'Về trang thành viên' : 'Về trang chủ'}
+          </Link>
+        }
+      />
     )
   }
   if (error) {
