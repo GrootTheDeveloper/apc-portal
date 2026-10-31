@@ -24,7 +24,7 @@ export function SearchBox() {
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         placeholder="Tìm theo tiêu đề..."
-        className="min-h-12 flex-1 rounded-full bg-soft px-6 text-ink outline-none focus:ring-2 focus:ring-apc-blue"
+        className="w-full rounded-xl bg-paper px-4 py-3 text-[17px] text-ink shadow-[inset_0_0_0_2px_#081F3D] outline-none transition-shadow focus:shadow-[inset_0_0_0_2px_#1568C9,0_0_0_4px_rgba(21,104,201,0.2)] sm:flex-1"
       />
       <Button type="submit">Tìm kiếm</Button>
     </form>

@@ -1,6 +1,32 @@
 import { expect, test } from '@playwright/test'
 
 const emptySearch = { news: [], events: [], projects: [] }
+const searchResults = {
+  news: [{ id: 'news-id', title: 'Tin tìm kiếm', slug: 'd3-search-news', summary: 'Tóm tắt', thumbnailUrl: null, category: 'Chia sẻ', publishedAt: null }],
+  events: [{ slug: 'd3-search-event', title: 'Sự kiện tìm kiếm', coverImageUrl: null, eventType: 'Workshop', status: 'PUBLISHED', startAt: '2099-01-01T10:00:00.000Z', endAt: '2099-01-01T12:00:00.000Z', location: 'UMT', onlineUrl: null }],
+  projects: [{ id: 'project-id', title: 'Dự án tìm kiếm', slug: 'd3-search-project', description: 'Mô tả', thumbnailUrl: null, technologies: [], projectUrl: null, sourceUrl: null, publishedAt: null }],
+}
+
+const detailCases = [
+  {
+    title: 'tin tức',
+    href: '/news/d3-search-news',
+    apiPath: '**/api/public/news/d3-search-news',
+    detail: { ...searchResults.news[0], content: 'Nội dung', metaTitle: null, metaDescription: null },
+  },
+  {
+    title: 'sự kiện',
+    href: '/events/d3-search-event',
+    apiPath: '**/api/public/events/d3-search-event',
+    detail: { id: 'event-id', ...searchResults.events[0], description: 'Mô tả', departmentName: null, contactPoint: null, registrationOpensAt: null, registrationClosesAt: null, capacity: null, cancelReason: null },
+  },
+  {
+    title: 'dự án',
+    href: '/projects/d3-search-project',
+    apiPath: '**/api/public/projects/d3-search-project',
+    detail: searchResults.projects[0],
+  },
+]
 
 for (const { pagePath, resource } of [
   { pagePath: '/news', resource: 'news' },
@@ -28,6 +54,24 @@ for (const { pagePath, resource } of [
 }
 
 test.describe('Tìm kiếm công khai (D3)', () => {
+  for (const scenario of detailCases) {
+    test(`từ trang chi tiết ${scenario.title} quay lại vẫn giữ từ khóa`, async ({ page }) => {
+      await page.route('**/api/public/search*', (route) =>
+        route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(searchResults) }),
+      )
+      await page.route(scenario.apiPath, (route) =>
+        route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(scenario.detail) }),
+      )
+
+      await page.goto('/search?q=needle')
+      await page.locator(`a[href="${scenario.href}"]`).click()
+      await expect(page).toHaveURL(scenario.href)
+      await page.locator('a[href="/search?q=needle"]').last().click()
+
+      await expect(page).toHaveURL(/\/search\?q=needle$/)
+    })
+  }
+
   test('không có kết quả hiện nút xóa từ khóa và xóa q khỏi URL', async ({ page }) => {
     await page.route('**/api/public/search*', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(emptySearch) }),

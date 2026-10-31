@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
 import { Breadcrumb } from '../../../components/Breadcrumb'
@@ -12,6 +12,8 @@ import { NotFound } from '../../NotFound'
 /** Trang chi tiết dự án. Loại dự án và thành viên tham gia thêm ở C4. */
 export function ProjectDetailPage() {
   const { slug } = useParams<{ slug: string }>()
+  const location = useLocation()
+  const backTo = (location.state as { from?: string } | null)?.from ?? '/projects'
   const { data: item, loading, error, reload } = useApi<ProjectItem>(slug ? `/public/projects/${slug}` : null)
 
   // Dự án không tồn tại hoặc chưa công bố trả 404
@@ -34,7 +36,7 @@ export function ProjectDetailPage() {
                 <Breadcrumb
                   items={[
                     { label: 'trang chủ', to: '/' },
-                    { label: 'dự án', to: '/projects' },
+                    { label: 'dự án', to: backTo },
                     { label: item.title },
                   ]}
                 />
@@ -88,7 +90,7 @@ export function ProjectDetailPage() {
                 )}
 
                 <Link
-                  to="/projects"
+                  to={backTo}
                   className="mt-12 inline-flex min-h-12 items-center text-[17px] font-extrabold text-apc-red underline decoration-2 underline-offset-4"
                 >
                   ← Về danh sách dự án

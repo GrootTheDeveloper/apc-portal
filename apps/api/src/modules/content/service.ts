@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db } from '../../db/client.js'
 import { notFound } from '../../lib/errors.js'
 import { pageArgs, pageQuery, toPage } from '../../lib/pagination.js'
+import { eventListSelect, publicVisible } from '../events/service.js'
 
 // ─── SCHEMA VALIDATION ───────────────────────────────────────────────────────
 
@@ -67,7 +68,9 @@ export async function getPublicNewsBySlug(slug: string) {
   return post
 }
 
-/** Chỉ select trường dùng để hiển thị dự án công khai. */
+// ─── PROJECTS ─────────────────────────────────────────────────────────────────
+
+/** Chỉ select các trường cần hiển thị — KHÔNG lấy createdById, departmentId. */
 const projectSelect = {
   id: true,
   title: true,
@@ -79,46 +82,6 @@ const projectSelect = {
   sourceUrl: true,
   publishedAt: true,
 } as const
-
-/** Tìm nội dung theo tiêu đề, chỉ trong các nhóm đang công khai. */
-export async function searchPublicContent(rawQuery: unknown) {
-  const { q } = publicSearchQuery.parse(rawQuery)
-  const titleFilter = q ? { title: { contains: q, mode: 'insensitive' as const } } : {}
-  const [news, events, projects] = await Promise.all([
-    db.post.findMany({
-      where: { ...publicPost, ...titleFilter },
-      orderBy: [...newestFirst],
-      take: 10,
-      select: newsListSelect,
-    }),
-    db.event.findMany({
-      where: { audience: 'PUBLIC', status: { in: ['PUBLISHED', 'CANCELLED', 'ENDED'] }, ...titleFilter },
-      orderBy: [{ startAt: 'desc' }, { id: 'desc' }],
-      take: 10,
-      select: {
-        slug: true,
-        title: true,
-        coverImageUrl: true,
-        eventType: true,
-        status: true,
-        startAt: true,
-        endAt: true,
-        location: true,
-        onlineUrl: true,
-      },
-    }),
-    db.project.findMany({
-      where: { status: 'PUBLISHED', ...titleFilter },
-      orderBy: [...newestFirst],
-      take: 10,
-      select: projectSelect,
-    }),
-  ])
-
-  return { news, events, projects }
-}
-
-// ─── PROJECTS ─────────────────────────────────────────────────────────────────
 
 /** Danh sách dự án đã công bố, mới nhất trước. */
 export async function listPublishedProjects(rawQuery: unknown) {
@@ -137,4 +100,37 @@ export async function getPublishedProjectBySlug(slug: string) {
   const project = await db.project.findFirst({ where: { slug, status: 'PUBLISHED' }, select: projectSelect })
   if (!project) throw notFound('Không tìm thấy dự án.')
   return project
+}
+
+/** Prisma translates `contains` to SQL LIKE; quote LIKE metacharacters as literals. */
+function escapeLikeQuery(value: string) {
+  return value.replace(/[\\%_]/g, (character) => `\\${character}`)
+}
+
+/** Tìm nội dung theo tiêu đề, chỉ trong các nhóm đang công khai. */
+export async function searchPublicContent(rawQuery: unknown) {
+  const { q } = publicSearchQuery.parse(rawQuery)
+  const titleFilter = q ? { title: { contains: escapeLikeQuery(q), mode: 'insensitive' as const } } : {}
+  const [news, events, projects] = await Promise.all([
+    db.post.findMany({
+      where: { ...publicPost, ...titleFilter },
+      orderBy: [...newestFirst],
+      take: 10,
+      select: newsListSelect,
+    }),
+    db.event.findMany({
+      where: { ...publicVisible, ...titleFilter },
+      orderBy: [{ startAt: 'desc' }, { id: 'desc' }],
+      take: 10,
+      select: eventListSelect,
+    }),
+    db.project.findMany({
+      where: { status: 'PUBLISHED', ...titleFilter },
+      orderBy: [...newestFirst],
+      take: 10,
+      select: projectSelect,
+    }),
+  ])
+
+  return { news, events, projects }
 }

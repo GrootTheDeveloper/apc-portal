@@ -10,7 +10,11 @@ import {
 
 export function contentRoutes() {
   return async function registerContentRoutes(app: FastifyInstance) {
-    app.get('/public/search', async (request) => searchPublicContent(request.query))
+    app.get(
+      '/public/search',
+      { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } },
+      async (request) => searchPublicContent(request.query),
+    )
 
     // ─── NEWS (TIN TỨC) ────────────────────────────────────────────────────
 
