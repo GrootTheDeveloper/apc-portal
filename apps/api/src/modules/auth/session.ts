@@ -27,20 +27,26 @@ declare module 'fastify' {
 
 export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex')
 
+/**
+ * Trạng thái 2 lớp của mọi phiên mới tạo — MỘT chỗ duy nhất, các nơi khác đọc từ giá trị `createSession` trả về.
+ * TODO(B3): tạm `true` để tài khoản BOARD mẫu dùng được trang quản trị khi phát triển. B3 đổi dòng này thành `false`
+ * và chỉ bật `twoFactorVerified` sau khi người dùng nhập đúng mã 2 lớp (docs/plan/A-dang-nhap.md, A2).
+ */
+export const NEW_SESSION_TWO_FACTOR_VERIFIED = true
+
 export async function createSession(userId: string, meta: { ipAddress: string; userAgent: string | undefined }) {
   const token = randomBytes(32).toString('base64url')
+  const twoFactorVerified = NEW_SESSION_TWO_FACTOR_VERIFIED
   await db.session.create({
     data: {
       userId,
       tokenHash: hashToken(token),
       ipAddress: meta.ipAddress,
       userAgent: meta.userAgent ?? null,
-      // TODO(B3): tạm coi mọi phiên đã qua 2 lớp để tài khoản BOARD mẫu dùng được trang quản trị khi phát triển.
-      // B3 đổi thành false và chỉ bật sau khi người dùng nhập đúng mã 2 lớp (docs/plan/A-dang-nhap.md, A2).
-      twoFactorVerified: true,
+      twoFactorVerified,
     },
   })
-  return token
+  return { token, twoFactorVerified }
 }
 
 /** Phiên còn hiệu lực ứng với token trong cookie, hoặc null (không có, đã thu hồi, quá 8 giờ không hoạt động). */

@@ -1,7 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { AuthContext, type AuthState } from '../hooks/useAuth'
-import { api, ApiError, onUnauthorized } from '../lib/api'
+import { api, ApiError, endsSession, onUnauthorized } from '../lib/api'
 import type { Me } from '../lib/auth'
 
 /**
@@ -25,8 +25,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setMe(await api<Me>('/auth/me'))
     } catch (error) {
-      // Lỗi mạng khi đang đăng nhập: giữ nguyên, lần sau hỏi lại. 401 đã được onUnauthorized xử lý.
-      if (!(error instanceof ApiError && error.status === 0) || statusRef.current === 'loading') setMe(null)
+      // Chỉ 401 mới là hết phiên. Lỗi mạng, 502/503 lúc máy chủ khởi động lại… thì giữ nguyên người dùng, lần sau hỏi lại.
+      if (endsSession(error)) setMe(null)
     }
   }, [setMe])
 
