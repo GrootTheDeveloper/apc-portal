@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
 import { Breadcrumb } from '../../../components/Breadcrumb'
@@ -12,6 +12,8 @@ import { NotFound } from '../../NotFound'
 /** Trang chi tiết tin tức */
 export function NewsDetailPage() {
   const { slug } = useParams<{ slug: string }>()
+  const location = useLocation()
+  const backTo = (location.state as { from?: string } | null)?.from ?? '/news'
   const { data: item, loading, error, reload } = useApi<NewsDetailItem>(slug ? `/public/news/${slug}` : null)
 
   // Bài không tồn tại, nháp, lưu trữ hay nội bộ đều trả 404 (docs/02 §12)
@@ -37,7 +39,7 @@ export function NewsDetailPage() {
                 <Breadcrumb
                   items={[
                     { label: 'trang chủ', to: '/' },
-                    { label: 'tin tức', to: '/news' },
+                    { label: 'tin tức', to: backTo },
                     { label: item.title },
                   ]}
                 />
@@ -66,7 +68,7 @@ export function NewsDetailPage() {
                   ))}
                 </div>
                 <div className="mt-12 border-t-2 border-ink pt-6">
-                  <Link to="/news" className="inline-flex min-h-12 items-center text-[17px] font-extrabold text-apc-red underline decoration-2 underline-offset-4">
+                  <Link to={backTo} className="inline-flex min-h-12 items-center text-[17px] font-extrabold text-apc-red underline decoration-2 underline-offset-4">
                     ← Về danh sách tin tức
                   </Link>
                 </div>

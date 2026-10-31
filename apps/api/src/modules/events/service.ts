@@ -25,13 +25,13 @@ export const eventListQuery = pageQuery.extend({
 // ─── TRUY VẤN CHUNG ──────────────────────────────────────────────────────────
 
 /** Sự kiện công khai: đã công bố, đã hủy hoặc đã kết thúc. Nháp, lưu trữ, nội bộ coi như không tồn tại (docs/02 §12). */
-const publicVisible: Prisma.EventWhereInput = {
+export const publicVisible: Prisma.EventWhereInput = {
   audience: 'PUBLIC',
   status: { in: ['PUBLISHED', 'CANCELLED', 'ENDED'] },
 }
 
 /** Chỉ select các trường cần hiển thị — KHÔNG lấy createdById, departmentId, audience và các trường điểm danh. */
-const eventListSelect = {
+export const eventListSelect = {
   slug: true,
   title: true,
   coverImageUrl: true,

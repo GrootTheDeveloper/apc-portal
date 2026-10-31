@@ -16,6 +16,7 @@ const tag = randomUUID().slice(0, 8)
 // Theo dõi ID để cleanup
 const createdPostIds: string[] = []
 const createdProjectIds: string[] = []
+const createdEventIds: string[] = []
 
 // ─── HELPERS TẠO DỮ LIỆU TEST ─────────────────────────────────────────────
 
@@ -86,6 +87,24 @@ async function createProject(
   return project
 }
 
+async function createEvent(opts: { suffix: string; status?: 'PUBLISHED' | 'DRAFT' | 'ARCHIVED'; audience?: 'PUBLIC' | 'CLUB'; createdById: string }) {
+  const event = await db.event.create({
+    data: {
+      title: `Sự kiện ${opts.suffix}`,
+      slug: `su-kien-${opts.suffix}-${tag}`,
+      description: 'Mô tả sự kiện test.',
+      eventType: 'Workshop',
+      status: opts.status ?? 'PUBLISHED',
+      audience: opts.audience ?? 'PUBLIC',
+      createdById: opts.createdById,
+      startAt: new Date(Date.now() + 86_400_000),
+      endAt: new Date(Date.now() + 90_000_000),
+    },
+  })
+  createdEventIds.push(event.id)
+  return event
+}
+
 // ─── SETUP / TEARDOWN ──────────────────────────────────────────────────────
 
 let authorId: string
@@ -100,6 +119,7 @@ afterAll(async () => {
   // Xóa theo thứ tự: dữ liệu phụ thuộc trước, sau đó user
   await db.post.deleteMany({ where: { id: { in: createdPostIds } } })
   await db.project.deleteMany({ where: { id: { in: createdProjectIds } } })
+  await db.event.deleteMany({ where: { id: { in: createdEventIds } } })
   await db.user.deleteMany({ where: { id: authorId } })
   await app.close()
   await db.$disconnect()
@@ -185,6 +205,81 @@ describe('GET /public/news', () => {
     const body = response.json()
     expect(body.items).toEqual([])
     expect(body.total).toBeGreaterThanOrEqual(0)
+  })
+})
+
+describe('GET /public/search', () => {
+  it('tìm theo tiêu đề không phân biệt hoa thường và chỉ trả nội dung công khai theo từng nhóm', async () => {
+    const marker = `needle-${tag}`
+    const publicPost = await createPost({ suffix: `search-${marker}-public`, authorId, status: 'PUBLISHED', scope: 'PUBLIC' })
+    await createPost({ suffix: `search-${marker}-internal`, authorId, status: 'PUBLISHED', scope: 'INTERNAL' })
+    await createPost({ suffix: `search-${marker}-draft`, authorId, status: 'DRAFT', scope: 'PUBLIC' })
+    await createPost({ suffix: `search-${marker}-archived`, authorId, status: 'ARCHIVED', scope: 'PUBLIC' })
+    const publicEvent = await createEvent({ suffix: `search-${marker}-public`, createdById: authorId })
+    await createEvent({ suffix: `search-${marker}-internal`, audience: 'CLUB', createdById: authorId })
+    await createEvent({ suffix: `search-${marker}-draft`, status: 'DRAFT', createdById: authorId })
+    await createEvent({ suffix: `search-${marker}-archived`, status: 'ARCHIVED', createdById: authorId })
+    const publicProject = await createProject({ suffix: `search-${marker}-public`, createdById: authorId, status: 'PUBLISHED' })
+    await createProject({ suffix: `search-${marker}-draft`, createdById: authorId, status: 'DRAFT' })
+    await createProject({ suffix: `search-${marker}-archived`, createdById: authorId, status: 'ARCHIVED' })
+
+    const response = await app.inject({ method: 'GET', url: `/public/search?q=${encodeURIComponent(marker.toUpperCase())}` })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json().news.map((item: { id: string }) => item.id)).toContain(publicPost.id)
+    expect(response.json().news).toHaveLength(1)
+    expect(response.json().events.map((item: { slug: string }) => item.slug)).toContain(publicEvent.slug)
+    expect(response.json().events).toHaveLength(1)
+    expect(response.json().projects.map((item: { id: string }) => item.id)).toContain(publicProject.id)
+    expect(response.json().projects).toHaveLength(1)
+  })
+
+  it('coi %, _ và \\ là ký tự thường trong từ khóa', async () => {
+    const percentPost = await createPost({ suffix: `like-percent-${tag}%-tail`, authorId, status: 'PUBLISHED' })
+    await createPost({ suffix: `like-percent-${tag}X-tail`, authorId, status: 'PUBLISHED' })
+    const underscorePost = await createPost({ suffix: `like-underscore-${tag}_tail`, authorId, status: 'PUBLISHED' })
+    await createPost({ suffix: `like-underscore-${tag}Atail`, authorId, status: 'PUBLISHED' })
+    const slashPost = await createPost({ suffix: `like-backslash-${tag}\\tail`, authorId, status: 'PUBLISHED' })
+    await createPost({ suffix: `like-backslash-${tag}Xtail`, authorId, status: 'PUBLISHED' })
+
+    const percentResult = await app.inject({ method: 'GET', url: `/public/search?q=${encodeURIComponent(`like-percent-${tag}%`)}` })
+    const underscoreResult = await app.inject({ method: 'GET', url: `/public/search?q=${encodeURIComponent(`like-underscore-${tag}_tail`)}` })
+    const slashResult = await app.inject({ method: 'GET', url: `/public/search?q=${encodeURIComponent(`like-backslash-${tag}\\tail`)}` })
+
+    expect(percentResult.json().news.map((item: { id: string }) => item.id)).toEqual([percentPost.id])
+    expect(underscoreResult.json().news.map((item: { id: string }) => item.id)).toEqual([underscorePost.id])
+    expect(slashResult.json().news.map((item: { id: string }) => item.id)).toEqual([slashPost.id])
+  })
+
+  it('q trống trả mục mới nhất theo từng nhóm; q quá dài bị từ chối', async () => {
+    const latestPost = await createPost({ suffix: 'search-default-latest-news', authorId, status: 'PUBLISHED', scope: 'PUBLIC' })
+    const latestEvent = await createEvent({ suffix: 'search-default-latest-event', createdById: authorId })
+    const latestProject = await createProject({ suffix: 'search-default-latest-project', createdById: authorId, status: 'PUBLISHED' })
+    const latestTimestamp = new Date(Date.now() + 30 * 365 * 24 * 60 * 60 * 1000)
+    await db.post.update({ where: { id: latestPost.id }, data: { publishedAt: latestTimestamp } })
+    await db.event.update({ where: { id: latestEvent.id }, data: { startAt: latestTimestamp } })
+    await db.project.update({ where: { id: latestProject.id }, data: { publishedAt: latestTimestamp } })
+
+    const emptyQuery = await app.inject({ method: 'GET', url: '/public/search' })
+    const invalidQuery = await app.inject({ method: 'GET', url: `/public/search?q=${'a'.repeat(101)}` })
+
+    expect(emptyQuery.statusCode).toBe(200)
+    expect(emptyQuery.json().news[0].id).toBe(latestPost.id)
+    expect(emptyQuery.json().events[0].slug).toBe(latestEvent.slug)
+    expect(emptyQuery.json().projects[0].id).toBe(latestProject.id)
+    expect(emptyQuery.json().news.length).toBeLessThanOrEqual(10)
+    expect(emptyQuery.json().events.length).toBeLessThanOrEqual(10)
+    expect(emptyQuery.json().projects.length).toBeLessThanOrEqual(10)
+    expect(invalidQuery.statusCode).toBe(422)
+  })
+
+  it('giới hạn 60 lượt tìm kiếm mỗi phút', async () => {
+    let lastResponse
+    for (let index = 0; index < 61; index += 1) {
+      lastResponse = await app.inject({ method: 'GET', url: `/public/search?q=rate-limit-${tag}` })
+    }
+
+    expect(lastResponse?.statusCode).toBe(429)
   })
 })
 

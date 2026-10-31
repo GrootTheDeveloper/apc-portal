@@ -20,6 +20,7 @@ import { ProjectDetailPage } from './pages/projects/detail/ProjectDetailPage'
 import { ProjectListPage } from './pages/projects/list/ProjectListPage'
 import { RecruitmentDetailPage } from './pages/recruitment/detail/RecruitmentDetailPage'
 import { RecruitmentListPage } from './pages/recruitment/list/RecruitmentListPage'
+import { SearchPage } from './pages/search/SearchPage'
 
 const router = createBrowserRouter([
   {
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
       { path: 'about', element: <AboutPage /> },
       { path: 'news', element: <NewsListPage /> },
       { path: 'news/:slug', element: <NewsDetailPage /> },
+      { path: 'search', element: <SearchPage /> },
       // Route tĩnh khai báo trước route động /events/:slug (Sitemap §15.1).
       { path: 'events/registration-lookup', element: <Placeholder title="Tra cứu đăng ký sự kiện" /> },
       { path: 'events', element: <EventsListPage /> },
