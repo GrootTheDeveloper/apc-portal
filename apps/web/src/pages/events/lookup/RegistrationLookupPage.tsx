@@ -3,16 +3,12 @@ import { Link } from 'react-router-dom'
 
 import { Button } from '../../../components/Button'
 import { Breadcrumb } from '../../../components/Breadcrumb'
+import { inputClass, labelClass } from '../../../components/formClass'
 import { PageHero } from '../../../components/PageHero'
 import { Seo } from '../../../components/Seo'
 import { api, ApiError } from '../../../lib/api'
 import { formatDateTime } from '../../../lib/format'
-import type { RegistrationLookupResult } from '../types'
-
-// Viền 2px màu mực, focus đổi sang viền xanh kèm quầng — cùng kiểu form với trang Đăng nhập (DESIGN.md).
-const inputClass =
-  'w-full rounded-xl bg-paper px-4 py-3 text-[17px] text-ink shadow-[inset_0_0_0_2px_#081F3D] outline-none transition-shadow focus:shadow-[inset_0_0_0_2px_#1568C9,0_0_0_4px_rgba(21,104,201,0.2)] disabled:opacity-60'
-const labelClass = 'flex flex-col gap-2 font-code text-[13px] font-bold'
+import { cancellationOpen, type RegistrationLookupResult } from '../types'
 
 const delay = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties
 
@@ -57,9 +53,9 @@ export function RegistrationLookupPage() {
     setCancelling(true)
     setCancelError(null)
     try {
-      await api('/public/event-registrations/cancel', { body: credentials })
-      // Hủy xong tra cứu lại để thấy trạng thái mới nhất
-      setResult(await api<RegistrationLookupResult>('/public/event-registrations/lookup', { body: credentials }))
+      // API hủy trả về bản ghi vừa cập nhật: cập nhật thẳng state, không tra cứu lại —
+      // lượt tra cứu thêm sẽ tốn hạn mức dò mã và có thể dính 429 (SEC-05)
+      setResult(await api<RegistrationLookupResult>('/public/event-registrations/cancel', { body: credentials }))
       setConfirming(false)
     } catch (cancelAttemptError) {
       setCancelError(cancelAttemptError instanceof ApiError ? cancelAttemptError.message : 'Đã có lỗi xảy ra. Vui lòng thử lại.')
@@ -70,11 +66,13 @@ export function RegistrationLookupPage() {
 
   const event = result?.event
   const onlineUrl = safeHttpUrl(event?.onlineUrl ?? null)
+  // Chỉ còn hủy khi sự kiện vẫn công bố, chưa diễn ra và còn trong thời hạn hủy (BR-08)
+  const canCancel = result !== null && cancellationOpen(result)
 
   return (
     <main>
       {/* Trang tra cứu: noindex, nofollow (Sitemap §16) */}
-      <Seo title="Tra cứu đăng ký sự kiện" path="/events/registration-lookup" noIndex />
+      <Seo title="Tra cứu đăng ký sự kiện" path="/events/registration-lookup" robots="noindex, nofollow" />
       <PageHero
         tone="blue"
         comment="tra cứu đăng ký"
@@ -155,9 +153,14 @@ export function RegistrationLookupPage() {
                     </span>
                   </div>
                   <h2 className="mt-3 font-display text-[clamp(22px,2.2vw,30px)] font-extrabold leading-tight">
-                    <Link to={`/events/${event.slug}`} className="hover:text-apc-blue hover:underline decoration-2 underline-offset-4">
-                      {event.title}
-                    </Link>
+                    {/* Sự kiện lưu trữ đã gỡ khỏi trang công khai (mở link sẽ 404): chỉ hiện tên, không liên kết */}
+                    {event.status === 'ARCHIVED' ? (
+                      event.title
+                    ) : (
+                      <Link to={`/events/${event.slug}`} className="hover:text-apc-blue hover:underline decoration-2 underline-offset-4">
+                        {event.title}
+                      </Link>
+                    )}
                   </h2>
                   <dl className="mt-4">
                     <div className="border-b-2 border-ink/10 py-3 first:pt-0">
@@ -206,7 +209,7 @@ export function RegistrationLookupPage() {
                   )}
                 </div>
 
-                {result.status === 'REGISTERED' && !confirming && (
+                {canCancel && !confirming && (
                   <div>
                     <Button variant="outline" onClick={() => setConfirming(true)} disabled={cancelling}>
                       Hủy đăng ký
@@ -215,7 +218,7 @@ export function RegistrationLookupPage() {
                 )}
 
                 {/* Hộp xác nhận hành động nhạy cảm: nêu đối tượng, ảnh hưởng (STATE-07) */}
-                {confirming && result.status === 'REGISTERED' && (
+                {confirming && canCancel && (
                   <div className="rounded-[20px] bg-ink p-6 text-paper">
                     <p className="font-code text-[14px] font-bold text-apc-gold-soft">{'// xác nhận hủy đăng ký'}</p>
                     <p className="mt-3 text-[16px] leading-relaxed">
@@ -236,6 +239,12 @@ export function RegistrationLookupPage() {
                       </Button>
                     </div>
                   </div>
+                )}
+
+                {result.status === 'REGISTERED' && !canCancel && (
+                  <p className="px-2 text-[15px] leading-relaxed text-muted">
+                    Đã hết thời hạn hủy đăng ký cho sự kiện này. Vui lòng liên hệ CLB APC nếu cần hỗ trợ.
+                  </p>
                 )}
               </div>
             ) : (

@@ -3,19 +3,15 @@ import { Navigate, useSearchParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
 import { Button } from '../../../components/Button'
+import { Eyebrow } from '../../../components/Eyebrow'
+import { inputClass, labelClass } from '../../../components/formClass'
 import { useAuth } from '../../../hooks/useAuth'
 import { ApiError } from '../../../lib/api'
 import { safeReturnTo } from '../../../lib/returnTo'
-import { Eyebrow } from '../../../components/Eyebrow'
 
 type SubmitState = { phase: 'idle' } | { phase: 'submitting' } | { phase: 'error'; message: string }
 
 const MARK_PIECES = ['/assets/home/mark/mark-red.png', '/assets/home/mark/mark-gold.png', '/assets/home/mark/mark-blue.png']
-
-// Viền 2px màu mực, focus đổi sang viền xanh kèm quầng (tín hiệu focus duy nhất của form, DESIGN.md).
-const inputClass =
-  'w-full rounded-xl bg-paper px-4 py-3 text-[17px] text-ink shadow-[inset_0_0_0_2px_#081F3D] outline-none transition-shadow focus:shadow-[inset_0_0_0_2px_#1568C9,0_0_0_4px_rgba(21,104,201,0.2)] disabled:opacity-60'
-const labelClass = 'flex flex-col gap-2 font-code text-[13px] font-bold'
 
 function errorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) return 'Đã có lỗi xảy ra. Vui lòng thử lại.'

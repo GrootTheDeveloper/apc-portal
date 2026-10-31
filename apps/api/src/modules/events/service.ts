@@ -6,6 +6,7 @@ import { db } from '../../db/client.js'
 import { conflict, notFound } from '../../lib/errors.js'
 import { publicCode } from '../../lib/ids.js'
 import { pageArgs, pageQuery, toPage } from '../../lib/pagination.js'
+import { formatVnDateTime } from '../../lib/vnTime.js'
 import { AUDIT_ACTIONS, audit, AuditCategory, AuditResult } from '../audit/service.js'
 import { recordConsent } from '../consent/service.js'
 import { enqueueEmail } from '../email/service.js'
@@ -206,18 +207,10 @@ type RegistrationWindow = {
   allowGuestRegistration: boolean
   registrationOpensAt: Date | null
   registrationClosesAt: Date | null
+  endAt: Date
 }
 
-// Giờ Việt Nam = UTC + 7h cố định (BR-14); dùng cho thông báo lý do từ chối.
-const vnDateTime = (value: Date) =>
-  new Intl.DateTimeFormat('vi-VN', {
-    timeZone: 'Asia/Ho_Chi_Minh',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(value)
+// Giờ Việt Nam = UTC + 7h cố định (BR-14): định dạng qua formatVnDateTime (lib/vnTime).
 
 /** Sự kiện có nhận đăng ký của khách không? Không đạt thì 409 kèm lý do rõ ràng (FLOW-14). */
 function ensureEventAcceptsGuests(event: RegistrationWindow, now = new Date()) {
@@ -225,11 +218,14 @@ function ensureEventAcceptsGuests(event: RegistrationWindow, now = new Date()) {
   if (event.status !== 'PUBLISHED') throw conflict('Sự kiện đã kết thúc, không nhận đăng ký.')
   if (!event.allowGuestRegistration) throw conflict('Sự kiện này không nhận đăng ký của khách ngoài APC.')
   if (event.registrationOpensAt && now < event.registrationOpensAt) {
-    throw conflict(`Sự kiện chưa mở đăng ký. Nhận đăng ký từ ${vnDateTime(event.registrationOpensAt)}.`)
+    throw conflict(`Sự kiện chưa mở đăng ký. Nhận đăng ký từ ${formatVnDateTime(event.registrationOpensAt)}.`)
   }
   if (event.registrationClosesAt && now > event.registrationClosesAt) {
-    throw conflict(`Đã hết thời hạn đăng ký từ ${vnDateTime(event.registrationClosesAt)}.`)
+    throw conflict(`Đã hết thời hạn đăng ký từ ${formatVnDateTime(event.registrationClosesAt)}.`)
   }
+  // PUBLISHED đã qua thời điểm diễn ra (tác vụ event-end chưa kịp chuyển trạng thái) cũng hết nhận đăng ký,
+  // kể cả khi registrationClosesAt để trống (BR-08); cùng phép so sánh với tác vụ event-end (endAt < now).
+  if (event.endAt < now) throw conflict('Sự kiện đã diễn ra, không nhận đăng ký.')
 }
 
 const eventWindowSelect = {
@@ -238,6 +234,7 @@ const eventWindowSelect = {
   registrationOpensAt: true,
   registrationClosesAt: true,
   capacity: true,
+  endAt: true,
 } satisfies Prisma.EventSelect
 
 /**
@@ -281,15 +278,15 @@ export async function registerGuest(rawInput: unknown, slug: string) {
 
       let current
       if (existing) {
-        // Từng hủy rồi đăng ký lại: kích hoạt dòng cũ, giữ nguyên mã đăng ký (docs/plan/E-su-kien.md E2).
+        // Từng hủy rồi đăng ký lại: kích hoạt lại dòng cũ (không đè họ tên/MSSV đã lưu — SEC-05) và
+        // cấp MÃ MỚI vì mã cũ đã nằm trong email xác nhận trước đó, dùng lại là rủi ro dò mã.
         current = await tx.eventRegistration.update({
           where: { id: existing.id },
           data: {
             status: 'REGISTERED',
             cancelledAt: null,
             registeredAt: new Date(),
-            guestFullName: input.fullName,
-            guestStudentId: input.studentId,
+            registrationCode: publicCode(),
           },
         })
       } else {
@@ -322,54 +319,63 @@ export async function registerGuest(rawInput: unknown, slug: string) {
   }
 }
 
-/** Dạng trả về của tra cứu: chỉ thông tin đăng ký và tóm tắt sự kiện, không có trường nội bộ (BR-09). */
+/** Thông tin đăng ký trả về cho khách (tra cứu và hủy): dữ liệu của chính người đó + tóm tắt sự kiện (BR-09). */
+const guestSummarySelect = {
+  guestEmail: true,
+  guestFullName: true,
+  status: true,
+  registeredAt: true,
+  cancelledAt: true,
+  event: {
+    select: {
+      slug: true,
+      title: true,
+      eventType: true,
+      status: true,
+      startAt: true,
+      endAt: true,
+      location: true,
+      onlineUrl: true,
+      // Web dùng để ẩn nút hủy khi đã hết hạn hủy (BR-08)
+      registrationClosesAt: true,
+      cancelReason: true,
+      department: { select: { name: true } },
+    },
+  },
+} satisfies Prisma.EventRegistrationSelect
+
+type GuestSummaryRow = Prisma.EventRegistrationGetPayload<{ select: typeof guestSummarySelect }>
+
+/** Gỡ relation nội bộ (department) khỏi tóm tắt, chỉ giữ tên ban tổ chức. */
+function toGuestSummary(registration: GuestSummaryRow) {
+  const { event, ...registrationInfo } = registration
+  const { department, ...eventInfo } = event
+  return { ...registrationInfo, event: { ...eventInfo, departmentName: department?.name ?? null } }
+}
+
+/** Tra cứu đăng ký của khách (PAGE-PUB-08): trả kèm registrationClosesAt để web ẩn nút hủy khi hết hạn. */
 export async function lookupGuestRegistration(rawInput: unknown) {
   const input = registrationLookupInput.parse(rawInput)
 
   const registration = await db.eventRegistration.findUnique({
     where: { registrationCode: input.code },
-    select: {
-      guestEmail: true,
-      guestFullName: true,
-      status: true,
-      registeredAt: true,
-      cancelledAt: true,
-      event: {
-        select: {
-          slug: true,
-          title: true,
-          eventType: true,
-          status: true,
-          startAt: true,
-          endAt: true,
-          location: true,
-          onlineUrl: true,
-          cancelReason: true,
-          department: { select: { name: true } },
-        },
-      },
-    },
+    select: guestSummarySelect,
   })
   // Sai mã hoặc sai email đều rơi vào đây: một câu chung, không cho biết phần nào sai (SEC-05).
   if (!registration || registration.guestEmail !== input.email) throw notFound(GENERIC_LOOKUP_MESSAGE)
-
-  // department là relation dùng nội bộ: gỡ khỏi phản hồi, chỉ giữ tên ban tổ chức.
-  const { event, ...registrationInfo } = registration
-  const { department, ...eventInfo } = event
-  return {
-    ...registrationInfo,
-    event: { ...eventInfo, departmentName: department?.name ?? null },
-  }
+  return toGuestSummary(registration)
 }
 
 /**
- * Khách hủy đăng ký bằng email + mã (FLOW-14 bước 5, AC-09): được đến hết `registrationClosesAt`,
- * hủy xong chỗ được trả lại (đếm chỗ chỉ tính REGISTERED) và gửi email xác nhận hủy (NTF-01).
+ * Khách hủy đăng ký bằng email + mã (FLOW-14 bước 5, AC-09): chỉ khi sự kiện vẫn PUBLISHED và chưa
+ * qua endAt (kèm hạn hủy riêng nếu có) — không cho hủy vô thời hạn khi registrationClosesAt để trống.
+ * Hủy xong chỗ được trả lại (đếm chỗ chỉ tính REGISTERED), email xác nhận xếp hàng trong cùng
+ * transaction (NTF-01), và trả về bản ghi vừa cập nhật để web hiển thị ngay mà không phải tra cứu lại.
  */
 export async function cancelGuestRegistration(rawInput: unknown) {
   const input = registrationLookupInput.parse(rawInput)
 
-  await db.$transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
     const registration = await tx.eventRegistration.findUnique({
       where: { registrationCode: input.code },
       select: { id: true, status: true, guestEmail: true, eventId: true },
@@ -381,11 +387,18 @@ export async function cancelGuestRegistration(rawInput: unknown) {
 
     if (registration.status === 'CANCELLED') throw conflict('Đăng ký này đã được hủy trước đó.')
 
+    // Chỉ còn hủy khi sự kiện vẫn đang công bố và chưa diễn ra; hết hạn hủy riêng thì cũng chặn (BR-08, FLOW-14).
     const event = await tx.event.findUnique({
       where: { id: registration.eventId },
-      select: { registrationClosesAt: true },
+      select: { status: true, endAt: true, registrationClosesAt: true },
     })
-    if (event?.registrationClosesAt && event.registrationClosesAt < new Date()) {
+    if (!event || event.status !== 'PUBLISHED') {
+      throw conflict('Sự kiện đã kết thúc hoặc bị hủy, không thể hủy đăng ký.')
+    }
+    if (event.endAt < new Date()) {
+      throw conflict('Sự kiện đã diễn ra, không thể hủy đăng ký.')
+    }
+    if (event.registrationClosesAt && event.registrationClosesAt < new Date()) {
       throw conflict('Đã hết thời hạn hủy đăng ký. Vui lòng liên hệ CLB APC.')
     }
 
@@ -396,15 +409,19 @@ export async function cancelGuestRegistration(rawInput: unknown) {
     })
     if (count === 0) throw conflict('Đăng ký này đã được hủy trước đó.')
 
+    // Đọc bản ghi vừa cập nhật để trả về cho web; email xếp hàng sau cùng, SMTP lỗi không mất lượt hủy (BR-17).
+    const updated = await tx.eventRegistration.findUniqueOrThrow({
+      where: { id: registration.id },
+      select: guestSummarySelect,
+    })
     await enqueueEmail(tx, {
       type: 'EVENT_REGISTRATION_CANCELLED',
       to: input.email,
       refType: 'EVENT_REGISTRATION',
       refId: registration.id,
     })
+    return toGuestSummary(updated)
   })
-
-  return { status: 'CANCELLED' as const }
 }
 
 // ─── TÁC VỤ NỀN ──────────────────────────────────────────────────────────────

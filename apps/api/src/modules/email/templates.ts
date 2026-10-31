@@ -1,26 +1,18 @@
 import { db } from '../../db/client.js'
 import { loadConfig } from '../../config.js'
+import { formatVnDateTime } from '../../lib/vnTime.js'
 
 export type RenderedEmail = { subject: string; text: string; html: string }
 type Template = (refId: string) => Promise<RenderedEmail | null>
 
 export const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`)
 
-// Giờ Việt Nam = UTC + 7h cố định (BR-14): email hiển thị giờ sự kiện theo giờ này.
-const VN_DATE_TIME = new Intl.DateTimeFormat('vi-VN', {
-  timeZone: 'Asia/Ho_Chi_Minh',
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-
 /** URL do quản trị nhập chỉ nhận http/https (FLOW-18); không đạt thì coi như trực tuyến thuần. */
 const safeHttpUrl = (value: string | null) => (value && /^https?:\/\//.test(value) ? value : null)
 
-/** Link tra cứu/hủy đăng ký; không ghép mã hay email vào URL (OPS-11). */
-const registrationLookupUrl = () => `${loadConfig().WEB_URL.replace(/\/+$/, '')}/events/registration-lookup`
+// Đọc cấu hình đúng một lần khi nạp module (server.ts đã nạp .env trước khi import app);
+// không gọi loadConfig() lại trong từng lần render email.
+const REGISTRATION_LOOKUP_URL = `${loadConfig().WEB_URL.replace(/\/+$/, '')}/events/registration-lookup`
 
 /**
  * Tham chiếu đăng ký của khách đọc theo refId của email; mã đăng ký chỉ lấy ở đây,
@@ -54,10 +46,10 @@ export const EMAIL_TEMPLATES = {
     if (!data) return null
     const { guestFullName: name, registrationCode: code, event } = data
     const title = event.title
-    const time = `${VN_DATE_TIME.format(event.startAt)} – ${VN_DATE_TIME.format(event.endAt)}`
+    const time = `${formatVnDateTime(event.startAt)} – ${formatVnDateTime(event.endAt)}`
     const onlineUrl = safeHttpUrl(event.onlineUrl)
     const place = event.location ?? (onlineUrl ? `${onlineUrl} (trực tuyến)` : 'Trực tuyến')
-    const lookupUrl = registrationLookupUrl()
+    const lookupUrl = REGISTRATION_LOOKUP_URL
     const subject = `Xác nhận đăng ký sự kiện: ${title}`
     const text = [
       `Xin chào ${name},`,
@@ -84,7 +76,7 @@ export const EMAIL_TEMPLATES = {
     if (!data) return null
     const { guestFullName: name, event } = data
     const title = event.title
-    const time = VN_DATE_TIME.format(event.startAt)
+    const time = formatVnDateTime(event.startAt)
     const subject = `Đã hủy đăng ký sự kiện: ${title}`
     const text = [
       `Xin chào ${name},`,

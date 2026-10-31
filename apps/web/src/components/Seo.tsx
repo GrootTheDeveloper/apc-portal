@@ -12,8 +12,8 @@ export interface SeoProps {
   path: string
   /** Ảnh cho og:image, tương đối hoặc tuyệt đối */
   imageUrl?: string | null
-  /** Trang riêng tư (form, tra cứu, đăng nhập, portal, admin): `noindex, nofollow` (Sitemap §16, PRD SEO-01) */
-  noIndex?: boolean
+  /** Nội dung thẻ robots cho trang riêng tư (form, tra cứu, đăng nhập, portal, admin): vd. "noindex, nofollow" (Sitemap §16) */
+  robots?: string
 }
 
 const SITE_NAME = 'CLB APC'
@@ -30,7 +30,7 @@ function addTag(tag: 'meta' | 'link', attrs: Record<string, string>) {
  *   <Seo title={item.metaTitle || item.title} description={item.metaDescription || item.summary}
  *        path={`/news/${slug}`} imageUrl={item.thumbnailUrl} />
  */
-export function Seo({ title, description, path, imageUrl, noIndex = false }: SeoProps) {
+export function Seo({ title, description, path, imageUrl, robots }: SeoProps) {
   useEffect(() => {
     const fullTitle = `${title} — ${SITE_NAME}`
     const url = new URL(path, window.location.origin).href
@@ -50,7 +50,7 @@ export function Seo({ title, description, path, imageUrl, noIndex = false }: Seo
       addTag('meta', { property: 'og:url', content: url }),
       addTag('meta', { property: 'og:site_name', content: SITE_NAME }),
       ...(imageUrl ? [addTag('meta', { property: 'og:image', content: new URL(imageUrl, window.location.origin).href })] : []),
-      ...(noIndex ? [addTag('meta', { name: 'robots', content: 'noindex, nofollow' })] : []),
+      ...(robots ? [addTag('meta', { name: 'robots', content: robots })] : []),
     ]
 
     return () => {
@@ -58,7 +58,7 @@ export function Seo({ title, description, path, imageUrl, noIndex = false }: Seo
       if (prevDesc != null) descTag?.setAttribute('content', prevDesc)
       for (const el of added) el.remove()
     }
-  }, [title, description, path, imageUrl, noIndex])
+  }, [title, description, path, imageUrl, robots])
 
   return null
 }

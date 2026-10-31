@@ -10,6 +10,8 @@ const STATUS_CHIP: Record<EventListItem['status'], string> = {
   PUBLISHED: 'bg-apc-blue text-paper hover:bg-apc-blue-deep',
   CANCELLED: 'bg-apc-red/10 text-apc-red line-through hover:bg-apc-red/20',
   ENDED: 'bg-ink/10 text-ink/70 hover:bg-ink/15',
+  // Lịch công khai không có sự kiện lưu trữ; giữ nhãn trung tính nếu dữ liệu tra cứu trả về
+  ARCHIVED: 'bg-ink/10 text-ink/70 hover:bg-ink/15',
 }
 
 const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']

@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import { AsyncState } from '../../../components/AsyncState'
 import { Breadcrumb } from '../../../components/Breadcrumb'
 import { Button } from '../../../components/Button'
+import { inputClass, labelClass } from '../../../components/formClass'
 import { PageHero } from '../../../components/PageHero'
 import { Seo } from '../../../components/Seo'
 import { api, ApiError } from '../../../lib/api'
@@ -11,11 +12,6 @@ import { formatDate, formatDateTime } from '../../../lib/format'
 import { useApi } from '../../../hooks/useApi'
 import { NotFound } from '../../NotFound'
 import { guestRegistrationState, type EventDetail, type GuestRegistrationResult } from '../types'
-
-// Viền 2px màu mực, focus đổi sang viền xanh kèm quầng — cùng kiểu form với trang Đăng nhập (DESIGN.md).
-const inputClass =
-  'w-full rounded-xl bg-paper px-4 py-3 text-[17px] text-ink shadow-[inset_0_0_0_2px_#081F3D] outline-none transition-shadow focus:shadow-[inset_0_0_0_2px_#1568C9,0_0_0_4px_rgba(21,104,201,0.2)] disabled:opacity-60'
-const labelClass = 'flex flex-col gap-2 font-code text-[13px] font-bold'
 
 type SubmitState =
   | { phase: 'idle' }
@@ -91,7 +87,7 @@ export function EventRegisterPage() {
   return (
     <main>
       {/* Form công khai: noindex, nofollow (Sitemap §16) */}
-      <Seo title={`Đăng ký: ${data.title}`} path={`/events/${slug}/register`} noIndex />
+      <Seo title={`Đăng ký: ${data.title}`} path={`/events/${slug}/register`} robots="noindex, nofollow" />
       <PageHero
         tone="blue"
         compact

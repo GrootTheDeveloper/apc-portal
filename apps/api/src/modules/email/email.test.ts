@@ -6,8 +6,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { buildApp } from '../../app.js'
 import { loadConfig } from '../../config.js'
 import { db } from '../../db/client.js'
+import { publicCode } from '../../lib/ids.js'
 import type { AuthUser } from '../auth/rbac.js'
 import { describeError, enqueueEmail, type Mailer, type OutgoingEmail, processEmailQueue } from './service.js'
+import { EMAIL_TEMPLATES } from './templates.js'
 
 // Test tích hợp với Postgres thật. Mọi dòng tạo ra có địa chỉ nhận đuôi `${tag}@test.local` để dọn đúng phần của mình.
 const config = loadConfig({ NODE_ENV: 'test' })
@@ -174,6 +176,88 @@ describe('processEmailQueue', () => {
     await processEmailQueue(fakeMailer().mailer, log)
     expect(await delivery(stuck)).toMatchObject({ status: 'SENT', attempts: 2 })
     expect(await delivery(fresh)).toMatchObject({ status: 'SENDING', attempts: 1 })
+  })
+})
+
+describe('mẫu EVENT_REGISTRATION_* của mảng sự kiện (email tạm trước khi O2 có khung chung)', () => {
+  let eventId: string
+  let guestRegistrationId: string
+  let guestCode: string
+  let memberRegistrationId: string
+
+  beforeAll(async () => {
+    const event = await db.event.create({
+      data: {
+        title: 'Workshop kiểm thử email',
+        slug: `email-template-${tag}`,
+        description: 'Mô tả sự kiện để test mẫu email.',
+        eventType: 'Workshop',
+        status: 'PUBLISHED',
+        audience: 'PUBLIC',
+        createdById: userId,
+        startAt: new Date('2026-12-01T02:00:00.000Z'),
+        endAt: new Date('2026-12-01T04:00:00.000Z'),
+        location: 'Lab Công Nghệ',
+      },
+    })
+    eventId = event.id
+
+    guestCode = publicCode()
+    const guest = await db.eventRegistration.create({
+      data: {
+        eventId,
+        guestFullName: 'Trần <script>alert(1)</script>',
+        guestEmail: recipient('guest'),
+        guestStudentId: 'SV20001234',
+        registrationCode: guestCode,
+      },
+    })
+    guestRegistrationId = guest.id
+
+    // Dòng của thành viên (E5): không có thông tin khách — mẫu email của khách phải trả null
+    const member = await db.eventRegistration.create({ data: { eventId, userId, registrationCode: publicCode() } })
+    memberRegistrationId = member.id
+  })
+
+  afterAll(async () => {
+    await db.eventRegistration.deleteMany({ where: { eventId } })
+    await db.event.delete({ where: { id: eventId } })
+  })
+
+  it('email xác nhận chứa mã đăng ký, tên khách được escape, link tra cứu không mang mã trên URL', async () => {
+    const email = await EMAIL_TEMPLATES.EVENT_REGISTRATION_CONFIRMED(guestRegistrationId)
+    if (!email) throw new Error('Mẫu email xác nhận phải trả về nội dung')
+
+    // Mã đăng ký nằm trong cả hai bản văn bản và HTML (STATE-02: khách cần mã để tra cứu/hủy)
+    expect(email.subject).toContain('Workshop kiểm thử email')
+    expect(email.text).toContain(guestCode)
+    expect(email.html).toContain(guestCode)
+    // Dữ liệu người dùng nhập (họ tên) được escape trong HTML, giữ nguyên dạng chữ trong bản thuần
+    expect(email.html).toContain('&#60;script&#62;alert(1)&#60;/script&#62;')
+    expect(email.html).not.toContain('<script>')
+    expect(email.text).toContain('<script>')
+    // Link tra cứu/hủy có trong email nhưng không kèm mã hay email trên URL (OPS-11)
+    expect(email.html).toMatch(/href="[^"]*\/events\/registration-lookup"/)
+    expect(email.text).toContain('/events/registration-lookup')
+    expect(email.html).not.toContain('registration-lookup?')
+    expect(email.text).not.toContain('registration-lookup?')
+  })
+
+  it('email hủy chứa tiêu đề sự kiện và cùng quy tắc escape', async () => {
+    const email = await EMAIL_TEMPLATES.EVENT_REGISTRATION_CANCELLED(guestRegistrationId)
+    if (!email) throw new Error('Mẫu email hủy phải trả về nội dung')
+
+    expect(email.subject).toContain('Workshop kiểm thử email')
+    expect(email.text).toContain('Workshop kiểm thử email')
+    expect(email.html).toContain('&#60;script&#62;')
+    expect(email.html).not.toContain('<script>')
+  })
+
+  it('trả null cho bản ghi không tồn tại và cho dòng thành viên (chưa có thông tin khách)', async () => {
+    expect(await EMAIL_TEMPLATES.EVENT_REGISTRATION_CONFIRMED('khong-ton-tai')).toBeNull()
+    expect(await EMAIL_TEMPLATES.EVENT_REGISTRATION_CANCELLED('khong-ton-tai')).toBeNull()
+    expect(await EMAIL_TEMPLATES.EVENT_REGISTRATION_CONFIRMED(memberRegistrationId)).toBeNull()
+    expect(await EMAIL_TEMPLATES.EVENT_REGISTRATION_CANCELLED(memberRegistrationId)).toBeNull()
   })
 })
 
