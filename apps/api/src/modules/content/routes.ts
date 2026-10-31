@@ -5,10 +5,13 @@ import {
   getPublishedProjectBySlug,
   listPublicNews,
   listPublishedProjects,
+  searchPublicContent,
 } from './service.js'
 
 export function contentRoutes() {
   return async function registerContentRoutes(app: FastifyInstance) {
+    app.get('/public/search', async (request) => searchPublicContent(request.query))
+
     // ─── NEWS (TIN TỨC) ────────────────────────────────────────────────────
 
     /**

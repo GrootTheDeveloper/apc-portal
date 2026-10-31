@@ -19,6 +19,8 @@ export const projectListQuery = pageQuery.extend({
   pageSize: z.coerce.number().int().min(1).max(100).default(12),
 })
 
+export const publicSearchQuery = z.object({ q: z.string().trim().max(100).default('') })
+
 /** Mới công bố trước; cùng thời điểm thì theo id để phân trang không lặp/sót mục. */
 const newestFirst = [{ publishedAt: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }] as const
 
@@ -65,9 +67,7 @@ export async function getPublicNewsBySlug(slug: string) {
   return post
 }
 
-// ─── PROJECTS ─────────────────────────────────────────────────────────────────
-
-/** Chỉ select các trường cần hiển thị — KHÔNG lấy createdById, departmentId. */
+/** Chỉ select trường dùng để hiển thị dự án công khai. */
 const projectSelect = {
   id: true,
   title: true,
@@ -79,6 +79,46 @@ const projectSelect = {
   sourceUrl: true,
   publishedAt: true,
 } as const
+
+/** Tìm nội dung theo tiêu đề, chỉ trong các nhóm đang công khai. */
+export async function searchPublicContent(rawQuery: unknown) {
+  const { q } = publicSearchQuery.parse(rawQuery)
+  const titleFilter = q ? { title: { contains: q, mode: 'insensitive' as const } } : {}
+  const [news, events, projects] = await Promise.all([
+    db.post.findMany({
+      where: { ...publicPost, ...titleFilter },
+      orderBy: [...newestFirst],
+      take: 10,
+      select: newsListSelect,
+    }),
+    db.event.findMany({
+      where: { audience: 'PUBLIC', status: { in: ['PUBLISHED', 'CANCELLED', 'ENDED'] }, ...titleFilter },
+      orderBy: [{ startAt: 'desc' }, { id: 'desc' }],
+      take: 10,
+      select: {
+        slug: true,
+        title: true,
+        coverImageUrl: true,
+        eventType: true,
+        status: true,
+        startAt: true,
+        endAt: true,
+        location: true,
+        onlineUrl: true,
+      },
+    }),
+    db.project.findMany({
+      where: { status: 'PUBLISHED', ...titleFilter },
+      orderBy: [...newestFirst],
+      take: 10,
+      select: projectSelect,
+    }),
+  ])
+
+  return { news, events, projects }
+}
+
+// ─── PROJECTS ─────────────────────────────────────────────────────────────────
 
 /** Danh sách dự án đã công bố, mới nhất trước. */
 export async function listPublishedProjects(rawQuery: unknown) {

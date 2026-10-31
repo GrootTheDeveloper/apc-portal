@@ -16,6 +16,7 @@ const tag = randomUUID().slice(0, 8)
 // Theo dõi ID để cleanup
 const createdPostIds: string[] = []
 const createdProjectIds: string[] = []
+const createdEventIds: string[] = []
 
 // ─── HELPERS TẠO DỮ LIỆU TEST ─────────────────────────────────────────────
 
@@ -86,6 +87,24 @@ async function createProject(
   return project
 }
 
+async function createEvent(opts: { suffix: string; status?: 'PUBLISHED' | 'DRAFT'; audience?: 'PUBLIC' | 'CLUB'; createdById: string }) {
+  const event = await db.event.create({
+    data: {
+      title: `Sự kiện ${opts.suffix}`,
+      slug: `su-kien-${opts.suffix}-${tag}`,
+      description: 'Mô tả sự kiện test.',
+      eventType: 'Workshop',
+      status: opts.status ?? 'PUBLISHED',
+      audience: opts.audience ?? 'PUBLIC',
+      createdById: opts.createdById,
+      startAt: new Date(Date.now() + 86_400_000),
+      endAt: new Date(Date.now() + 90_000_000),
+    },
+  })
+  createdEventIds.push(event.id)
+  return event
+}
+
 // ─── SETUP / TEARDOWN ──────────────────────────────────────────────────────
 
 let authorId: string
@@ -100,6 +119,7 @@ afterAll(async () => {
   // Xóa theo thứ tự: dữ liệu phụ thuộc trước, sau đó user
   await db.post.deleteMany({ where: { id: { in: createdPostIds } } })
   await db.project.deleteMany({ where: { id: { in: createdProjectIds } } })
+  await db.event.deleteMany({ where: { id: { in: createdEventIds } } })
   await db.user.deleteMany({ where: { id: authorId } })
   await app.close()
   await db.$disconnect()
@@ -185,6 +205,51 @@ describe('GET /public/news', () => {
     const body = response.json()
     expect(body.items).toEqual([])
     expect(body.total).toBeGreaterThanOrEqual(0)
+  })
+})
+
+describe('GET /public/search', () => {
+  it('tìm theo tiêu đề không phân biệt hoa thường và chỉ trả nội dung công khai theo từng nhóm', async () => {
+    const publicPost = await createPost({ suffix: 'search-needle', authorId, status: 'PUBLISHED', scope: 'PUBLIC' })
+    await createPost({ suffix: 'search-needle-hidden', authorId, status: 'PUBLISHED', scope: 'INTERNAL' })
+    await createPost({ suffix: 'search-needle-draft', authorId, status: 'DRAFT', scope: 'PUBLIC' })
+    await createPost({ suffix: 'search-needle-archived', authorId, status: 'ARCHIVED', scope: 'PUBLIC' })
+    const publicEvent = await createEvent({ suffix: 'search-needle', createdById: authorId })
+    await createEvent({ suffix: 'search-needle-internal', audience: 'CLUB', createdById: authorId })
+    await createEvent({ suffix: 'search-needle-draft', status: 'DRAFT', createdById: authorId })
+    const publicProject = await createProject({ suffix: 'search-needle', createdById: authorId, status: 'PUBLISHED' })
+    await createProject({ suffix: 'search-needle-draft', createdById: authorId, status: 'DRAFT' })
+
+    const response = await app.inject({ method: 'GET', url: '/public/search?q=NEEDLE' })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json().news.map((item: { id: string }) => item.id)).toContain(publicPost.id)
+    expect(response.json().news).toHaveLength(1)
+    expect(response.json().events.map((item: { slug: string }) => item.slug)).toContain(publicEvent.slug)
+    expect(response.json().events).toHaveLength(1)
+    expect(response.json().projects.map((item: { id: string }) => item.id)).toContain(publicProject.id)
+    expect(response.json().projects).toHaveLength(1)
+  })
+
+  it('q trống trả mục mới nhất theo từng nhóm; q quá dài bị từ chối', async () => {
+    const latestPost = await createPost({ suffix: 'search-default-latest-news', authorId, status: 'PUBLISHED', scope: 'PUBLIC' })
+    const latestEvent = await createEvent({ suffix: 'search-default-latest-event', createdById: authorId })
+    const latestProject = await createProject({ suffix: 'search-default-latest-project', createdById: authorId, status: 'PUBLISHED' })
+    await db.post.update({ where: { id: latestPost.id }, data: { publishedAt: new Date('2099-01-01T00:00:00.000Z') } })
+    await db.event.update({ where: { id: latestEvent.id }, data: { startAt: new Date('2099-01-01T00:00:00.000Z') } })
+    await db.project.update({ where: { id: latestProject.id }, data: { publishedAt: new Date('2099-01-01T00:00:00.000Z') } })
+
+    const emptyQuery = await app.inject({ method: 'GET', url: '/public/search' })
+    const invalidQuery = await app.inject({ method: 'GET', url: `/public/search?q=${'a'.repeat(101)}` })
+
+    expect(emptyQuery.statusCode).toBe(200)
+    expect(emptyQuery.json().news[0].id).toBe(latestPost.id)
+    expect(emptyQuery.json().events[0].slug).toBe(latestEvent.slug)
+    expect(emptyQuery.json().projects[0].id).toBe(latestProject.id)
+    expect(emptyQuery.json().news.length).toBeLessThanOrEqual(10)
+    expect(emptyQuery.json().events.length).toBeLessThanOrEqual(10)
+    expect(emptyQuery.json().projects.length).toBeLessThanOrEqual(10)
+    expect(invalidQuery.statusCode).toBe(422)
   })
 })
 
