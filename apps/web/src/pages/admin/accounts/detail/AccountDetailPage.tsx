@@ -1,16 +1,16 @@
-import { type ReactNode, useState } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { type ReactNode, useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../../components/AsyncState'
 import { Button } from '../../../../components/Button'
+import { pillClass } from '../../../../components/buttonClass'
 import { ConfirmDialog, type ConfirmValues } from '../../../../components/ConfirmDialog'
 import { useApi } from '../../../../hooks/useApi'
 import { useAuth } from '../../../../hooks/useAuth'
 import { api } from '../../../../lib/api'
 import { hasRole } from '../../../../lib/auth'
 import { formatDateTime } from '../../../../lib/format'
-import { NotFound } from '../../../NotFound'
-import type { AccountDetail } from '../accountTypes'
+import { type AccountDetail, type AccountLocationState, listUrl } from '../accountTypes'
 import { StatusBadge, TemporaryPasswordNotice } from '../shared'
 
 type ActionKey = 'lock' | 'unlock' | 'reset-password' | 'deactivate' | 'revoke-sessions'
@@ -86,14 +86,35 @@ export function AccountDetailPage() {
   const board = hasRole(user, 'BOARD')
   const tech = hasRole(user, 'TECH_ADMIN')
   const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const handoff = (location.state ?? {}) as AccountLocationState
   const tabs = TABS.filter((tab) => tab.key !== 'sessions' || tech)
   const tab = tabs.find((item) => item.key === searchParams.get('tab'))?.key ?? 'status'
   const account = useApi<AccountDetail>(`/admin/accounts/${encodeURIComponent(id)}`)
   const [action, setAction] = useState<ActionSpec | null>(null)
-  const [temporary, setTemporary] = useState<{ password: string; expiresAt: string } | null>(null)
-  const [done, setDone] = useState<string | null>(null)
+  // Vừa tạo tài khoản ở trang danh sách: mật khẩu tạm được chuyển sang đây để hiện MỘT lần (STATE-03).
+  const [temporary, setTemporary] = useState<{ password: string; expiresAt?: string } | null>(
+    handoff.created ? { password: handoff.created.temporaryPassword } : null,
+  )
+  const [done, setDone] = useState<string | null>(handoff.created ? 'Đã tạo tài khoản.' : null)
 
-  if (account.error?.status === 404) return <NotFound />
+  useEffect(() => {
+    // Xóa mật khẩu tạm khỏi lịch sử trình duyệt ngay sau khi nhận, chỉ giữ bộ lọc của trang danh sách.
+    if (handoff.created) {
+      navigate(`${location.pathname}${location.search}`, { replace: true, state: { listSearch: handoff.listSearch } satisfies AccountLocationState })
+    }
+  }, [handoff.created, handoff.listSearch, location.pathname, location.search, navigate])
+
+  /** 409 (STATE-09): đóng hộp, tải lại bản mới nhất để người dùng xem thay đổi rồi mới thao tác lại. */
+  function reloadAfterConflict() {
+    setAction(null)
+    // Mật khẩu tạm đang hiện có thể đã bị người khác cấp lại: không để người dùng chuyển nhầm mật khẩu cũ.
+    setTemporary(null)
+    setDone('Tài khoản vừa được người khác cập nhật. Đã tải lại thông tin mới nhất; kiểm tra rồi thao tác lại.')
+    account.reload()
+  }
+
   const data = account.data
   const self = data?.id === user?.id
 
@@ -109,7 +130,8 @@ export function AccountDetailPage() {
       ]
 
   async function run(spec: ActionSpec, values: ConfirmValues) {
-    // Lý do để trống (chỉ có ở thu hồi phiên) thì không gửi; updatedAt đã đọc để server phát hiện sửa chồng (STATE-09).
+    // Lý do để trống (chỉ có ở thu hồi phiên) thì không gửi; updatedAt của bản đang xem là bắt buộc để server
+    // phát hiện sửa chồng (STATE-09).
     const body = { ...values, ...(values.reason ? {} : { reason: undefined }), ...(data ? { updatedAt: data.updatedAt } : {}) }
     if (spec.key === 'reset-password') {
       const result = await api<{ temporaryPassword: string; expiresAt: string }>(`/admin/accounts/${id}/reset-password`, { body })
@@ -124,6 +146,9 @@ export function AccountDetailPage() {
 
   return (
     <main className="flex flex-col gap-8">
+      <Link className="self-start font-bold text-apc-blue underline" to={listUrl(handoff.listSearch)}>
+        ← Danh sách tài khoản
+      </Link>
       <AsyncState loading={account.loading} error={account.error} empty={false} onRetry={account.reload}>
         {data && (
           <>
@@ -141,10 +166,8 @@ export function AccountDetailPage() {
                   type="button"
                   role="tab"
                   aria-selected={tab === item.key}
-                  onClick={() => setSearchParams(item.key === 'status' ? {} : { tab: item.key })}
-                  className={`inline-flex min-h-10 items-center rounded-full px-4 text-[15px] font-extrabold transition-colors ${
-                    tab === item.key ? 'bg-ink text-paper' : 'bg-soft text-ink hover:bg-apc-blue-pale'
-                  }`}
+                  onClick={() => setSearchParams(item.key === 'status' ? {} : { tab: item.key }, { replace: true, state: location.state })}
+                  className={pillClass(tab === item.key)}
                 >
                   {item.label}
                 </button>
@@ -246,6 +269,7 @@ export function AccountDetailPage() {
               {...(action?.key === 'lock' && board ? { incident: 'optional' as const } : {})}
               onConfirm={(values) => run(action!, values)}
               onClose={() => setAction(null)}
+              onReload={reloadAfterConflict}
             />
           </>
         )}

@@ -41,3 +41,15 @@ export const STATUS_LABEL: Record<AccountStatus, string> = {
   LOCKED: 'Bị khóa',
   INACTIVE: 'Ngừng hoạt động',
 }
+
+/**
+ * `location.state` khi mở trang chi tiết từ danh sách: bộ lọc `?q&status&page` để nút quay lại giữ nguyên,
+ * và mật khẩu tạm của tài khoản vừa tạo (chỉ đọc một lần rồi xóa khỏi lịch sử).
+ */
+export type AccountLocationState = {
+  listSearch?: string | undefined
+  created?: { username: string; temporaryPassword: string } | undefined
+}
+
+/** Đường về trang danh sách, giữ bộ lọc cũ nếu có. */
+export const listUrl = (listSearch?: string) => `/admin/accounts${listSearch?.startsWith('?') ? listSearch : ''}`

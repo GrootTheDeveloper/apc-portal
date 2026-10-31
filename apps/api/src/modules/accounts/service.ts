@@ -3,24 +3,27 @@ import { randomBytes } from 'node:crypto'
 import { z } from 'zod'
 
 import { db } from '../../db/client.js'
-import type { AccountStatus, Prisma, Role } from '../../db/generated/client.js'
+import type { AccountStatus, Prisma } from '../../db/generated/client.js'
 import { conflict, forbidden, notFound } from '../../lib/errors.js'
 import { pageArgs, pageQuery, toPage } from '../../lib/pagination.js'
 import { hashPassword } from '../../lib/password.js'
 import { AUDIT_ACTIONS, audit, AuditCategory, type AuditRequestLike, AuditResult } from '../audit/service.js'
 import { fieldError } from '../auth/password-policy.js'
 import { type AuthUser, hasRole } from '../auth/rbac.js'
+import { SESSION_IDLE_MS } from '../auth/session.js'
+import { assertPrivilegedMinimum } from './privileged.js'
+
+export { assertPrivilegedMinimum } from './privileged.js'
 
 // Quản lý tài khoản (A5, FLOW-11, Vai trò & quyền §8.2). Hàm dùng chung cho mảng khác:
 //   createAccount(tx, actor, {...})          — R6 (chuyển ứng viên thành thành viên), A7 (bootstrap)
-//   deactivateAccount(tx, actor, userId, {}) — T5 (thành viên Ngừng tham gia, QĐ-3)
-//   assertPrivilegedMinimum(tx, userId, ...) — A6 (thu hồi vai trò đặc quyền)
+//   deactivateAccount(tx, actor, userId, { reason, enforcePrivilegedMinimum }) — T5 (thành viên Ngừng tham gia, QĐ-3)
+//     `enforcePrivilegedMinimum` BẮT BUỘC: truyền `config.ENFORCE_PRIVILEGED_MINIMUM` (RP-06/07).
+//   assertPrivilegedMinimum(tx, userId, ...) — A6 (thu hồi vai trò đặc quyền), ở ./privileged.ts
 // Mật khẩu tạm chỉ trả về MỘT lần trong phản hồi API tạo / cấp lại (STATE-03); không ghi log, audit hay email.
 
 type Tx = Prisma.TransactionClient
 const TEMP_PASSWORD_HOURS = 72 // BR-04
-const PRIVILEGED: readonly Role[] = ['BOARD', 'TECH_ADMIN']
-const ROLE_LABEL: Record<string, string> = { BOARD: 'Ban Chủ nhiệm', TECH_ADMIN: 'quản trị viên kỹ thuật' }
 
 // ─── DỮ LIỆU ĐẦU VÀO ────────────────────────────────────────────────────────
 
@@ -28,8 +31,9 @@ export const reasonSchema = z.string({ error: 'Nhập lý do.' }).trim().min(3, 
 // Sổ sự cố nằm ngoài hệ thống (O5) nên chỉ kiểm dạng mã (README kế hoạch §7.2).
 export const incidentIdSchema = z.string({ error: 'Nhập mã sự cố dạng INC-YYYYMMDD-NN.' }).trim().regex(/^INC-\d{8}-\d{2}$/, 'Mã sự cố có dạng INC-YYYYMMDD-NN.')
 
-/** `updatedAt` đã đọc: khác bản trên server thì 409, không ghi đè (STATE-09). */
-const actionBase = z.object({ reason: reasonSchema, updatedAt: z.iso.datetime().optional() })
+/** `updatedAt` của bản đang xem, BẮT BUỘC: khác bản trên server thì 409, không ghi đè (STATE-09). */
+const updatedAtSchema = z.iso.datetime({ error: 'Thiếu thời điểm cập nhật của tài khoản. Vui lòng tải lại trang.' })
+const actionBase = z.object({ reason: reasonSchema, updatedAt: updatedAtSchema })
 
 export const createAccountSchema = z.object({
   username: z
@@ -134,7 +138,7 @@ export async function deactivateAccount(
   tx: Tx,
   actor: AuditRequestLike,
   userId: string,
-  { reason, enforcePrivilegedMinimum = false }: { reason: string; enforcePrivilegedMinimum?: boolean },
+  { reason, enforcePrivilegedMinimum }: { reason: string; enforcePrivilegedMinimum: boolean },
   now = new Date(),
 ) {
   const user = await tx.user.findUnique({ where: { id: userId }, select: { status: true } })
@@ -162,46 +166,17 @@ export async function deactivateAccount(
   )
 }
 
-/**
- * Ngưỡng tối thiểu (RP-06, RP-07, RP-18): sau thao tác phải còn ít nhất 2 người KHÁC giữ mỗi vai trò đặc quyền
- * mà tài khoản này đang giữ. Truyền `roles` để chỉ xét vai trò sắp bị thu hồi (A6). Không đạt → 409.
- */
-// Khóa advisory dùng chung cho mọi lần kiểm ngưỡng tối thiểu (giữ đến hết transaction).
-const PRIVILEGED_MINIMUM_LOCK = 7_103_001
-
-export async function assertPrivilegedMinimum(tx: Tx, userId: string, roles: readonly Role[] = PRIVILEGED, now = new Date()) {
-  // Các transaction khóa/ngừng hoạt động/thu hồi vai trò đặc quyền xếp hàng tại đây: ba BOARD khóa chéo nhau cùng lúc
-  // thì người sau đếm lại sau khi người trước đã commit, không cùng thấy "còn đủ 2" rồi cùng khóa.
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${PRIVILEGED_MINIMUM_LOCK})`
-  const active = { status: 'ACTIVE' as const, startsAt: { lte: now }, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] }
-  const held = await tx.userRole.findMany({
-    where: { userId, role: { in: roles.filter((role) => PRIVILEGED.includes(role)) }, ...active },
-    select: { role: true },
-    distinct: ['role'],
-  })
-  for (const { role } of held) {
-    const others = await tx.userRole.findMany({
-      where: { role, userId: { not: userId }, user: { status: 'ACTIVE' }, ...active },
-      select: { userId: true },
-      distinct: ['userId'],
-    })
-    if (others.length < 2) {
-      throw conflict(`Không thực hiện được: production phải còn ít nhất 2 ${ROLE_LABEL[role] ?? role} đang hoạt động.`)
-    }
-  }
-}
-
 // ─── THAO TÁC CỦA TRANG /admin/accounts ─────────────────────────────────────
 
 type Actor = AuditRequestLike & { user: AuthUser | null }
 type Options = { enforcePrivilegedMinimum: boolean; now?: Date }
 
 /** Đọc tài khoản đích, chặn tự thao tác trên chính mình (RP-05) và kiểm `updatedAt` đã đọc. */
-async function loadTarget(tx: Tx, actor: Actor, userId: string, updatedAt?: string) {
+async function loadTarget(tx: Tx, actor: Actor, userId: string, updatedAt: string) {
   const user = await tx.user.findUnique({ where: { id: userId }, select: { id: true, status: true, updatedAt: true } })
   if (!user) throw notFound()
   if (actor.user?.id === userId) throw forbidden('Không thể thực hiện thao tác này trên tài khoản của chính bạn.')
-  if (updatedAt && new Date(updatedAt).getTime() !== user.updatedAt.getTime()) {
+  if (new Date(updatedAt).getTime() !== user.updatedAt.getTime()) {
     throw conflict('Tài khoản vừa được người khác cập nhật. Vui lòng tải lại.')
   }
   return user
@@ -332,7 +307,7 @@ export async function revokeSessionsFromAdmin(actor: Actor, userId: string, inpu
 
 const activeSessionWhere = (now: Date) => ({
   revokedAt: null,
-  lastActiveAt: { gt: new Date(now.getTime() - 8 * 3600 * 1000) },
+  lastActiveAt: { gt: new Date(now.getTime() - SESSION_IDLE_MS) },
 })
 
 export async function listAccounts(viewer: AuthUser, query: unknown, now = new Date()) {
