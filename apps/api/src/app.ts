@@ -12,6 +12,7 @@ import { authRoutes } from './modules/auth/routes.js'
 import { contentRoutes } from './modules/content/routes.js'
 import { registerSession } from './modules/auth/session.js'
 import { emailRoutes } from './modules/email/routes.js'
+import { eventsRoutes } from './modules/events/routes.js'
 import { filesRoutes } from './modules/files/routes.js'
 import { createScanner } from './modules/files/scan.js'
 import { createS3Storage, type FileStorage } from './modules/files/storage.js'
@@ -36,6 +37,7 @@ export function buildApp(config: AppConfig, deps: AppDeps = {}) {
   app.register(accountRoutes(config))
   app.register(emailRoutes)
   app.register(contentRoutes())
+  app.register(eventsRoutes())
   app.register(aboutRoutes)
   app.register(filesRoutes({ storage, scanner: createScanner(config) }))
 

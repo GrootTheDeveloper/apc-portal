@@ -27,6 +27,7 @@ async function createUser(name: string, data: { status?: 'ACTIVE' | 'LOCKED' | '
       passwordHash: 'khong-dung-trong-test-nay',
       fullName: name,
       status: data.status ?? 'ACTIVE',
+      mustChangePassword: false, // mặc định của schema là true (chưa đổi mật khẩu tạm)
       departmentId: data.departmentId ?? null,
     },
   })
