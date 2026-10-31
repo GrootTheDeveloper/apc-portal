@@ -61,7 +61,8 @@ export async function loadAuthUser(
 // đơn vị UTF-16: 128 ký tự ngoài BMP (emoji) dài 256 đơn vị nhưng vẫn là mật khẩu hợp lệ.
 export const LOGIN_PASSWORD_MAX = PASSWORD_MAX * 4
 export const loginSchema = z.object({
-  username: z.string().trim().min(1).max(100),
+  // Tên đăng nhập lưu chữ thường (A5 createAccount); đăng nhập gõ hoa hay thường đều khớp.
+  username: z.string().trim().toLowerCase().min(1).max(100),
   password: passwordString(LOGIN_PASSWORD_MAX).pipe(z.string().min(1)),
 })
 
@@ -101,6 +102,7 @@ export async function verifyLogin(input: z.infer<typeof loginSchema>, now = new 
       id: true,
       passwordHash: true,
       status: true,
+      failedLoginAttempts: true,
       lockoutUntil: true,
       isTemporaryPassword: true,
       temporaryPasswordExpiresAt: true,
@@ -130,7 +132,11 @@ export async function verifyLogin(input: z.infer<typeof loginSchema>, now = new 
     throw unauthenticated('Mật khẩu tạm thời đã hết hạn. Liên hệ Ban Chủ nhiệm để được cấp lại.')
   }
 
-  await db.user.update({ where: { id: user.id }, data: { failedLoginAttempts: 0, lockoutUntil: null } })
+  // Chỉ ghi khi bộ đếm thật sự đổi: mỗi lần ghi làm đổi `updatedAt`, khiến quản trị viên đang mở trang
+  // tài khoản gặp 409 (STATE-09) dù không ai sửa gì.
+  if (user.failedLoginAttempts !== 0 || user.lockoutUntil !== null) {
+    await db.user.update({ where: { id: user.id }, data: { failedLoginAttempts: 0, lockoutUntil: null } })
+  }
   return user.id
 }
 

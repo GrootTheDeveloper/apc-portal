@@ -47,7 +47,7 @@ Nguồn sự thật nghiệp vụ: `docs/01-prd.md` (yêu cầu), `docs/02-roles
 
 ## Quy ước Web (`apps/web`)
 - Trang: `src/pages/<khu>/<trang>/`. Gọi API qua `api(...)` trong `src/lib/api.ts` (không `fetch` rải rác); lỗi là `ApiError` có `status`, `code`, `message`, `issues`.
-- Component dùng chung ở `src/components/`: `Button`/`buttonClass`/`pillClass`, `Eyebrow`, `PageHero` (đầu mỗi trang con), `Breadcrumb`, `Pagination`, `StatusScreen` (`compact` trong khung portal/quản trị), `inputClass`/`labelClass` (`formClass.ts`), `PasswordField`, `EventCard`/`NewsCard`/`ProjectCard`. Navbar/Footer ở `src/layouts/`.
+- Component dùng chung ở `src/components/`: `Button`/`buttonClass`/`pillClass`, `Eyebrow`, `PageHero` (đầu mỗi trang con), `Breadcrumb`, `Pagination`, `StatusScreen` (`compact` trong khung portal/quản trị), `inputClass`/`labelClass` (`formClass.ts`), `PasswordField`, `ConfirmDialog` (xác nhận hành động nhạy cảm, hỏi lý do, 409 có nút Tải lại), `EventCard`/`NewsCard`/`ProjectCard`. Navbar/Footer ở `src/layouts/`.
 - Hiệu ứng hiện dần: gắn `data-rv` cho phần tử trong `<section>` (độ trễ `style={{ '--d': '90ms' }}`), không tự viết IntersectionObserver.
 - Mọi trang có đủ 4 trạng thái: loading / empty / error / success. Dùng `useApi(...)` (`src/hooks/useApi.ts`) và `<AsyncState>` (`src/components/AsyncState.tsx`).
 - Ngày giờ hiển thị bằng `formatDate`/`formatDateTime` trong `src/lib/format.ts` (giờ Việt Nam), không tự `toLocaleString`.
