@@ -3,7 +3,7 @@ export function PasswordRules({ extra }: { extra: string }) {
   const rules = [
     'Dài 15–128 ký tự. Được dùng khoảng trắng và tiếng Việt, không bắt buộc trộn chữ, số, ký hiệu.',
     'Không dùng mật khẩu phổ biến hoặc lặp lại kiểu “abcabcabc…”.',
-    'Không chứa tên đăng nhập.',
+    'Không trùng tên đăng nhập (tên từ 4 ký tự trở lên thì cũng không được chứa nó).',
     extra,
   ]
   return (

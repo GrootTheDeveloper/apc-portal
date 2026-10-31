@@ -1,6 +1,4 @@
-// Cùng kiểu ô nhập với trang đăng nhập: viền 2px màu mực, focus viền xanh kèm quầng (DESIGN.md).
-const inputClass =
-  'w-full rounded-xl bg-paper px-4 py-3 text-[17px] text-ink shadow-[inset_0_0_0_2px_#081F3D] outline-none transition-shadow focus:shadow-[inset_0_0_0_2px_#1568C9,0_0_0_4px_rgba(21,104,201,0.2)] disabled:opacity-60 aria-[invalid=true]:shadow-[inset_0_0_0_2px_#C23B22]'
+import { inputClass } from './formClass'
 
 type PasswordFieldProps = {
   label: string

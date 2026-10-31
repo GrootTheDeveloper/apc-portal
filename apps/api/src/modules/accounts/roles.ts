@@ -5,26 +5,22 @@ import type { Prisma, Role } from '../../db/generated/client.js'
 import { conflict, forbidden, notFound } from '../../lib/errors.js'
 import { AUDIT_ACTIONS, audit, AuditCategory, type AuditRequestLike, AuditResult } from '../audit/service.js'
 import { fieldError } from '../auth/password-policy.js'
-import type { AuthUser } from '../auth/rbac.js'
-import { assertPrivilegedMinimum, reasonSchema } from './service.js'
+import { type AuthUser, hasRole } from '../auth/rbac.js'
+import { assertPrivilegedMinimum, effectiveRoleWindow, lockPrivilegedRoles, ROLE_LABEL } from './privileged.js'
+import { reasonSchema, revokeAllSessions } from './service.js'
 
 // Vai trò & phạm vi (A6, FLOW-20, Vai trò & quyền §8.6, §9):
 //   DEPARTMENT_MANAGER, BOARD, đổi ban: BOARD làm trực tiếp.
 //   TECH_ADMIN (DUAL): BOARD ghi quyết định (role_decisions) → một TECH_ADMIN khác đang hoạt động thực hiện.
 // Mỗi thao tác có hàm `...InTx(tx, ...)` (test chạy trong transaction rồi rollback) và hàm bọc mở transaction.
+// Mọi thao tác ghi lấy `lockPrivilegedRoles` đầu tiên (xếp hàng với khóa/ngừng hoạt động của A5) và đổi trạng thái
+// bằng `updateMany` có điều kiện trạng thái cũ: hai thao tác cùng lúc thì thao tác sau nhận 409, không ghi hai lần.
 
 type Tx = Prisma.TransactionClient
 type Actor = AuditRequestLike & { user: AuthUser | null }
 export type RoleOptions = { enforcePrivilegedMinimum: boolean; now?: Date }
 
 const MANAGED_ROLES = ['DEPARTMENT_MANAGER', 'BOARD', 'TECH_ADMIN'] as const
-const ROLE_LABEL: Record<string, string> = {
-  DEPARTMENT_MANAGER: 'Quản lý ban',
-  BOARD: 'Ban Chủ nhiệm',
-  TECH_ADMIN: 'Quản trị viên kỹ thuật',
-}
-
-const effective = (now: Date) => ({ startsAt: { lte: now }, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] })
 
 export const grantSchema = z.object({
   role: z.enum(MANAGED_ROLES, { error: 'Chọn vai trò.' }),
@@ -39,11 +35,32 @@ const changeDepartmentSchema = z.object({ departmentId: z.string({ error: 'Chọ
 
 const actorId = (actor: Actor) => actor.user?.id ?? null
 
-/** Tài khoản đích: tồn tại (404), không phải chính mình (RP-05 → 403); khi gán thì phải đang hoạt động (409). */
+/**
+ * Ghi lại lần cố leo quyền bị từ chối (FLOW-20, AC-RBAC-06): AUTH_DENIED, ghi NGOÀI transaction để không mất khi
+ * thao tác rollback. Ghi không được (vd người thực hiện chỉ tồn tại trong transaction của test) thì vẫn từ chối.
+ */
+async function recordDenied(actor: Actor, userId: string, reason: string, metadata: Record<string, unknown>) {
+  await audit(actor, {
+    action: AUDIT_ACTIONS.AUTH_DENIED,
+    targetType: 'USER',
+    targetId: userId,
+    category: AuditCategory.SECURITY,
+    result: AuditResult.FAILURE,
+    reason,
+    metadata,
+  }).catch(() => undefined)
+}
+
+const SELF_CHANGE = 'Không ai được tự thay đổi vai trò hoặc phạm vi của chính mình.'
+
+/** Tài khoản đích: tồn tại (404), không phải chính mình (RP-05 → 403, có audit); khi gán thì phải đang hoạt động (409). */
 async function loadTarget(tx: Tx, actor: Actor, userId: string, { mustBeActive }: { mustBeActive: boolean }) {
   const user = await tx.user.findUnique({ where: { id: userId }, select: { id: true, status: true } })
   if (!user) throw notFound()
-  if (actorId(actor) === userId) throw forbidden('Không ai được tự thay đổi vai trò hoặc phạm vi của chính mình.')
+  if (actorId(actor) === userId) {
+    await recordDenied(actor, userId, SELF_CHANGE, { rule: 'RP-05' })
+    throw forbidden(SELF_CHANGE)
+  }
   if (mustBeActive && user.status !== 'ACTIVE') throw conflict('Chỉ gán vai trò cho tài khoản đang hoạt động.')
   return user
 }
@@ -74,9 +91,9 @@ async function assertPrivilegedExpiry(tx: Tx, expiresAt: string | null | undefin
  * BR-21, RP-19: không vừa BOARD vừa TECH_ADMIN (kể cả dòng PENDING hoặc quyết định đang chờ),
  * và không gán trùng một vai trò đặc quyền đang có.
  */
-async function assertPrivilegedExclusive(tx: Tx, userId: string, role: 'BOARD' | 'TECH_ADMIN', now: Date) {
+async function assertPrivilegedExclusive(tx: Tx, actor: Actor, userId: string, role: 'BOARD' | 'TECH_ADMIN', now: Date) {
   const held = await tx.userRole.findMany({
-    where: { userId, role: { in: ['BOARD', 'TECH_ADMIN'] }, status: { in: ['PENDING', 'ACTIVE'] }, ...effective(now) },
+    where: { userId, role: { in: ['BOARD', 'TECH_ADMIN'] }, status: { in: ['PENDING', 'ACTIVE'] }, ...effectiveRoleWindow(now) },
     select: { role: true },
   })
   const pendingGrant = await tx.roleDecision.findFirst({
@@ -85,7 +102,11 @@ async function assertPrivilegedExclusive(tx: Tx, userId: string, role: 'BOARD' |
   })
   const roles = new Set([...held.map((grant) => grant.role), ...(pendingGrant ? [pendingGrant.role] : [])])
   const other = role === 'BOARD' ? 'TECH_ADMIN' : 'BOARD'
-  if (roles.has(other)) throw conflict('Một tài khoản không được giữ cùng lúc Ban Chủ nhiệm và Quản trị viên kỹ thuật.')
+  if (roles.has(other)) {
+    const message = 'Một tài khoản không được giữ cùng lúc Ban Chủ nhiệm và Quản trị viên kỹ thuật.'
+    await recordDenied(actor, userId, message, { rule: 'BR-21', role })
+    throw conflict(message)
+  }
   if (roles.has(role)) throw conflict(`Tài khoản đã có hoặc đang chờ vai trò ${ROLE_LABEL[role]}.`)
 }
 
@@ -107,10 +128,6 @@ export async function hasTwoFactorEnrolled(tx: Tx, userId: string) {
   const [user] = await tx.$queryRaw<{ enabled: boolean }[]>`
     SELECT "totpEnabledAt" IS NOT NULL AS "enabled" FROM "users" WHERE "id" = ${userId}`
   return user?.enabled ?? false
-}
-
-async function revokeSessions(tx: Tx, userId: string, now: Date) {
-  await tx.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } })
 }
 
 const roleAudit = (
@@ -137,12 +154,13 @@ const roleAudit = (
 export async function grantRoleInTx(tx: Tx, actor: Actor, userId: string, input: unknown, options: RoleOptions) {
   const body = grantSchema.parse(input ?? {})
   const now = options.now ?? new Date()
+  await lockPrivilegedRoles(tx)
   await loadTarget(tx, actor, userId, { mustBeActive: true })
 
   if (body.role === 'DEPARTMENT_MANAGER') {
     await assertActiveDepartment(tx, body.departmentId)
     const duplicate = await tx.userRole.count({
-      where: { userId, role: 'DEPARTMENT_MANAGER', departmentId: body.departmentId!, status: { in: ['PENDING', 'ACTIVE'] }, ...effective(now) },
+      where: { userId, role: 'DEPARTMENT_MANAGER', departmentId: body.departmentId!, status: { in: ['PENDING', 'ACTIVE'] }, ...effectiveRoleWindow(now) },
     })
     if (duplicate > 0) throw conflict('Tài khoản đã quản lý ban này.')
     const row = await tx.userRole.create({
@@ -153,7 +171,7 @@ export async function grantRoleInTx(tx: Tx, actor: Actor, userId: string, input:
   }
 
   const expiresAt = await assertPrivilegedExpiry(tx, body.expiresAt, now)
-  await assertPrivilegedExclusive(tx, userId, body.role, now)
+  await assertPrivilegedExclusive(tx, actor, userId, body.role, now)
 
   if (body.role === 'TECH_ADMIN') {
     const decision = await tx.roleDecision.create({
@@ -167,12 +185,21 @@ export async function grantRoleInTx(tx: Tx, actor: Actor, userId: string, input:
   const row = await tx.userRole.create({
     data: { userId, role: 'BOARD', status: enrolled ? 'ACTIVE' : 'PENDING', startsAt: now, expiresAt, reason: body.reason, grantedById: actorId(actor) },
   })
-  if (enrolled) await revokeSessions(tx, userId, now)
+  if (enrolled) await revokeAllSessions(tx, userId, now)
   await audit(actor, roleAudit(AUDIT_ACTIONS.ROLE_GRANT, userId, body.reason, { role: 'BOARD', status: row.status, userRoleId: row.id }), tx)
   return { kind: 'role' as const, id: row.id, status: row.status }
 }
 
 // ─── THU HỒI ────────────────────────────────────────────────────────────────
+
+/** Đánh dấu REVOKED chỉ khi dòng còn PENDING/ACTIVE; thao tác khác vừa thu hồi trước thì 409. */
+async function markRevoked(tx: Tx, actor: Actor, roleId: string, reason: string, now: Date) {
+  const { count } = await tx.userRole.updateMany({
+    where: { id: roleId, status: { in: ['PENDING', 'ACTIVE'] } },
+    data: { status: 'REVOKED', revokedAt: now, revokedById: actorId(actor), revokeReason: reason },
+  })
+  if (count !== 1) throw conflict('Vai trò này vừa được người khác thay đổi. Vui lòng tải lại.')
+}
 
 async function loadRoleRow(tx: Tx, userId: string, roleId: string) {
   const row = await tx.userRole.findUnique({ where: { id: roleId } })
@@ -186,17 +213,15 @@ async function revokeRow(tx: Tx, actor: Actor, row: { id: string; userId: string
   if (options.enforcePrivilegedMinimum && (row.role === 'BOARD' || row.role === 'TECH_ADMIN')) {
     await assertPrivilegedMinimum(tx, row.userId, [row.role], now)
   }
-  await tx.userRole.update({
-    where: { id: row.id },
-    data: { status: 'REVOKED', revokedAt: now, revokedById: actorId(actor), revokeReason: reason },
-  })
-  await revokeSessions(tx, row.userId, now)
+  await markRevoked(tx, actor, row.id, reason, now)
+  await revokeAllSessions(tx, row.userId, now)
   await audit(actor, roleAudit(AUDIT_ACTIONS.ROLE_REVOKE, row.userId, reason, { role: row.role, userRoleId: row.id, ...extra }), tx)
 }
 
 /** BOARD thu hồi vai trò. TECH_ADMIN: chỉ ghi quyết định thu hồi (DUAL). Ngưỡng tối thiểu áp cho BOARD/TECH_ADMIN. */
 export async function revokeRoleInTx(tx: Tx, actor: Actor, userId: string, roleId: string, input: unknown, options: RoleOptions) {
   const { reason } = reasonOnly.parse(input ?? {})
+  await lockPrivilegedRoles(tx)
   await loadTarget(tx, actor, userId, { mustBeActive: false })
   const row = await loadRoleRow(tx, userId, roleId)
 
@@ -222,6 +247,7 @@ export async function revokeRoleInTx(tx: Tx, actor: Actor, userId: string, roleI
 export async function changeDepartmentInTx(tx: Tx, actor: Actor, userId: string, roleId: string, input: unknown, options: RoleOptions) {
   const body = changeDepartmentSchema.parse(input ?? {})
   const now = options.now ?? new Date()
+  await lockPrivilegedRoles(tx)
   await loadTarget(tx, actor, userId, { mustBeActive: true })
   const row = await loadRoleRow(tx, userId, roleId)
   if (row.role !== 'DEPARTMENT_MANAGER') throw conflict('Chỉ đổi ban được cho vai trò Quản lý ban.')
@@ -229,14 +255,11 @@ export async function changeDepartmentInTx(tx: Tx, actor: Actor, userId: string,
   await assertActiveDepartment(tx, body.departmentId)
   // Không chuyển sang ban người đó đang quản lý sẵn ở một dòng khác (sẽ thành hai dòng trùng ban).
   const alreadyManaged = await tx.userRole.count({
-    where: { userId, role: 'DEPARTMENT_MANAGER', departmentId: body.departmentId, status: { in: ['PENDING', 'ACTIVE'] }, ...effective(now) },
+    where: { userId, role: 'DEPARTMENT_MANAGER', departmentId: body.departmentId, status: { in: ['PENDING', 'ACTIVE'] }, ...effectiveRoleWindow(now) },
   })
   if (alreadyManaged > 0) throw conflict('Tài khoản đã quản lý ban này.')
 
-  await tx.userRole.update({
-    where: { id: row.id },
-    data: { status: 'REVOKED', revokedAt: now, revokedById: actorId(actor), revokeReason: body.reason },
-  })
+  await markRevoked(tx, actor, row.id, body.reason, now)
   const next = await tx.userRole.create({
     data: {
       userId,
@@ -264,20 +287,38 @@ export async function changeDepartmentInTx(tx: Tx, actor: Actor, userId: string,
 
 // ─── QUYẾT ĐỊNH TECH_ADMIN (DUAL) ───────────────────────────────────────────
 
-/** Một TECH_ADMIN đang hoạt động (không phải người được gán) thực hiện quyết định của BOARD. */
+/**
+ * Một TECH_ADMIN đang hoạt động (không phải người được gán) thực hiện quyết định của BOARD.
+ * Kiểm lại ngay lúc thực hiện: quyết định còn PENDING (giành bằng updateMany, hai người bấm cùng lúc thì một người 409),
+ * chưa quá ngày hết hạn, và ngày hết hạn vẫn không muộn hơn `termEndsAt` hiện tại (BOARD có thể đã rút ngắn nhiệm kỳ).
+ */
 export async function executeDecisionInTx(tx: Tx, actor: Actor, decisionId: string, options: RoleOptions) {
   const now = options.now ?? new Date()
+  await lockPrivilegedRoles(tx)
   const decision = await tx.roleDecision.findUnique({ where: { id: decisionId } })
   if (!decision) throw notFound()
-  if (decision.status !== 'PENDING') throw conflict('Quyết định này đã được xử lý.')
-  if (actorId(actor) === decision.userId) throw forbidden('Không ai được tự thực hiện quyết định về vai trò của chính mình.')
+  if (actorId(actor) === decision.userId) {
+    const message = 'Không ai được tự thực hiện quyết định về vai trò của chính mình.'
+    await recordDenied(actor, decision.userId, message, { rule: 'RP-05', decisionId })
+    throw forbidden(message)
+  }
+  const claimed = await tx.roleDecision.updateMany({
+    where: { id: decision.id, status: 'PENDING' },
+    data: { status: 'EXECUTED', executedById: actorId(actor), executedAt: now },
+  })
+  if (claimed.count !== 1) throw conflict('Quyết định này đã được xử lý.')
   const meta = { stage: 'executed', decisionId: decision.id, decidedById: decision.decidedById }
 
   if (decision.action === 'GRANT') {
     await loadTarget(tx, actor, decision.userId, { mustBeActive: true })
-    await tx.roleDecision.update({ where: { id: decision.id }, data: { status: 'EXECUTED' } }) // bỏ khỏi kiểm tra trùng
-    await assertPrivilegedExclusive(tx, decision.userId, 'TECH_ADMIN', now)
-    if (decision.expiresAt && decision.expiresAt <= now) throw conflict('Quyết định đã quá ngày hết hạn của vai trò.')
+    await assertPrivilegedExclusive(tx, actor, decision.userId, 'TECH_ADMIN', now)
+    if (decision.expiresAt && decision.expiresAt <= now) {
+      throw conflict('Quyết định đã quá ngày hết hạn của vai trò. Hủy quyết định này và ghi quyết định mới.')
+    }
+    const setting = await tx.siteSetting.findFirst({ select: { termEndsAt: true } })
+    if (!setting?.termEndsAt || !decision.expiresAt || decision.expiresAt > setting.termEndsAt) {
+      throw conflict('Ngày hết hạn trong quyết định muộn hơn ngày kết thúc nhiệm kỳ hiện tại (RP-03). Hủy quyết định này và ghi quyết định mới.')
+    }
     const enrolled = await hasTwoFactorEnrolled(tx, decision.userId)
     const row = await tx.userRole.create({
       data: {
@@ -290,31 +331,28 @@ export async function executeDecisionInTx(tx: Tx, actor: Actor, decisionId: stri
         grantedById: decision.decidedById,
       },
     })
-    if (enrolled) await revokeSessions(tx, decision.userId, now)
-    await tx.roleDecision.update({
-      where: { id: decision.id },
-      data: { userRoleId: row.id, executedById: actorId(actor), executedAt: now },
-    })
+    if (enrolled) await revokeAllSessions(tx, decision.userId, now)
+    await tx.roleDecision.update({ where: { id: decision.id }, data: { userRoleId: row.id } })
     await audit(actor, roleAudit(AUDIT_ACTIONS.ROLE_GRANT, decision.userId, decision.reason, { role: 'TECH_ADMIN', status: row.status, userRoleId: row.id, ...meta }), tx)
     return { status: 'EXECUTED' as const, userRoleId: row.id }
   }
 
   const row = await loadRoleRow(tx, decision.userId, decision.userRoleId ?? '')
   await revokeRow(tx, actor, row, decision.reason, options, meta)
-  await tx.roleDecision.update({
-    where: { id: decision.id },
-    data: { status: 'EXECUTED', executedById: actorId(actor), executedAt: now },
-  })
   return { status: 'EXECUTED' as const, userRoleId: row.id }
 }
 
-/** BOARD hủy quyết định chưa thực hiện. */
+/** BOARD hủy quyết định chưa thực hiện (giành bằng updateMany: đã được thực hiện cùng lúc thì 409). */
 export async function cancelDecisionInTx(tx: Tx, actor: Actor, decisionId: string, input: unknown, options: RoleOptions) {
   const { reason } = reasonOnly.parse(input ?? {})
+  await lockPrivilegedRoles(tx)
   const decision = await tx.roleDecision.findUnique({ where: { id: decisionId } })
   if (!decision) throw notFound()
-  if (decision.status !== 'PENDING') throw conflict('Quyết định này đã được xử lý.')
-  await tx.roleDecision.update({ where: { id: decisionId }, data: { status: 'CANCELLED', cancelledAt: options.now ?? new Date() } })
+  const { count } = await tx.roleDecision.updateMany({
+    where: { id: decisionId, status: 'PENDING' },
+    data: { status: 'CANCELLED', cancelledAt: options.now ?? new Date() },
+  })
+  if (count !== 1) throw conflict('Quyết định này đã được xử lý.')
   const action = decision.action === 'GRANT' ? AUDIT_ACTIONS.ROLE_GRANT : AUDIT_ACTIONS.ROLE_REVOKE
   await audit(actor, roleAudit(action, decision.userId, reason, { role: decision.role, stage: 'cancelled', decisionId }), tx)
 }
@@ -335,13 +373,17 @@ export const cancelDecision = (actor: Actor, decisionId: string, input: unknown,
 
 const person = { select: { id: true, username: true, fullName: true } } as const
 
-/** PAGE-MGT-MEM-06: vai trò, phạm vi, ngày hiệu lực/hết hạn, lý do và lịch sử; kèm quyết định DUAL của tài khoản. */
+/**
+ * PAGE-MGT-MEM-06: vai trò, phạm vi, ngày hiệu lực/hết hạn, lý do và lịch sử; kèm quyết định DUAL của tài khoản.
+ * TECH_ADMIN (không có BOARD) chỉ thấy phần DUAL: các dòng TECH_ADMIN và quyết định về TECH_ADMIN.
+ */
 export async function getAccountRoles(viewer: AuthUser, userId: string) {
   const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, username: true, fullName: true, status: true } })
   if (!user) throw notFound()
+  const dualOnly = !hasRole(viewer, 'BOARD')
   const [roles, decisions, setting, departments] = await db.$transaction([
     db.userRole.findMany({
-      where: { userId },
+      where: { userId, ...(dualOnly ? { role: 'TECH_ADMIN' as const } : {}) },
       orderBy: [{ createdAt: 'desc' }],
       select: {
         id: true,
@@ -358,7 +400,7 @@ export async function getAccountRoles(viewer: AuthUser, userId: string) {
         revokedBy: person,
       },
     }),
-    db.roleDecision.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, include: { decidedBy: person, executedBy: person } }),
+    db.roleDecision.findMany({ where: { userId, ...(dualOnly ? { role: 'TECH_ADMIN' as const } : {}) }, orderBy: { createdAt: 'desc' }, include: { decidedBy: person, executedBy: person } }),
     db.siteSetting.findFirst({ select: { termEndsAt: true } }),
     db.department.findMany({ where: { status: 'ACTIVE' }, orderBy: [{ order: 'asc' }, { name: 'asc' }], select: { id: true, name: true } }),
   ])

@@ -9,6 +9,7 @@ import type { Prisma } from '../../db/generated/client.js'
 import { hashPassword } from '../../lib/password.js'
 import type { AuthUser } from '../auth/rbac.js'
 import { SESSION_COOKIE } from '../auth/session.js'
+import { lockPrivilegedRoles } from './privileged.js'
 import { cancelDecisionInTx, changeDepartmentInTx, executeDecisionInTx, grantRoleInTx, hasTwoFactorEnrolled, revokeRoleInTx } from './roles.js'
 
 // A6 — vai trò & phạm vi. Test API cho quyền và các thao tác không cần ngày nhiệm kỳ;
@@ -67,6 +68,8 @@ async function isolated(termEndsAt: Date | null, check: (tx: Tx) => Promise<void
     .$transaction(
       async (tx) => {
         // Chặn file test khác ghi user_roles đến khi rollback, để trạng thái "trống" không bị chen vào.
+        // Khóa advisory trước, khóa bảng sau: cùng thứ tự với route, không deadlock với file test khác.
+        await lockPrivilegedRoles(tx)
         await tx.$executeRaw`LOCK TABLE "user_roles" IN SHARE ROW EXCLUSIVE MODE`
         await tx.siteSetting.deleteMany({})
         if (termEndsAt) await tx.siteSetting.create({ data: { info: {}, termEndsAt } })
@@ -311,5 +314,164 @@ describe('góp ý review A6', () => {
         changeDepartmentInTx(tx, actor(board.id, 'BOARD'), target.id, first.id, { departmentId: deptB.id, reason: 'Gộp ban' }, OPTIONS),
       ).rejects.toMatchObject({ statusCode: 409 })
     })
+  })
+})
+
+describe('góp ý review A6 — lần 2', () => {
+  const roleRow = (userId: string, role: 'BOARD' | 'TECH_ADMIN' | 'DEPARTMENT_MANAGER') =>
+    db.userRole.findFirstOrThrow({ where: { userId, role, status: { in: ['PENDING', 'ACTIVE'] } } })
+  const deniedLogs = (targetId: string) => db.auditLog.findMany({ where: { targetId, action: 'auth.denied', result: 'FAILURE' } })
+
+  it('gives an ACTIVE role at once (and signs old sessions out) when the person already set up two-factor', async () => {
+    // Cột totpEnabledAt của B3 chưa có trên main: thêm tạm trong transaction (DDL của Postgres rollback được).
+    await isolated(new Date(Date.now() + 90 * DAY), async (tx) => {
+      await tx.$executeRaw`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "totpEnabledAt" TIMESTAMP(3)`
+      const board = await userIn(tx, 'totp-board', 'BOARD')
+      const target = await userIn(tx, 'totp-target')
+      await tx.$executeRaw`UPDATE "users" SET "totpEnabledAt" = NOW() WHERE "id" = ${target.id}`
+      await tx.session.create({ data: { userId: target.id, tokenHash: `totp-${tag}` } })
+      expect(await hasTwoFactorEnrolled(tx, target.id)).toBe(true)
+
+      const until = (await tx.siteSetting.findFirstOrThrow()).termEndsAt!
+      const granted = await grantRoleInTx(tx, actor(board.id, 'BOARD'), target.id, { role: 'BOARD', expiresAt: until.toISOString(), reason: 'Gia hạn nhiệm kỳ' }, OPTIONS)
+      expect(granted).toMatchObject({ kind: 'role', status: 'ACTIVE' })
+      expect(await tx.session.count({ where: { userId: target.id, revokedAt: null } })).toBe(0)
+    })
+  })
+
+  it('GET /admin/access-control: BOARD and TECH_ADMIN see the queue; managers and members get 403', async () => {
+    for (const token of [tokens.board, tokens.tech]) {
+      const response = await call('GET', '/admin/access-control', token)
+      expect(response.statusCode).toBe(200)
+      expect(response.json()).toMatchObject({ pending: expect.any(Array), recent: expect.any(Array) })
+    }
+    for (const token of [tokens.manager, tokens.member]) expect((await call('GET', '/admin/access-control', token)).statusCode).toBe(403)
+  })
+
+  it('executes a TECH_ADMIN revoke decision over HTTP, then refuses to cancel it (409); only BOARD may cancel (403)', async () => {
+    const target = await createUser('http-dual', 'TECH_ADMIN')
+    const row = await roleRow(target.id, 'TECH_ADMIN')
+    const decided = await call('POST', `/admin/accounts/${target.id}/roles/${row.id}/revoke`, tokens.board, { reason: 'Rời nhóm vận hành' })
+    expect(decided.statusCode).toBe(202)
+    const decisionId = decided.json().id
+
+    expect((await call('POST', `/admin/access-control/${decisionId}/execute`, tokens.board)).statusCode).toBe(403)
+    const executed = await call('POST', `/admin/access-control/${decisionId}/execute`, tokens.tech)
+    expect(executed.statusCode).toBe(200)
+    expect(executed.json()).toMatchObject({ status: 'EXECUTED', userRoleId: row.id })
+    expect((await db.userRole.findUniqueOrThrow({ where: { id: row.id } })).status).toBe('REVOKED')
+
+    expect((await call('POST', `/admin/access-control/${decisionId}/cancel`, tokens.tech, { reason: 'Không được hủy' })).statusCode).toBe(403)
+    expect((await call('POST', `/admin/access-control/${decisionId}/cancel`, tokens.board, { reason: 'Đã muộn' })).statusCode).toBe(409)
+  })
+
+  it('cancels a pending decision over HTTP (204), and a second cancel is 409', async () => {
+    const target = await createUser('http-cancel', 'TECH_ADMIN')
+    const row = await roleRow(target.id, 'TECH_ADMIN')
+    const decisionId = (await call('POST', `/admin/accounts/${target.id}/roles/${row.id}/revoke`, tokens.board, { reason: 'Thử hủy' })).json().id
+    expect((await call('POST', `/admin/access-control/${decisionId}/cancel`, tokens.board, { reason: 'Đổi ý' })).statusCode).toBe(204)
+    expect((await db.roleDecision.findUniqueOrThrow({ where: { id: decisionId } })).status).toBe('CANCELLED')
+    expect((await call('POST', `/admin/access-control/${decisionId}/cancel`, tokens.board, { reason: 'Lần hai' })).statusCode).toBe(409)
+    expect((await db.userRole.findUniqueOrThrow({ where: { id: row.id } })).status).toBe('ACTIVE')
+  })
+
+  it('execute and cancel pressed at the same time: exactly one wins and the record matches it', async () => {
+    const target = await createUser('race-dual', 'TECH_ADMIN')
+    const row = await roleRow(target.id, 'TECH_ADMIN')
+    const decisionId = (await call('POST', `/admin/accounts/${target.id}/roles/${row.id}/revoke`, tokens.board, { reason: 'Thử song song' })).json().id
+    const [executed, cancelled] = await Promise.all([
+      call('POST', `/admin/access-control/${decisionId}/execute`, tokens.tech),
+      call('POST', `/admin/access-control/${decisionId}/cancel`, tokens.board, { reason: 'Song song' }),
+    ])
+    expect([executed.statusCode, cancelled.statusCode].sort()).toEqual(executed.statusCode === 200 ? [200, 409] : [204, 409])
+    const decision = await db.roleDecision.findUniqueOrThrow({ where: { id: decisionId } })
+    const saved = await db.userRole.findUniqueOrThrow({ where: { id: row.id } })
+    expect(decision.status).toBe(executed.statusCode === 200 ? 'EXECUTED' : 'CANCELLED')
+    expect(saved.status).toBe(executed.statusCode === 200 ? 'REVOKED' : 'ACTIVE')
+    expect(await db.auditLog.count({ where: { targetId: target.id, action: 'role.revoke', metadata: { path: ['stage'], equals: 'executed' } } })).toBe(executed.statusCode === 200 ? 1 : 0)
+  })
+
+  it('revoke and change-department: TECH_ADMIN and managers get 403; nobody may change their own roles (403, audited)', async () => {
+    const target = await createUser('deny-target', 'DEPARTMENT_MANAGER', deptA.id)
+    const row = await roleRow(target.id, 'DEPARTMENT_MANAGER')
+    for (const token of [tokens.tech, tokens.manager]) {
+      expect((await call('POST', `/admin/accounts/${target.id}/roles/${row.id}/revoke`, token, { reason: 'Không có quyền' })).statusCode).toBe(403)
+      expect((await call('POST', `/admin/accounts/${target.id}/roles/${row.id}/change-department`, token, { departmentId: deptB.id, reason: 'Không có quyền' })).statusCode).toBe(403)
+    }
+    const own = await roleRow(boardUser.id, 'BOARD')
+    expect((await call('POST', `/admin/accounts/${boardUser.id}/roles/${own.id}/revoke`, tokens.board, { reason: 'Tự thu hồi' })).statusCode).toBe(403)
+    expect((await call('POST', `/admin/accounts/${boardUser.id}/roles/${own.id}/change-department`, tokens.board, { departmentId: deptB.id, reason: 'Tự đổi ban' })).statusCode).toBe(403)
+    expect((await deniedLogs(boardUser.id)).length).toBeGreaterThanOrEqual(2)
+    expect((await db.userRole.findUniqueOrThrow({ where: { id: own.id } })).status).toBe('ACTIVE')
+  })
+
+  it('audits a BR-21 refusal (BOARD + TECH_ADMIN) outside the rolled-back transaction', async () => {
+    let targetId = ''
+    const until = new Date(Date.now() + 90 * DAY)
+    await isolated(until, async (tx) => {
+      const target = await userIn(tx, 'br21-target', 'BOARD')
+      targetId = target.id
+      await expect(
+        grantRoleInTx(tx, actor(boardUser.id, 'BOARD'), target.id, { role: 'TECH_ADMIN', expiresAt: until.toISOString(), reason: 'Thử leo quyền' }, OPTIONS),
+      ).rejects.toMatchObject({ statusCode: 409 })
+    })
+    const logs = await deniedLogs(targetId)
+    expect(logs).toHaveLength(1)
+    expect(logs[0]).toMatchObject({ actorId: boardUser.id, category: 'SECURITY' })
+    expect(logs[0]!.metadata).toMatchObject({ rule: 'BR-21' })
+  })
+
+  it('re-checks the term end and the expiry when executing a GRANT decision (409)', async () => {
+    const until = new Date(Date.now() + 90 * DAY)
+    await isolated(until, async (tx) => {
+      const board = await userIn(tx, 'term-board', 'BOARD')
+      const executor = await userIn(tx, 'term-tech', 'TECH_ADMIN')
+      const target = await userIn(tx, 'term-target')
+      const decided = await grantRoleInTx(tx, actor(board.id, 'BOARD'), target.id, { role: 'TECH_ADMIN', expiresAt: until.toISOString(), reason: 'Thêm người' }, OPTIONS)
+      // BOARD rút ngắn nhiệm kỳ sau khi ghi quyết định.
+      await tx.siteSetting.updateMany({ data: { termEndsAt: new Date(Date.now() + 30 * DAY) } })
+      await expect(executeDecisionInTx(tx, actor(executor.id, 'TECH_ADMIN'), decided.id, OPTIONS)).rejects.toMatchObject({ statusCode: 409 })
+      // Quyết định đã quá ngày hết hạn của vai trò.
+      await tx.siteSetting.updateMany({ data: { termEndsAt: until } })
+      await expect(
+        executeDecisionInTx(tx, actor(executor.id, 'TECH_ADMIN'), decided.id, { ...OPTIONS, now: new Date(until.getTime() + DAY) }),
+      ).rejects.toMatchObject({ statusCode: 409 })
+      expect(await tx.userRole.count({ where: { userId: target.id } })).toBe(0)
+    })
+  })
+
+  it('with ENFORCE_PRIVILEGED_MINIMUM, executing a TECH_ADMIN revoke below 2 other holders is refused (409)', async () => {
+    await isolated(new Date(Date.now() + 90 * DAY), async (tx) => {
+      await tx.userRole.updateMany({ where: { role: 'TECH_ADMIN', status: 'ACTIVE' }, data: { status: 'EXPIRED' } })
+      const board = await userIn(tx, 'mint-board', 'BOARD')
+      const executor = await userIn(tx, 'mint-exec', 'TECH_ADMIN')
+      const target = await userIn(tx, 'mint-target', 'TECH_ADMIN')
+      const row = await tx.userRole.findFirstOrThrow({ where: { userId: target.id } })
+      const decided = await revokeRoleInTx(tx, actor(board.id, 'BOARD'), target.id, row.id, { reason: 'Thử ngưỡng' }, OPTIONS)
+      await expect(
+        executeDecisionInTx(tx, actor(executor.id, 'TECH_ADMIN'), decided.id, { enforcePrivilegedMinimum: true }),
+      ).rejects.toMatchObject({ statusCode: 409 })
+      expect((await tx.userRole.findUniqueOrThrow({ where: { id: row.id } })).status).toBe('ACTIVE')
+    })
+  })
+
+  it('deactivating an account cancels its pending decisions and records the revoke reason', async () => {
+    const target = await createUser('leave-dual', 'TECH_ADMIN')
+    const row = await roleRow(target.id, 'TECH_ADMIN')
+    const decisionId = (await call('POST', `/admin/accounts/${target.id}/roles/${row.id}/revoke`, tokens.board, { reason: 'Sắp nghỉ' })).json().id
+    const { updatedAt } = await db.user.findUniqueOrThrow({ where: { id: target.id } })
+    const response = await call('POST', `/admin/accounts/${target.id}/deactivate`, tokens.board, { reason: 'Ngừng tham gia CLB', updatedAt: updatedAt.toISOString() })
+    expect(response.statusCode).toBe(204)
+    expect((await db.roleDecision.findUniqueOrThrow({ where: { id: decisionId } })).status).toBe('CANCELLED')
+    expect(await db.userRole.findUniqueOrThrow({ where: { id: row.id } })).toMatchObject({ status: 'REVOKED', revokeReason: 'Ngừng tham gia CLB' })
+  })
+
+  it('TECH_ADMIN sees only the TECH_ADMIN part of an account’s role history', async () => {
+    const target = await createUser('mixed-view', 'DEPARTMENT_MANAGER', deptA.id)
+    await db.userRole.create({ data: { userId: target.id, role: 'TECH_ADMIN', status: 'ACTIVE', startsAt: new Date(Date.now() - 1000), reason: 'test' } })
+    const byBoard = (await call('GET', `/admin/accounts/${target.id}/roles`, tokens.board)).json()
+    const byTech = (await call('GET', `/admin/accounts/${target.id}/roles`, tokens.tech)).json()
+    expect(byBoard.roles.map((role: { role: string }) => role.role).sort()).toEqual(['DEPARTMENT_MANAGER', 'TECH_ADMIN'])
+    expect(byTech.roles.map((role: { role: string }) => role.role)).toEqual(['TECH_ADMIN'])
   })
 })

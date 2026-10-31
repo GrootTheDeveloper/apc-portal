@@ -291,6 +291,7 @@ model RoleDecision {
   userId String
   user   User   @relation("RoleDecisionTarget", fields: [userId], references: [id])
   userRoleId String? // REVOKE: dòng user_roles bị thu hồi; GRANT: dòng được tạo khi thực hiện
+  userRole   UserRole? @relation(fields: [userRoleId], references: [id])
   expiresAt  DateTime? // GRANT: ngày hết hạn của vai trò, không muộn hơn SiteSetting.termEndsAt (RP-03)
   reason     String
 
@@ -332,6 +333,7 @@ model UserRole {
   revokedBy   User?     @relation("RoleRevoker", fields: [revokedById], references: [id])
   revokedAt   DateTime?
   revokeReason String? // A6: lý do thu hồi (lý do cấp nằm ở `reason`)
+  decisions    RoleDecision[] // A6: quyết định DUAL tạo ra (GRANT) hoặc thu hồi (REVOKE) dòng này
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

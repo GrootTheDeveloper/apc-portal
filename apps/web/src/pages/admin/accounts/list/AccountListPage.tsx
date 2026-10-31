@@ -1,8 +1,9 @@
 import { type FormEvent, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../../components/AsyncState'
 import { Button } from '../../../../components/Button'
+import { inputClass, labelClass } from '../../../../components/formClass'
 import { Pagination } from '../../../../components/Pagination'
 import { useApi } from '../../../../hooks/useApi'
 import { useAuth } from '../../../../hooks/useAuth'
@@ -10,18 +11,15 @@ import { api, ApiError, type Page } from '../../../../lib/api'
 import { type AccountStatus, hasRole } from '../../../../lib/auth'
 import { formatDateTime } from '../../../../lib/format'
 import { fieldErrors } from '../../../../lib/formErrors'
-import { type AccountRow, STATUS_LABEL } from '../accountTypes'
-import { StatusBadge, TemporaryPasswordNotice } from '../shared'
+import { type AccountLocationState, type AccountRow, STATUS_LABEL } from '../accountTypes'
+import { StatusBadge } from '../shared'
 
 const PAGE_SIZE = 20
 const STATUSES = Object.keys(STATUS_LABEL) as AccountStatus[]
-const inputClass =
-  'w-full rounded-xl bg-paper px-4 py-3 text-[17px] text-ink shadow-[inset_0_0_0_2px_#081F3D] outline-none focus:shadow-[inset_0_0_0_2px_#1568C9,0_0_0_4px_rgba(21,104,201,0.2)] aria-[invalid=true]:shadow-[inset_0_0_0_2px_#C23B22]'
-const labelClass = 'flex flex-col gap-2 font-code text-[13px] font-bold'
 
 type Created = { user: { id: string; username: string }; temporaryPassword: string }
 
-/** Form tạo tài khoản (BOARD): tên đăng nhập, email, họ tên, ban. Xong thì hiện mật khẩu tạm một lần. */
+/** Form tạo tài khoản (BOARD): tên đăng nhập, email, họ tên, ban. Xong thì sang trang chi tiết, hiện mật khẩu tạm một lần. */
 function CreateAccountForm({ onCreated, onCancel }: { onCreated: (created: Created) => void; onCancel: () => void }) {
   const departments = useApi<{ id: string; name: string }[]>('/admin/accounts/departments')
   const [form, setForm] = useState({ username: '', email: '', fullName: '', departmentId: '' })
@@ -122,12 +120,13 @@ export function AccountListPage() {
   const { user } = useAuth()
   const board = hasRole(user, 'BOARD')
   const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
+  const navigate = useNavigate()
   const q = searchParams.get('q') ?? ''
   const status = searchParams.get('status') ?? ''
   const page = Math.max(1, Number(searchParams.get('page')) || 1)
   const [draft, setDraft] = useState(q)
   const [creating, setCreating] = useState(false)
-  const [created, setCreated] = useState<Created | null>(null)
 
   const query = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) })
   if (q) query.set('q', q)
@@ -155,33 +154,19 @@ export function AccountListPage() {
             {board ? 'Tạo, khóa, mở khóa, cấp lại mật khẩu tạm và ngừng hoạt động tài khoản.' : 'Trạng thái kỹ thuật: phiên đăng nhập và lần đăng nhập sai.'}
           </p>
         </div>
-        {board && !creating && (
-          <Button
-            onClick={() => {
-              setCreated(null)
-              setCreating(true)
-            }}
-          >
-            + Tạo tài khoản
-          </Button>
-        )}
+        {board && !creating && <Button onClick={() => setCreating(true)}>+ Tạo tài khoản</Button>}
       </div>
 
-      {created && (
-        <div className="flex flex-col gap-3">
-          <TemporaryPasswordNotice username={created.user.username} password={created.temporaryPassword} />
-          <Link className="font-bold text-apc-blue underline" to={`/admin/accounts/${created.user.id}`}>
-            Xem tài khoản vừa tạo →
-          </Link>
-        </div>
-      )}
       {creating && (
         <CreateAccountForm
           onCancel={() => setCreating(false)}
           onCreated={(result) => {
-            setCreating(false)
-            setCreated(result)
-            accounts.reload()
+            // Sitemap §15.3: tạo xong sang trang chi tiết; mật khẩu tạm đi kèm state để hiện một lần ở đó.
+            const state: AccountLocationState = {
+              listSearch: location.search,
+              created: { username: result.user.username, temporaryPassword: result.temporaryPassword },
+            }
+            navigate(`/admin/accounts/${result.user.id}`, { state })
           }}
         />
       )}
@@ -226,6 +211,7 @@ export function AccountListPage() {
             <li key={account.id}>
               <Link
                 to={`/admin/accounts/${account.id}`}
+                state={{ listSearch: location.search } satisfies AccountLocationState}
                 className="grid gap-2 py-4 transition-colors hover:bg-soft sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-3"
               >
                 <span className="min-w-0">
