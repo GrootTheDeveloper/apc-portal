@@ -35,6 +35,8 @@ export class BootstrapRefused extends Error {}
 export type BootstrapResult = {
   status: 'created' | 'reissued'
   accounts: { role: 'BOARD' | 'TECH_ADMIN'; username: string; temporaryPassword: string; expiresAt: Date }[]
+  /** false khi chưa có dòng site_settings: phải nhập ngày kết thúc nhiệm kỳ ở trang Thông tin APC (T4). */
+  termEndsAtSaved: boolean
 }
 
 /** Hết ngày đã chọn theo giờ Việt Nam (23:59:59 +07:00), lưu UTC (BR-14). */
@@ -42,31 +44,33 @@ const endOfVnDay = (date: string) => new Date(`${date}T23:59:59+07:00`)
 
 /**
  * Chạy bootstrap trong transaction `tx`:
- * - Đã có BOARD hoặc TECH_ADMIN ACTIVE → từ chối, không đổi gì (bootstrap đã hoàn tất, FLOW-27).
- * - Đã có hai tài khoản bootstrap chưa ai ACTIVE → không tạo mới, chỉ cấp lại mật khẩu tạm cho hai tài khoản đó.
- * - Còn lại → tạo hai tài khoản PENDING_ACTIVATION, dòng BOARD và TECH_ADMIN ở PENDING hết hạn cuối nhiệm kỳ,
- *   ghi termEndsAt nếu đang trống, audit với định danh dịch vụ `bootstrap`.
+ * - Còn tài khoản bootstrap mà vai trò vẫn PENDING (chưa kích hoạt xong) → không tạo mới, chỉ cấp lại mật khẩu tạm
+ *   cho những tài khoản đó — kể cả khi người kia đã ACTIVE (vd TECH_ADMIN kích hoạt trước, mật khẩu tạm của BOARD
+ *   đã quá 72 giờ): không để rơi vào thế phải sửa database bằng tay.
+ * - Không còn tài khoản bootstrap nào chờ mà đã có BOARD/TECH_ADMIN ACTIVE → từ chối, không đổi gì (đã hoàn tất, FLOW-27).
+ * - Còn lại (database trống) → tạo hai tài khoản PENDING_ACTIVATION, dòng BOARD và TECH_ADMIN ở PENDING hết hạn cuối
+ *   nhiệm kỳ, audit với định danh dịch vụ `bootstrap`. Ghi `termEndsAt` vào site_settings nếu dòng đó đã có và đang
+ *   trống; chưa có dòng thì KHÔNG tạo (cột `info` bắt buộc nội dung giới thiệu, tạo rỗng làm /public/about lỗi 500).
  * Mật khẩu tạm chỉ nằm trong giá trị trả về để CLI in ra một lần.
  */
 export async function runBootstrapInTx(tx: Tx, input: BootstrapInput | null, now = new Date()): Promise<BootstrapResult> {
-  const active = await tx.userRole.count({ where: { role: { in: ['BOARD', 'TECH_ADMIN'] }, status: 'ACTIVE' } })
-  if (active > 0) {
-    throw new BootstrapRefused('Đã có Ban Chủ nhiệm hoặc quản trị viên kỹ thuật đang hoạt động: bootstrap đã hoàn tất, không chạy lại.')
-  }
-
-  const existing = await tx.userRole.findMany({
-    where: { role: { in: ['BOARD', 'TECH_ADMIN'] }, status: 'PENDING', reason: BOOTSTRAP_REASON },
-    select: { role: true, user: { select: { id: true, username: true, status: true } } },
+  const pending = await tx.userRole.findMany({
+    where: { role: { in: ['BOARD', 'TECH_ADMIN'] }, status: 'PENDING', reason: BOOTSTRAP_REASON, user: { status: { not: 'INACTIVE' } } },
+    select: { role: true, user: { select: { id: true, username: true } } },
     orderBy: { role: 'asc' },
   })
-  if (existing.length > 0) {
+  if (pending.length > 0) {
     const accounts: BootstrapResult['accounts'] = []
-    for (const row of existing) {
-      if (row.user.status === 'INACTIVE') continue
+    for (const row of pending) {
       const { temporaryPassword, expiresAt } = await reissueTemporaryPassword(tx, SERVICE, row.user.id, 'bootstrap: cấp lại mật khẩu tạm', now)
       accounts.push({ role: row.role as 'BOARD' | 'TECH_ADMIN', username: row.user.username, temporaryPassword, expiresAt })
     }
-    return { status: 'reissued', accounts }
+    return { status: 'reissued', accounts, termEndsAtSaved: true }
+  }
+
+  const active = await tx.userRole.count({ where: { role: { in: ['BOARD', 'TECH_ADMIN'] }, status: 'ACTIVE' } })
+  if (active > 0) {
+    throw new BootstrapRefused('Đã có Ban Chủ nhiệm hoặc quản trị viên kỹ thuật đang hoạt động: bootstrap đã hoàn tất, không chạy lại.')
   }
 
   if (!input) throw new BootstrapRefused('Chưa có tài khoản bootstrap: cần thông tin hai người và ngày kết thúc nhiệm kỳ.')
@@ -100,10 +104,9 @@ export async function runBootstrapInTx(tx: Tx, input: BootstrapInput | null, now
     accounts.push({ role, username: user.username, temporaryPassword, expiresAt: user72h.temporaryPasswordExpiresAt! })
   }
 
-  // QĐ-6: một nguồn duy nhất cho ngày kết thúc nhiệm kỳ; chỉ ghi khi đang trống.
+  // QĐ-6: một nguồn duy nhất cho ngày kết thúc nhiệm kỳ; chỉ ghi khi dòng đã có và đang trống.
   const setting = await tx.siteSetting.findFirst({ select: { id: true, termEndsAt: true } })
-  if (!setting) await tx.siteSetting.create({ data: { info: {}, termEndsAt } })
-  else if (!setting.termEndsAt) await tx.siteSetting.update({ where: { id: setting.id }, data: { termEndsAt } })
+  if (setting && !setting.termEndsAt) await tx.siteSetting.update({ where: { id: setting.id }, data: { termEndsAt } })
 
-  return { status: 'created', accounts }
+  return { status: 'created', accounts, termEndsAtSaved: !!setting }
 }

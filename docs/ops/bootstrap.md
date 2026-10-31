@@ -14,7 +14,7 @@ Tạo `BOARD` đầu tiên và `TECH_ADMIN` đầu tiên trên production còn t
 
 1. Trưởng dự án và Ban Chủ nhiệm chọn **hai người khác nhau**: một người nhận `BOARD`, một người nhận `TECH_ADMIN` (BR-21). Báo trong nhóm riêng, không ghi vào repository.
 2. Có của mỗi người: tên đăng nhập (chữ không dấu, số, `.`, `_`, `-`), email tài khoản, họ tên.
-3. Ngày kết thúc nhiệm kỳ hiện tại (`YYYY-MM-DD`). Vai trò đặc quyền hết hạn lúc 23:59:59 giờ Việt Nam ngày đó (RP-03). Nếu `SiteSetting.termEndsAt` đang trống, lệnh ghi luôn giá trị này (QĐ-6).
+3. Ngày kết thúc nhiệm kỳ hiện tại (`YYYY-MM-DD`). Vai trò đặc quyền hết hạn lúc 23:59:59 giờ Việt Nam ngày đó (RP-03). Nếu đã có dòng thông tin APC (`site_settings`) mà `termEndsAt` đang trống, lệnh ghi luôn giá trị này (QĐ-6). Chưa có dòng đó (database hoàn toàn trống) thì lệnh **không** tạo, vì thông tin giới thiệu bắt buộc đủ nội dung (tạo rỗng làm `/public/about` lỗi 500); lệnh in nhắc để Ban Chủ nhiệm nhập ở trang Thông tin APC sau khi kích hoạt.
 4. Hai người có mặt (trực tiếp hoặc gọi riêng) để nhận mật khẩu tạm ngay. **Không gửi mật khẩu tạm qua email hay nhóm chat chung.**
 
 ## Chạy
@@ -67,8 +67,8 @@ Sau đó cấp `BOARD` thứ hai (A6, trang vai trò của tài khoản) và `TE
 
 | Tình huống | Lệnh | Kết quả |
 | --- | --- | --- |
-| Hai tài khoản bootstrap chưa ai kích hoạt xong (vd mật khẩu tạm quá 72 giờ) | `pnpm bootstrap` (không cần tham số) | Không tạo tài khoản mới; cấp lại mật khẩu tạm 72 giờ cho hai tài khoản đó, thu hồi phiên cũ, ghi audit `account.reset_password` |
-| Đã có `BOARD` hoặc `TECH_ADMIN` `ACTIVE` | bất kỳ | Từ chối, thoát mã 1, database không đổi |
+| Còn tài khoản bootstrap chưa kích hoạt xong (vd mật khẩu tạm quá 72 giờ) — kể cả khi người kia đã kích hoạt | `pnpm bootstrap` (không cần tham số) | Không tạo tài khoản mới; chỉ cấp lại mật khẩu tạm 72 giờ cho (các) tài khoản bootstrap còn chờ, thu hồi phiên cũ, ghi audit `account.reset_password`. Không cần sửa database bằng tay |
+| Cả hai tài khoản bootstrap đã kích hoạt (hoặc đã có `BOARD`/`TECH_ADMIN` `ACTIVE` khác) | bất kỳ | Từ chối, thoát mã 1, database không đổi |
 | Tên đăng nhập hoặc email đã có người dùng | có tham số | Từ chối, database không đổi; chọn tên khác |
 
 Mất hết quyền quản trị sau khi bootstrap đã hoàn tất thì **không** dùng lệnh này; xử lý theo runbook mất quyền quản trị (O-area) và quy trình sự cố.

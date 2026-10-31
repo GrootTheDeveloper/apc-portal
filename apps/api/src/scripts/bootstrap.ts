@@ -55,6 +55,10 @@ try {
     console.log(`  ${account.role.padEnd(10)}  ${account.username.padEnd(24)}  ${account.temporaryPassword}`)
   }
   console.log(`\nMật khẩu tạm hết hạn sau 72 giờ (${result.accounts[0]?.expiresAt.toISOString() ?? ''} UTC).`)
+  if (!result.termEndsAtSaved) {
+    console.log('Chưa có thông tin APC (site_settings) nên chưa lưu ngày kết thúc nhiệm kỳ: BOARD nhập ở trang Thông tin APC')
+    console.log('sau khi kích hoạt, trước khi cấp vai trò đặc quyền thứ hai (A6 cần ngày này).')
+  }
   console.log('Tiếp theo: mỗi người đăng nhập, đổi mật khẩu, thiết lập xác thực hai bước (docs/ops/bootstrap.md).\n')
   process.exitCode = 0
 } catch (error) {

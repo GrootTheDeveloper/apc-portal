@@ -63,8 +63,9 @@ describe('bootstrap (RP-15, AC-RBAC-09)', () => {
         expect(user.roles[0]).toMatchObject({ status: 'PENDING', reason: 'bootstrap' })
         expect(user.roles[0]!.expiresAt!.toISOString()).toBe('2027-06-30T16:59:59.000Z') // 23:59:59 giờ Việt Nam
       }
-      const setting = await tx.siteSetting.findFirstOrThrow()
-      expect(setting.termEndsAt!.toISOString()).toBe('2027-06-30T16:59:59.000Z')
+      // Database trống chưa có site_settings: không tạo dòng rỗng (sẽ làm /public/about lỗi 500), báo nhập ở trang Thông tin APC.
+      expect(result.termEndsAtSaved).toBe(false)
+      expect(await tx.siteSetting.count()).toBe(0)
 
       const logs = await tx.auditLog.findMany({ where: { targetId: { in: users.map((user) => user.id) } } })
       expect(logs.length).toBeGreaterThanOrEqual(4) // tạo tài khoản + gán vai trò cho mỗi người
@@ -99,6 +100,39 @@ describe('bootstrap (RP-15, AC-RBAC-09)', () => {
         expect(await verifyPassword(user.passwordHash, account.temporaryPassword)).toBe(true)
         expect(await verifyPassword(user.passwordHash, previous.temporaryPassword)).toBe(false)
       }
+    })
+  })
+
+  it('saves termEndsAt into an existing site_settings row that has none yet', async () => {
+    await onEmptyDatabase(async (tx) => {
+      await tx.siteSetting.create({ data: { info: { name: 'APC' }, termEndsAt: null } })
+      const result = await runBootstrapInTx(tx, input())
+      expect(result.termEndsAtSaved).toBe(true)
+      const setting = await tx.siteSetting.findFirstOrThrow()
+      expect(setting.termEndsAt!.toISOString()).toBe('2027-06-30T16:59:59.000Z')
+      expect(setting.info).toEqual({ name: 'APC' }) // không đụng nội dung giới thiệu
+    })
+  })
+
+  it('still reissues the BOARD temporary password when TECH_ADMIN activated first (no manual DB fix)', async () => {
+    await onEmptyDatabase(async (tx) => {
+      const first = await runBootstrapInTx(tx, input())
+      const tech = first.accounts.find((account) => account.role === 'TECH_ADMIN')!
+      const techUser = await tx.user.findUniqueOrThrow({ where: { username: tech.username } })
+      // TECH_ADMIN kích hoạt và thiết lập 2 lớp xong: vai trò ACTIVE. Mật khẩu tạm của BOARD đã quá 72 giờ.
+      await tx.user.update({ where: { id: techUser.id }, data: { status: 'ACTIVE', mustChangePassword: false, isTemporaryPassword: false } })
+      await tx.userRole.updateMany({ where: { userId: techUser.id }, data: { status: 'ACTIVE' } })
+      const board = first.accounts.find((account) => account.role === 'BOARD')!
+      await tx.user.update({ where: { username: board.username }, data: { temporaryPasswordExpiresAt: new Date(Date.now() - 1000) } })
+
+      const again = await runBootstrapInTx(tx, null)
+      expect(again.status).toBe('reissued')
+      expect(again.accounts.map((account) => account.role)).toEqual(['BOARD'])
+      const boardUser = await tx.user.findUniqueOrThrow({ where: { username: board.username } })
+      expect(boardUser.temporaryPasswordExpiresAt!.getTime()).toBeGreaterThan(Date.now() + 71 * 3600 * 1000)
+      expect(await verifyPassword(boardUser.passwordHash, again.accounts[0]!.temporaryPassword)).toBe(true)
+      // TECH_ADMIN đã kích hoạt không bị cấp lại mật khẩu.
+      expect((await tx.user.findUniqueOrThrow({ where: { id: techUser.id } })).isTemporaryPassword).toBe(false)
     })
   })
 
