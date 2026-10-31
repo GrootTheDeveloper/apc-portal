@@ -143,10 +143,10 @@ Mảng này làm các phần cả nhóm dùng chung và các chức năng quanh 
 
 **Xong khi:**
 
-- [ ] Từ khóa có trong tiêu đề bài `DRAFT`, `ARCHIVED`, bài `INTERNAL` hoặc sự kiện nội bộ không ra các mục đó (có test).
-- [ ] `q` trống hiện danh sách mặc định.
-- [ ] Không có kết quả thì hiện trạng thái rỗng và nút Xóa từ khóa.
-- [ ] Lỗi tải kết quả không làm mất từ khóa trên URL.
+- [X] Từ khóa có trong tiêu đề bài `DRAFT`, `ARCHIVED`, bài `INTERNAL` hoặc sự kiện nội bộ không ra các mục đó (có test).
+- [X] `q` trống hiện danh sách mặc định.
+- [X] Không có kết quả thì hiện trạng thái rỗng và nút Xóa từ khóa.
+- [X] Lỗi tải kết quả không làm mất từ khóa trên URL.
 
 ## Giai đoạn 3 (02/11 – 22/11)
 
