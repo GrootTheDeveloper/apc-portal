@@ -77,6 +77,27 @@ enum EventStatus {
   ARCHIVED
 }
 
+// Đối tượng tham gia sự kiện (EVT-02). Tách khỏi departmentId — departmentId luôn là ban QUẢN LÝ sự kiện.
+enum EventAudience {
+  PUBLIC // Công khai, người ngoài APC đăng ký được nếu allowGuestRegistration
+  CLUB // Nội bộ toàn CLB
+  DEPARTMENT // Nội bộ trong ban quản lý
+}
+
+// Trạng thái một lượt đăng ký sự kiện (E2). Hủy rồi đăng ký lại kích hoạt lại dòng cũ, không tạo dòng mới.
+enum EventRegistrationStatus {
+  REGISTERED
+  CANCELLED
+}
+
+// Kết quả điểm danh (FLOW-16); chốt điểm danh ở E6.
+enum EventAttendanceStatus {
+  NOT_MARKED
+  PRESENT
+  EXCUSED
+  ABSENT
+}
+
 enum RecruitmentRoundStatus {
   DRAFT
   OPEN
@@ -231,6 +252,8 @@ model User {
   publishedPosts Post[] @relation("PostPublisher")
 
   createdEvents Event[] @relation("EventCreator")
+  finalizedEventAttendance Event[] @relation("EventAttendanceFinalizer")
+  eventRegistrations EventRegistration[]
 
   createdRounds RecruitmentRound[]      @relation("RoundCreator")
   reviewedApps  MembershipApplication[] @relation("ReviewedBy")
@@ -323,17 +346,16 @@ model Post {
 }
 
 // MODELS — SỰ KIỆN
-//
-// Bảng đăng ký/điểm danh (EventRegistration) thêm ở việc E2 (docs/plan/E-su-kien.md).
 
 model Event {
-  id            String      @id @default(cuid())
+  id            String        @id @default(cuid())
   title         String
-  slug          String      @unique
+  slug          String        @unique
   description   String
   coverImageUrl String?
   eventType     String // Loại/chuyên mục: Workshop, Training, Contest...
-  status        EventStatus @default(DRAFT)
+  status        EventStatus   @default(DRAFT)
+  audience      EventAudience @default(PUBLIC) // EVT-02; departmentId bên dưới là ban quản lý, không phải đối tượng
 
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id])
@@ -342,15 +364,64 @@ model Event {
   createdById String
   createdBy   User    @relation("EventCreator", fields: [createdById], references: [id])
   location    String?
+  onlineUrl   String? // Link trực tuyến khi không dùng địa điểm; chỉ nhận http/https (FLOW-18)
 
   startAt DateTime
   endAt   DateTime
+
+  // Thời gian nhận đăng ký (BR-08); phía nào để trống là không giới hạn phía đó
+  registrationOpensAt  DateTime?
+  registrationClosesAt DateTime?
+  capacity             Int? // null = không giới hạn
+  allowGuestRegistration Boolean @default(false) // Người ngoài APC đăng ký được; chỉ áp dụng khi audience = PUBLIC
+
+  // EVT-09: bắt buộc khi hủy sự kiện (E4), hiển thị trên trang công khai
+  cancelReason String?
+
+  // Chốt điểm danh (E6): sau khi chốt chỉ BOARD sửa được, kèm lý do
+  attendanceFinalizedAt   DateTime?
+  attendanceFinalizedById String?
+  attendanceFinalizedBy   User? @relation("EventAttendanceFinalizer", fields: [attendanceFinalizedById], references: [id])
+
+  registrations EventRegistration[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([status])
   @@map("events")
+}
+
+// Một lượt đăng ký sự kiện (E2): hoặc thành viên (userId, E5) hoặc khách (họ tên, email, MSSV, E3).
+// Hủy rồi đăng ký lại kích hoạt lại dòng cũ (về REGISTERED), không tạo dòng mới — hai ràng buộc duy nhất
+// (sự kiện, email khách) và (sự kiện, userId) giữ chỗ của dòng cũ; Postgres coi NULL là phân biệt nên
+// dòng khách (userId null) và dòng thành viên (guestEmail null) cùng tồn tại trong một bảng.
+// Mã đăng ký sinh bằng publicCode() lúc tạo (EVT-10); không ghi mã vào log hay audit (OPS-11, SEC-09).
+model EventRegistration {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  // Thông tin khách; thành viên lấy từ User, không lưu trùng
+  guestFullName  String?
+  guestEmail     String?
+  guestStudentId String?
+
+  registrationCode String @unique
+
+  status           EventRegistrationStatus @default(REGISTERED)
+  attendanceStatus EventAttendanceStatus   @default(NOT_MARKED)
+
+  registeredAt DateTime  @default(now())
+  cancelledAt  DateTime?
+
+  @@unique([eventId, guestEmail])
+  @@unique([eventId, userId])
+  @@index([eventId, status])
+  @@map("event_registrations")
 }
 
 // MODELS — DỰ ÁN
