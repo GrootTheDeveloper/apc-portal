@@ -12,6 +12,7 @@ export interface SeoProps {
   path: string
   /** Ảnh cho og:image, tương đối hoặc tuyệt đối */
   imageUrl?: string | null
+  /** Nội dung thẻ robots cho trang riêng tư (form, tra cứu, đăng nhập, portal, admin): vd. "noindex, nofollow" (Sitemap §16) */
   robots?: string
 }
 
@@ -48,8 +49,8 @@ export function Seo({ title, description, path, imageUrl, robots }: SeoProps) {
       addTag('meta', { property: 'og:type', content: 'article' }),
       addTag('meta', { property: 'og:url', content: url }),
       addTag('meta', { property: 'og:site_name', content: SITE_NAME }),
-      ...(robots ? [addTag('meta', { name: 'robots', content: robots })] : []),
       ...(imageUrl ? [addTag('meta', { property: 'og:image', content: new URL(imageUrl, window.location.origin).href })] : []),
+      ...(robots ? [addTag('meta', { name: 'robots', content: robots })] : []),
     ]
 
     return () => {

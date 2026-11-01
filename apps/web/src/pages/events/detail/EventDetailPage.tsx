@@ -1,4 +1,4 @@
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
 import { AsyncState } from '../../../components/AsyncState'
@@ -10,16 +10,7 @@ import { EVENT_STATUS_STYLES, eventPhoto, type EventCardStatus } from '../../../
 import { NotFound } from '../../NotFound'
 import { formatDate, formatDateTime, formatTime, vnParts } from '../../../lib/format'
 import { useApi } from '../../../hooks/useApi'
-import type { EventDetail } from '../types'
-
-/** Chỉ mở đăng ký khi sự kiện còn diễn ra và trong thời gian nhận đăng ký (BR-08). */
-function registrationState(event: EventDetail): 'open' | 'not_open' | 'closed' | null {
-  if (event.status !== 'PUBLISHED') return null
-  const now = Date.now()
-  if (event.registrationOpensAt && now < new Date(event.registrationOpensAt).getTime()) return 'not_open'
-  if (event.registrationClosesAt && now > new Date(event.registrationClosesAt).getTime()) return 'closed'
-  return 'open'
-}
+import { guestRegistrationState, type EventDetail } from '../types'
 
 /** URL do người dùng nhập chỉ nhận http/https (Sitemap §7.2). */
 const safeHttpUrl = (value: string | null): string | null => (value && /^https?:\/\//.test(value) ? value : null)
@@ -53,7 +44,7 @@ export function EventDetailPage() {
   const data = event.data
   const backTo = (location.state as { from?: string } | null)?.from ?? '/events'
   const statusStyle = EVENT_STATUS_STYLES[data.status as EventCardStatus]
-  const registration = registrationState(data)
+  const registration = guestRegistrationState(data)
   const start = vnParts(data.startAt)
   const end = vnParts(data.endAt)
   const sameDay = start.year === end.year && start.month === end.month && start.day === end.day
@@ -167,9 +158,19 @@ export function EventDetailPage() {
                     Sức chứa: <b>{data.capacity ? `${data.capacity} người` : 'không giới hạn'}</b>
                   </p>
                   {registration === 'open' ? (
-                    <Button className="mt-2 w-full" onClick={() => navigate(`/events/${data.slug}/register`)}>
-                      Đăng ký tham gia →
-                    </Button>
+                    <>
+                      <Button className="mt-2 w-full" onClick={() => navigate(`/events/${data.slug}/register`)}>
+                        Đăng ký tham gia →
+                      </Button>
+                      <Link
+                        to="/events/registration-lookup"
+                        className="font-code text-[14px] font-bold text-apc-gold-soft underline decoration-2 underline-offset-4"
+                      >
+                        Đã đăng ký? Tra cứu / hủy →
+                      </Link>
+                    </>
+                  ) : registration === 'guests_off' ? (
+                    <p className="font-bold text-apc-gold-soft">Sự kiện này chỉ nhận đăng ký của thành viên APC.</p>
                   ) : registration === 'not_open' ? (
                     <p className="font-bold text-apc-gold-soft">Đăng ký mở vào {formatDateTime(data.registrationOpensAt ?? data.startAt)}.</p>
                   ) : (

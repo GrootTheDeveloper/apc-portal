@@ -21,7 +21,19 @@ export class ApiError extends Error {
   }
 }
 
+/** Chỉ 401 nghĩa là phiên đã hết hạn hoặc bị thu hồi; lỗi mạng hay 502/503 thì không đăng xuất người dùng. */
+export function endsSession(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401
+}
+
 type Options = { method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'; body?: unknown }
+
+// Phiên hết hạn hoặc bị thu hồi giữa chừng: mọi 401 báo về đây một lần, AuthProvider đăng ký xử lý
+// (về trạng thái chưa đăng nhập → route guard đưa sang /login?returnTo=<trang đang mở>). Trang không tự xử lý 401.
+let unauthorizedHandler: (() => void) | null = null
+export function onUnauthorized(handler: (() => void) | null) {
+  unauthorizedHandler = handler
+}
 
 export async function api<T = unknown>(path: string, { method, body }: Options = {}): Promise<T> {
   const init: RequestInit = { method: method ?? (body === undefined ? 'GET' : 'POST') }
@@ -44,6 +56,8 @@ export async function api<T = unknown>(path: string, { method, body }: Options =
   if (!response.ok && data === undefined && response.status >= 502) {
     throw new ApiError(response.status, 'network', 'Không kết nối được máy chủ. Vui lòng thử lại.')
   }
+  // Sai mật khẩu ở /auth/login cũng là 401 nhưng không phải phiên hết hạn.
+  if (response.status === 401 && path !== '/auth/login') unauthorizedHandler?.()
   if (!response.ok) {
     throw new ApiError(
       response.status,
