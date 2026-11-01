@@ -1,8 +1,9 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { AsyncState } from '../../../components/AsyncState'
-import { Button } from '../../../components/Button'
+import { Breadcrumb } from '../../../components/Breadcrumb'
+import { buttonClass, pillClass } from '../../../components/buttonClass'
 import { Eyebrow } from '../../../components/Eyebrow'
+import { Pagination } from '../../../components/Pagination'
 import { useApi } from '../../../hooks/useApi'
 import { useAuth } from '../../../hooks/useAuth'
 import type { Page } from '../../../lib/api'
@@ -10,147 +11,172 @@ import { hasRole } from '../../../lib/auth'
 import { formatDateTime } from '../../../lib/format'
 import type { RecruitmentRound, RecruitmentRoundStatus } from '../../recruitment/types'
 
-const STATUS_LABELS: Record<RecruitmentRoundStatus, { label: string; color: string }> = {
-  DRAFT: { label: 'Bản nháp', color: 'bg-surface-container-high text-on-surface-variant' },
-  OPEN: { label: 'Đang mở', color: 'bg-emerald-50 text-emerald-700 font-semibold' },
-  CLOSED: { label: 'Đã đóng', color: 'bg-amber-50 text-amber-700' },
-  ARCHIVED: { label: 'Lưu trữ', color: 'bg-surface-container text-on-surface-variant/60' },
+const STATUS_LABELS: Record<RecruitmentRoundStatus, { label: string; className: string }> = {
+  DRAFT: { label: 'Bản nháp', className: 'bg-soft text-muted' },
+  OPEN: { label: 'Đang mở', className: 'bg-ink text-paper font-bold' },
+  CLOSED: { label: 'Đã đóng', className: 'bg-soft text-ink' },
+  ARCHIVED: { label: 'Lưu trữ', className: 'bg-soft text-muted opacity-60' },
 }
+
+const FILTER_TABS: { value: string; label: string }[] = [
+  { value: 'ALL', label: 'Tất cả' },
+  { value: 'DRAFT', label: 'Bản nháp' },
+  { value: 'OPEN', label: 'Đang mở' },
+  { value: 'CLOSED', label: 'Đã đóng' },
+  { value: 'ARCHIVED', label: 'Lưu trữ' },
+]
 
 export function AdminRecruitmentListPage() {
   const { user } = useAuth()
   const isBoard = hasRole(user, 'BOARD')
-  const [statusFilter, setStatusFilter] = useState<string>('ALL')
 
-  const { data, loading, error, reload } = useApi<Page<RecruitmentRound>>('/admin/recruitment')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const page = Number(searchParams.get('page') || '1')
+  const statusParam = searchParams.get('status') || 'ALL'
+
+  const apiPath = `/admin/recruitment?page=${page}&pageSize=20${
+    statusParam !== 'ALL' ? `&status=${statusParam}` : ''
+  }`
+  const { data, loading, error, reload } = useApi<Page<RecruitmentRound>>(apiPath)
+
+  function handleFilterChange(newStatus: string) {
+    const next = new URLSearchParams(searchParams)
+    if (newStatus === 'ALL') {
+      next.delete('status')
+    } else {
+      next.set('status', newStatus)
+    }
+    next.set('page', '1')
+    setSearchParams(next)
+  }
+
+  function handlePageChange(newPage: number) {
+    const next = new URLSearchParams(searchParams)
+    next.set('page', String(newPage))
+    setSearchParams(next)
+  }
+
   const rounds = data?.items ?? []
-
-  const filteredRounds = statusFilter === 'ALL'
-    ? rounds
-    : rounds.filter((r) => r.status === statusFilter)
 
   return (
     <main className="mx-auto max-w-container-max px-gutter py-10 md:py-14">
-      {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-2 text-sm text-on-surface-variant">
-        <Link to="/admin" className="hover:text-apc-red transition-colors">Quản trị</Link>
-        <span>/</span>
-        <span className="text-on-surface font-medium">Tuyển thành viên</span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: 'quản trị', to: '/admin' },
+          { label: 'tuyển thành viên' },
+        ]}
+      />
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-outline-variant/60 pb-6">
+      <div className="mt-4 flex flex-col justify-between gap-4 border-b-2 border-ink pb-6 sm:flex-row sm:items-center">
         <div>
-          <Eyebrow>Quản lý tuyển sinh</Eyebrow>
-          <h1 className="mt-2 text-2xl md:text-3xl font-extrabold text-on-surface">Đợt tuyển thành viên</h1>
+          <Eyebrow className="text-apc-blue">quản lý tuyển sinh</Eyebrow>
+          <h1 className="mt-2 font-display text-3xl font-extrabold text-ink md:text-4xl">
+            Đợt tuyển thành viên
+          </h1>
         </div>
 
         {isBoard && (
-          <Link to="/admin/recruitment/new">
-            <Button variant="primary" className="shadow-sm">
-              <span className="material-symbols-outlined text-lg">add</span>
-              Tạo đợt tuyển mới
-            </Button>
+          <Link to="/admin/recruitment/new" className={buttonClass('primary')}>
+            + Tạo đợt tuyển mới
           </Link>
         )}
       </div>
 
-      {/* Bộ lọc trạng thái */}
+      {/* Bộ lọc trạng thái dùng pillClass */}
       <div className="mt-6 flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium text-on-surface-variant mr-2">Lọc theo trạng thái:</span>
-        {['ALL', 'DRAFT', 'OPEN', 'CLOSED', 'ARCHIVED'].map((st) => (
+        <span className="mr-2 font-code text-xs font-bold uppercase text-muted">Lọc trạng thái:</span>
+        {FILTER_TABS.map((tab) => (
           <button
-            key={st}
-            onClick={() => setStatusFilter(st)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-              statusFilter === st
-                ? 'bg-apc-red text-white'
-                : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
-            }`}
+            key={tab.value}
+            type="button"
+            onClick={() => handleFilterChange(tab.value)}
+            className={pillClass(statusParam === tab.value)}
           >
-            {st === 'ALL' ? 'Tất cả' : STATUS_LABELS[st as RecruitmentRoundStatus].label}
+            {tab.label}
           </button>
         ))}
       </div>
 
-      {/* Danh sách */}
       <div className="mt-8">
         <AsyncState
           loading={loading}
           error={error}
-          empty={filteredRounds.length === 0}
+          empty={rounds.length === 0}
+          emptyText="Chưa có đợt tuyển nào phù hợp với bộ lọc."
           onRetry={reload}
-          emptyText="Không có đợt tuyển nào phù hợp."
         >
-          <div className="overflow-x-auto rounded-apc border border-outline-variant bg-surface-container-lowest shadow-sm">
-            <table className="w-full text-left text-sm text-on-surface">
-              <thead className="border-b border-outline-variant bg-surface-container text-xs font-semibold uppercase text-on-surface-variant">
-                <tr>
-                  <th className="px-6 py-4">Tên đợt tuyển</th>
-                  <th className="px-6 py-4">Trạng thái</th>
-                  <th className="px-6 py-4">Thời gian nhận đơn</th>
-                  <th className="px-6 py-4">Số hồ sơ</th>
-                  <th className="px-6 py-4 text-right">Thao tác</th>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left font-body text-sm text-ink">
+              <thead>
+                <tr className="border-b-2 border-ink font-display text-sm font-bold text-ink">
+                  <th className="py-3 pr-4">Đợt tuyển</th>
+                  <th className="px-4 py-3">Trạng thái</th>
+                  <th className="px-4 py-3">Ban tuyển</th>
+                  <th className="px-4 py-3">Thời gian nhận đơn</th>
+                  <th className="px-4 py-3 text-right">Số hồ sơ</th>
+                  <th className="py-3 pl-4 text-right">Thao tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-outline-variant/60">
-                {filteredRounds.map((round) => (
-                  <tr key={round.id} className="hover:bg-surface-container-low transition-colors">
-                    <td className="px-6 py-4">
-                      <Link
-                        to={`/admin/recruitment/${round.id}`}
-                        className="font-bold text-on-surface hover:text-apc-red transition-colors"
-                      >
-                        {round.title}
-                      </Link>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {round.departments.map((d) => (
-                          <span key={d.id} className="rounded bg-surface-container px-1.5 py-0.5 text-[11px] text-on-surface-variant">
-                            {d.name.split('(')[0].trim()}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-block rounded-full px-2.5 py-1 text-xs ${STATUS_LABELS[round.status].color}`}>
-                        {STATUS_LABELS[round.status].label}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-xs text-on-surface-variant">
-                      <div>{formatDateTime(round.opensAt)}</div>
-                      <div className="text-outline-variant">đến</div>
-                      <div>{formatDateTime(round.closesAt)}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="font-semibold">{round._count?.applications ?? 0}</span> hồ sơ
-                    </td>
-                    <td className="px-6 py-4 text-right space-x-2">
-                      <Link
-                        to={`/admin/recruitment/${round.id}`}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-apc-blue hover:underline"
-                      >
-                        Chi tiết
-                      </Link>
-                      {isBoard && (
+              <tbody className="divide-y border-b border-ink/20">
+                {rounds.map((round) => {
+                  const badge = STATUS_LABELS[round.status]
+                  return (
+                    <tr key={round.id} className="transition hover:bg-soft">
+                      <td className="py-4 pr-4">
                         <Link
-                          to={`/admin/recruitment/${round.id}/edit`}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-on-surface hover:text-apc-red"
+                          to={`/admin/recruitment/${round.id}`}
+                          className="font-display font-extrabold text-ink transition hover:text-apc-red"
                         >
-                          Sửa
+                          {round.title}
                         </Link>
-                      )}
-                      <Link
-                        to={`/admin/recruitment/${round.id}/preview`}
-                        className="inline-flex items-center gap-1 text-xs text-on-surface-variant hover:text-on-surface"
-                      >
-                        Xem trước
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                        <p className="font-code text-xs text-muted">/{round.slug}</p>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className={`inline-block rounded-md px-2.5 py-1 font-code text-xs ${badge.className}`}>
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {round.departments.map((d) => (
+                            <span key={d.id} className="rounded bg-soft px-2 py-0.5 text-xs text-ink font-semibold">
+                              {d.name}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-xs text-muted">
+                        <div>Mở: {formatDateTime(round.opensAt)}</div>
+                        <div>Đóng: {formatDateTime(round.closesAt)}</div>
+                      </td>
+                      <td className="px-4 py-4 text-right font-display font-bold text-ink">
+                        {round._count?.applications ?? 0}
+                      </td>
+                      <td className="py-4 pl-4 text-right">
+                        <Link
+                          to={`/admin/recruitment/${round.id}`}
+                          className="font-bold text-apc-blue hover:underline"
+                        >
+                          Chi tiết →
+                        </Link>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
+
+          {/* Phân trang */}
+          {data && data.total > 20 && (
+            <div className="mt-8 flex justify-center">
+              <Pagination
+                currentPage={page}
+                totalPages={Math.ceil(data.total / 20)}
+                onPageChange={handlePageChange}
+              />
+            </div>
+          )}
         </AsyncState>
       </div>
     </main>

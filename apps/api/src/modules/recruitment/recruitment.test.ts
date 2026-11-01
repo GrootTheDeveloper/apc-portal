@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
 import { loadConfig } from '../../config.js'
 import { db } from '../../db/client.js'
+import { AUDIT_ACTIONS } from '../audit/service.js'
 import { createSession, SESSION_COOKIE } from '../auth/session.js'
 import { closeExpiredRecruitmentRounds } from './service.js'
 
@@ -14,7 +15,7 @@ const ORIGIN = config.WEB_URL
 
 let boardToken: string
 let managerAToken: string
-let _memberToken: string
+let memberToken: string // Đã dùng cho các test 403
 let deptAId: string
 let deptBId: string
 
@@ -25,7 +26,7 @@ const createdDeptIds: string[] = []
 beforeAll(async () => {
   await app.ready()
 
-  const yesterday = new Date(Date.now() - 24*60*60*1000)
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
   // 1. Tạo 2 ban test
   const deptA = await db.department.create({
@@ -92,7 +93,7 @@ beforeAll(async () => {
     },
   })
   createdUserIds.push(memberUser.id)
-  _memberToken = await createSession(memberUser.id, { ipAddress: '127.0.0.1', userAgent: 'test' })
+  memberToken = await createSession(memberUser.id, { ipAddress: '127.0.0.1', userAgent: 'test' })
 })
 
 afterAll(async () => {
@@ -150,12 +151,13 @@ describe('Recruitment Module (R2)', () => {
     expect(data).toHaveProperty('items')
     for (const item of data.items) {
       expect(['OPEN', 'CLOSED']).toContain(item.status)
+      // Không lộ createdById ở API công khai (Reviewer Item 5)
+      expect(item).not.toHaveProperty('createdById')
     }
   })
 
   // ─── 2. QUẢN TRỊ: TẠO ĐỢT TUYỂN (POST /admin/recruitment) ───────────────
   it('Từ chối khi chưa đăng nhập (401) hoặc sai vai trò (403 cho manager/member)', async () => {
-    // 401 khi chưa đăng nhập
     const noAuth = await app.inject({
       method: 'POST',
       url: '/admin/recruitment',
@@ -164,7 +166,6 @@ describe('Recruitment Module (R2)', () => {
     })
     expect(noAuth.statusCode).toBe(401)
 
-    // 403 khi manager hoặc member gọi
     const forbiddenRes = await app.inject({
       method: 'POST',
       url: '/admin/recruitment',
@@ -188,7 +189,7 @@ describe('Recruitment Module (R2)', () => {
         audience: 'Sinh viên UMT',
         requirements: 'Đam mê lập trình',
         opensAt: '2026-11-10T00:00:00.000Z',
-        closesAt: '2026-11-05T00:00:00.000Z', // Trước opensAt
+        closesAt: '2026-11-05T00:00:00.000Z',
         departmentIds: [deptAId],
       },
     })
@@ -247,7 +248,97 @@ describe('Recruitment Module (R2)', () => {
     expect(res.statusCode).toBe(404)
   })
 
-  // ─── 3. CHUYỂN TRẠNG THÁI ───────────────────────────────────────────────
+  // ─── 3. CÁC ENDPOINT QUẢN TRỊ: DANH SÁCH, CHI TIẾT, XEM TRƯỚC ───────────
+  it('GET /admin/recruitment: BOARD 200, MEMBER 403, chưa đăng nhập 401', async () => {
+    const noAuth = await app.inject({ method: 'GET', url: '/admin/recruitment' })
+    expect(noAuth.statusCode).toBe(401)
+
+    const memberRes = await app.inject({
+      method: 'GET',
+      url: '/admin/recruitment',
+      cookies: { [SESSION_COOKIE]: memberToken },
+    })
+    expect(memberRes.statusCode).toBe(403)
+
+    const boardRes = await app.inject({
+      method: 'GET',
+      url: '/admin/recruitment?status=DRAFT',
+      cookies: { [SESSION_COOKIE]: boardToken },
+    })
+    expect(boardRes.statusCode).toBe(200)
+    expect(boardRes.json()).toHaveProperty('items')
+  })
+
+  it('GET /admin/recruitment/:id/preview: BOARD 200, MEMBER 403', async () => {
+    const memberRes = await app.inject({
+      method: 'GET',
+      url: `/admin/recruitment/${createdRoundId}/preview`,
+      cookies: { [SESSION_COOKIE]: memberToken },
+    })
+    expect(memberRes.statusCode).toBe(403)
+
+    const boardRes = await app.inject({
+      method: 'GET',
+      url: `/admin/recruitment/${createdRoundId}/preview`,
+      cookies: { [SESSION_COOKIE]: boardToken },
+    })
+    expect(boardRes.statusCode).toBe(200)
+    expect(boardRes.json().id).toBe(createdRoundId)
+  })
+
+  // ─── 4. CẬP NHẬT ĐỢT TUYỂN (PATCH) VÀ RÀNG BUỘC (REC-15) ────────────────
+  it('PATCH /admin/recruitment/:id: chưa đăng nhập 401, MEMBER 403', async () => {
+    const noAuth = await app.inject({
+      method: 'PATCH',
+      url: `/admin/recruitment/${createdRoundId}`,
+      headers: { origin: ORIGIN },
+      payload: { title: 'Tên mới' },
+    })
+    expect(noAuth.statusCode).toBe(401)
+
+    const memberRes = await app.inject({
+      method: 'PATCH',
+      url: `/admin/recruitment/${createdRoundId}`,
+      cookies: { [SESSION_COOKIE]: memberToken },
+      headers: { origin: ORIGIN },
+      payload: { title: 'Tên mới' },
+    })
+    expect(memberRes.statusCode).toBe(403)
+  })
+
+  it('PATCH ngày sai thứ tự trả 422 validation', async () => {
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/admin/recruitment/${createdRoundId}`,
+      cookies: { [SESSION_COOKIE]: boardToken },
+      headers: { origin: ORIGIN },
+      payload: {
+        closesAt: '2026-10-01T00:00:00.000Z', // Trước opensAt
+      },
+    })
+    expect(res.statusCode).toBe(422)
+  })
+
+  // ─── 5. CHUYỂN TRẠNG THÁI VÀ BẢO VỆ DỮ LIỆU ───────────────────────────
+  it('POST /admin/recruitment/:id/status: chưa đăng nhập 401, MEMBER 403', async () => {
+    const noAuth = await app.inject({
+      method: 'POST',
+      url: `/admin/recruitment/${createdRoundId}/status`,
+      headers: { origin: ORIGIN },
+      payload: { status: 'OPEN' },
+    })
+    expect(noAuth.statusCode).toBe(401)
+
+    const memberRes = await app.inject({
+      method: 'POST',
+      url: `/admin/recruitment/${createdRoundId}/status`,
+      cookies: { [SESSION_COOKIE]: memberToken },
+      headers: { origin: ORIGIN },
+      payload: { status: 'OPEN' },
+    })
+    expect(memberRes.statusCode).toBe(403)
+  })
+
   it('Chuyển trạng thái sai (DRAFT -> CLOSED) bị từ chối 409', async () => {
     const res = await app.inject({
       method: 'POST',
@@ -270,7 +361,7 @@ describe('Recruitment Module (R2)', () => {
     expect(res.statusCode).toBe(200)
     expect(res.json().status).toBe('OPEN')
 
-    // Bây giờ API công khai xem được
+    // API công khai xem được và lọc bỏ câu hỏi ẩn nếu có
     const pubRes = await app.inject({
       method: 'GET',
       url: `/public/recruitment-rounds/${roundSlug}`,
@@ -278,7 +369,18 @@ describe('Recruitment Module (R2)', () => {
     expect(pubRes.statusCode).toBe(200)
   })
 
-  // ─── 4. PHÂN QUYỀN XEM ĐỢT TUYỂN CỦA QUẢN LÝ BAN ───────────────────────
+  it('Khi đợt đang OPEN: khóa slug không cho sửa (409)', async () => {
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/admin/recruitment/${createdRoundId}`,
+      cookies: { [SESSION_COOKIE]: boardToken },
+      headers: { origin: ORIGIN },
+      payload: { slug: `new-slug-${tag}` },
+    })
+    expect(res.statusCode).toBe(409)
+  })
+
+  // ─── 6. PHÂN QUYỀN XEM VÀ QUY TẮC CÂU HỎI KHI CÓ HỒ SƠ ─────────────────
   it('Manager Ban A chỉ xem được đợt khi có hồ sơ nộp vào Ban A', async () => {
     // Ban đầu chưa có hồ sơ nào nộp vào Ban A -> Manager truy cập nhận 404
     const resBefore = await app.inject({
@@ -311,10 +413,8 @@ describe('Recruitment Module (R2)', () => {
     expect(resAfter.json().id).toBe(createdRoundId)
   })
 
-  // ─── 5. QUY TẮC CÂU HỎI KHI ĐÃ CÓ HỒ SƠ (REC-15) ────────────────────────
-  it('Khi đã có hồ sơ: Xóa câu hỏi hoặc đổi kiểu câu bị từ chối 409', async () => {
-    // Thử xóa câu hỏi q2
-    const deleteQ = await app.inject({
+  it('Khi đã có hồ sơ: Xóa lựa chọn (option) đã có người chọn bị từ chối 409', async () => {
+    const res = await app.inject({
       method: 'PATCH',
       url: `/admin/recruitment/${createdRoundId}`,
       cookies: { [SESSION_COOKIE]: boardToken },
@@ -326,39 +426,19 @@ describe('Recruitment Module (R2)', () => {
             type: 'short_text',
             label: 'Link Github của bạn?',
           },
-        ],
-      },
-    })
-    expect(deleteQ.statusCode).toBe(409)
-
-    // Thử đổi kiểu câu q1 từ short_text sang long_text
-    const changeType = await app.inject({
-      method: 'PATCH',
-      url: `/admin/recruitment/${createdRoundId}`,
-      cookies: { [SESSION_COOKIE]: boardToken },
-      headers: { origin: ORIGIN },
-      payload: {
-        questions: [
-          {
-            id: 'q1',
-            type: 'long_text', // Đổi kiểu
-            label: 'Link Github của bạn?',
-          },
           {
             id: 'q2',
             type: 'single_choice',
             label: 'Bạn biết tới APC qua đâu?',
-            options: [
-              { id: 'opt1', label: 'Fanpage' },
-              { id: 'opt2', label: 'Bạn bè giới thiệu' },
-            ],
+            options: [{ id: 'opt1', label: 'Fanpage' }], // Xóa mất opt2
           },
         ],
       },
     })
-    expect(changeType.statusCode).toBe(409)
+    expect(res.statusCode).toBe(409)
+  })
 
-    // Ẩn câu hỏi (hidden: true) thì được phép thành công
+  it('Ẩn câu hỏi (hidden: true) được phép thành công khi đã có hồ sơ', async () => {
     const hideQ = await app.inject({
       method: 'PATCH',
       url: `/admin/recruitment/${createdRoundId}`,
@@ -385,22 +465,84 @@ describe('Recruitment Module (R2)', () => {
       },
     })
     expect(hideQ.statusCode).toBe(200)
+
+    // Kiểm tra câu ẩn không xuất hiện ở API công khai
+    const pubRes = await app.inject({
+      method: 'GET',
+      url: `/public/recruitment-rounds/${roundSlug}`,
+    })
+    expect(pubRes.statusCode).toBe(200)
+    const questions = pubRes.json().questions
+    expect(questions.find((q: { id: string }) => q.id === 'q1')).toBeUndefined()
   })
 
-  // ─── 6. TÁC VỤ NỀN: TỰ ĐỘNG ĐÓNG ĐỢT QUÁ HẠN ───────────────────────────
-  it('Tác vụ đóng đợt tự động chuyển OPEN quá hạn sang CLOSED trong database', async () => {
-    // Đặt closesAt về quá khứ
-    await db.recruitmentRound.update({
-      where: { id: createdRoundId },
-      data: { closesAt: new Date(Date.now() - 1000) },
+  // ─── 7. ĐÓNG SỚM, LƯU TRỮ VÀ KIỂM TRA AUDIT LOG ────────────────────────
+  it('Đóng sớm đợt tuyển cập nhật closesAt = hiện tại và ghi audit đóng đợt', async () => {
+    const closeRes = await app.inject({
+      method: 'POST',
+      url: `/admin/recruitment/${createdRoundId}/status`,
+      cookies: { [SESSION_COOKIE]: boardToken },
+      headers: { origin: ORIGIN },
+      payload: { status: 'CLOSED' },
     })
+    expect(closeRes.statusCode).toBe(200)
+    const closedRound = closeRes.json()
+    expect(closedRound.status).toBe('CLOSED')
+    expect(new Date(closedRound.closesAt).getTime()).toBeLessThanOrEqual(Date.now() + 1000)
 
-    // Chạy tác vụ
+    // Chuyển tiếp CLOSED -> ARCHIVED
+    const archiveRes = await app.inject({
+      method: 'POST',
+      url: `/admin/recruitment/${createdRoundId}/status`,
+      cookies: { [SESSION_COOKIE]: boardToken },
+      headers: { origin: ORIGIN },
+      payload: { status: 'ARCHIVED' },
+    })
+    expect(archiveRes.statusCode).toBe(200)
+    expect(archiveRes.json().status).toBe('ARCHIVED')
+
+    // Đợt ARCHIVED không xuất hiện ở API công khai (404)
+    const pubRes = await app.inject({
+      method: 'GET',
+      url: `/public/recruitment-rounds/${roundSlug}`,
+    })
+    expect(pubRes.statusCode).toBe(404)
+
+    // Kiểm tra đã ghi nhận nhật ký audit lưu trữ đợt tuyển
+    const auditRecord = await db.auditLog.findFirst({
+      where: {
+        targetId: createdRoundId,
+        action: AUDIT_ACTIONS.RECRUITMENT_ARCHIVE_ROUND,
+      },
+    })
+    expect(auditRecord).not.toBeNull()
+  })
+
+  // ─── 8. TÁC VỤ NỀN: TỰ ĐỘNG ĐÓNG ĐỢT QUÁ HẠN ───────────────────────────
+  it('Tác vụ đóng đợt tự động chuyển OPEN quá hạn sang CLOSED trong database', async () => {
+    // Tạo 1 đợt OPEN riêng cho test tác vụ nền
+    const autoRound = await db.recruitmentRound.create({
+      data: {
+        title: `Đợt test auto close ${tag}`,
+        slug: `auto-close-${tag}`,
+        description: 'Mô tả',
+        audience: 'Sinh viên',
+        requirements: 'Laptop',
+        status: 'OPEN',
+        opensAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        closesAt: new Date(Date.now() - 1000), // Đã quá hạn
+        createdById: createdUserIds[0]!,
+        departments: { connect: [{ id: deptAId }] },
+      },
+    })
+    createdRoundIds.push(autoRound.id)
+
+    // Chạy tác vụ nền
     await closeExpiredRecruitmentRounds()
 
-    // Kiểm tra trong database
+    // Chỉ kiểm tra đợt tuyển của test này
     const roundInDb = await db.recruitmentRound.findUnique({
-      where: { id: createdRoundId },
+      where: { id: autoRound.id },
     })
     expect(roundInDb?.status).toBe('CLOSED')
   })
@@ -465,7 +607,7 @@ describe('Recruitment Module (R2)', () => {
       const res = await app.inject({
         method: 'POST',
         url: `/public/recruitment-rounds/${_applyRoundSlug}/applications`,
-        cookies: { [SESSION_COOKIE]: _memberToken },
+        cookies: { [SESSION_COOKIE]: memberToken },
         headers: { origin: ORIGIN },
         payload: {
           ...basePayload,

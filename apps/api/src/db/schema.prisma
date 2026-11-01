@@ -196,13 +196,13 @@ model Department {
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
-  users        User[]
-  roles        UserRole[]
-  posts        Post[]
-  events       Event[]
-  projects     Project[]
-  applications MembershipApplication[]
-  deliveries   NotificationDelivery[]
+  users             User[]
+  roles             UserRole[]
+  posts             Post[]
+  events            Event[]
+  projects          Project[]
+  applications      MembershipApplication[]
+  deliveries        NotificationDelivery[]
   recruitmentRounds RecruitmentRound[]
 
   @@map("departments")
@@ -458,15 +458,15 @@ model Project {
 // ConsentRecord thêm ở việc B2 (docs/plan/B-bao-mat.md), dùng chung cho R3 và E3.
 
 model RecruitmentRound {
-  id          String                 @id @default(cuid())
-  title       String
-  slug        String                 @unique
-  description String
-  audience     String                 @default("") 
+  id           String                 @id @default(cuid())
+  title        String
+  slug         String                 @unique
+  description  String
+  audience     String                 @default("")
   requirements String                 @default("")
-  status      RecruitmentRoundStatus @default(DRAFT)
-  opensAt     DateTime
-  closesAt    DateTime
+  status       RecruitmentRoundStatus @default(DRAFT)
+  opensAt      DateTime
+  closesAt     DateTime
   questions    Json                   @default("[]")
 
   createdById String
@@ -475,7 +475,7 @@ model RecruitmentRound {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  departments  Department[]  
+  departments  Department[]
   applications MembershipApplication[]
 
   @@map("recruitment_rounds")

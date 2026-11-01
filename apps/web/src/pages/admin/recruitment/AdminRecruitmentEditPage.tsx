@@ -1,26 +1,22 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AsyncState } from '../../../components/AsyncState'
+import { Breadcrumb } from '../../../components/Breadcrumb'
+import { buttonClass } from '../../../components/buttonClass'
 import { Button } from '../../../components/Button'
 import { Eyebrow } from '../../../components/Eyebrow'
 import { useApi } from '../../../hooks/useApi'
 import { api, ApiError } from '../../../lib/api'
+import { toVnDatetimeInput, fromVnDatetimeInput } from '../../../lib/format'
 import type { QuestionType, RecruitmentQuestion, RecruitmentRound } from '../../recruitment/types'
 
 type AboutData = {
   departments: { id: string; name: string }[]
 }
 
-function toInputDateTime(isoStr?: string): string {
-  if (!isoStr) return ''
-  const d = new Date(isoStr)
-  if (isNaN(d.getTime())) return ''
-  const pad = (n: number) => n.toString().padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
 
-function makeId(prefix: string): string {
-  return `${prefix}_${Math.random().toString(36).slice(2, 9)}`
+function makeId(): string {
+  return crypto.randomUUID()
 }
 
 export function AdminRecruitmentEditPage() {
@@ -34,17 +30,14 @@ export function AdminRecruitmentEditPage() {
   return (
     <main className="mx-auto max-w-container-max px-gutter py-10 md:py-14">
       {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-2 text-sm text-on-surface-variant">
-        <Link to="/admin" className="hover:text-apc-red transition-colors">Quản trị</Link>
-        <span>/</span>
-        <Link to="/admin/recruitment" className="hover:text-apc-red transition-colors">Tuyển thành viên</Link>
-        <span>/</span>
-        <Link to={id ? `/admin/recruitment/${id}` : '/admin/recruitment'} className="hover:text-apc-red transition-colors">
-          {round?.title ?? 'Chi tiết'}
-        </Link>
-        <span>/</span>
-        <span className="text-on-surface font-medium">Chỉnh sửa</span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: 'quản trị', to: '/admin' },
+          { label: 'tuyển thành viên', to: '/admin/recruitment' },
+          { label: round?.title ?? 'Chi tiết', to: `/admin/recruitment/${id}` },
+          { label: 'chỉnh sửa' },
+        ]}
+      />
 
       <AsyncState loading={loading} error={error} empty={!round} onRetry={reload} emptyText="Không tìm thấy đợt tuyển.">
         {round && <EditRoundForm round={round} departments={departments} />}
@@ -67,8 +60,8 @@ function EditRoundForm({
   const [description, setDescription] = useState(round.description)
   const [audience, setAudience] = useState(round.audience)
   const [requirements, setRequirements] = useState(round.requirements)
-  const [opensAt, setOpensAt] = useState(toInputDateTime(round.opensAt))
-  const [closesAt, setClosesAt] = useState(toInputDateTime(round.closesAt))
+  const [opensAt, setOpensAt] = useState(toVnDatetimeInput(round.opensAt))
+  const [closesAt, setClosesAt] = useState(toVnDatetimeInput(round.closesAt))
   const [selectedDeptIds, setSelectedDeptIds] = useState<string[]>(
     round.departments?.map((d) => d.id) ?? [],
   )
@@ -87,7 +80,7 @@ function EditRoundForm({
   }
 
   function addQuestion(type: QuestionType) {
-    const qId = makeId('q')
+    const qId = makeId()
     const newQ: RecruitmentQuestion = {
       id: qId,
       type,
@@ -95,7 +88,7 @@ function EditRoundForm({
       required: false,
       options:
         type === 'single_choice' || type === 'multiple_choice'
-          ? [{ id: makeId('opt'), label: 'Lựa chọn 1' }]
+          ? [{ id: makeId(), label: 'Lựa chọn 1' }]
           : [],
     }
     setQuestions([...questions, newQ])
@@ -104,7 +97,7 @@ function EditRoundForm({
   function removeQuestion(index: number) {
     const q = questions[index]
     if (hasApplications && originalQuestionIds.has(q.id)) {
-      alert('Không thể xóa câu hỏi đã có hồ sơ nộp (REC-15). Bạn có thể chọn Ẩn câu hỏi.')
+      setErrorMessage('Không thể xóa câu hỏi đã có hồ sơ nộp (REC-15). Bạn có thể chọn Ẩn câu hỏi.')
       return
     }
     setQuestions(questions.filter((_, i) => i !== index))
@@ -121,7 +114,7 @@ function EditRoundForm({
 
   function addOption(qIndex: number) {
     const q = questions[qIndex]
-    const optId = makeId('opt')
+    const optId = makeId()
     const newOpts = [...(q.options ?? []), { id: optId, label: `Lựa chọn ${(q.options?.length ?? 0) + 1}` }]
     updateQuestion(qIndex, { options: newOpts })
   }
@@ -129,7 +122,7 @@ function EditRoundForm({
   function removeOption(qIndex: number, optId: string) {
     const q = questions[qIndex]
     if (hasApplications && originalQuestionIds.has(q.id)) {
-      alert('Không thể xóa lựa chọn của câu hỏi đã có hồ sơ nộp (REC-15).')
+      setErrorMessage('Không thể xóa lựa chọn của câu hỏi đã có hồ sơ nộp (REC-15).')
       return
     }
     const newOpts = (q.options ?? []).filter((o) => o.id !== optId)
@@ -154,8 +147,8 @@ function EditRoundForm({
         description: description.trim(),
         audience: audience.trim(),
         requirements: requirements.trim(),
-        opensAt: new Date(opensAt).toISOString(),
-        closesAt: new Date(closesAt).toISOString(),
+        opensAt: fromVnDatetimeInput(opensAt),
+        closesAt: fromVnDatetimeInput(closesAt),    
         departmentIds: selectedDeptIds,
         questions,
       }
@@ -197,7 +190,7 @@ function EditRoundForm({
       )}
 
       {errorMessage && (
-        <div className="mt-6 rounded-apc bg-error-container p-4 text-sm font-medium text-on-error-container">
+        <div className="mt-6 rounded-xl border-2 border-apc-red bg-apc-red-pale/40 p-4 font-bold text-apc-red">
           {errorMessage}
         </div>
       )}
@@ -306,7 +299,7 @@ function EditRoundForm({
         </div>
 
         {/* Chọn ban chuyên môn */}
-        <div className="rounded-apc border border-outline-variant bg-surface-container-lowest p-6 shadow-sm">
+        <div className="rounded-xl border-2 border-ink bg-paper p-6">
           <h2 className="text-lg font-bold text-on-surface mb-4">Các ban chuyên môn tuyển đợt này</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {departments.map((dept) => {
@@ -316,8 +309,8 @@ function EditRoundForm({
                   key={dept.id}
                   className={`flex items-center gap-3 p-3 rounded-apc border cursor-pointer transition-colors ${
                     checked
-                      ? 'border-apc-red bg-primary-pale/30 text-on-surface font-semibold'
-                      : 'border-outline-variant bg-surface-container-low hover:bg-surface-container text-on-surface-variant'
+                      ? 'border-ink bg-soft font-bold text-ink'
+                      : 'border-ink/20 bg-paper hover:bg-soft text-ink'
                   }`}
                 >
                   <input
@@ -334,7 +327,7 @@ function EditRoundForm({
         </div>
 
         {/* Thiết kế câu hỏi nghiệp vụ */}
-        <div className="rounded-apc border border-outline-variant bg-surface-container-lowest p-6 shadow-sm space-y-6">
+        <div className="rounded-xl border-2 border-ink bg-paper p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-outline-variant pb-4">
             <div>
               <h2 className="text-lg font-bold text-on-surface">Câu hỏi nghiệp vụ ứng tuyển</h2>
@@ -491,9 +484,9 @@ function EditRoundForm({
 
         {/* Nút submit */}
         <div className="flex items-center justify-end gap-3">
-          <Link to={`/admin/recruitment/${round.id}`}>
-            <Button type="button" variant="outline">Hủy bỏ</Button>
-          </Link>
+          <Link to={`/admin/recruitment/${round.id}`} className={buttonClass('outline')}>
+          Hủy bỏ
+        </Link>
           <Button type="submit" variant="primary" disabled={submitting}>
             {submitting ? 'Đang lưu...' : 'Lưu thay đổi'}
           </Button>
