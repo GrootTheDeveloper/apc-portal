@@ -7,6 +7,7 @@ import { RootLayout } from './layouts/RootLayout'
 import { ADMIN_ROLES } from './lib/auth'
 import { ADMIN_MENU, type MenuGroup, menuPages, PORTAL_MENU } from './lib/menu'
 import { AboutPage } from './pages/about/AboutPage'
+import { ActivatePage } from './pages/account/activate/ActivatePage'
 import { AreaPlaceholder } from './pages/area/AreaPlaceholder'
 import { EventDetailPage } from './pages/events/detail/EventDetailPage'
 import { EventsListPage } from './pages/events/list/EventsListPage'
@@ -69,7 +70,7 @@ export const appRoutes: RouteObject[] = [
         path: 'account/activate',
         element: (
           <RequireAuth gate="activation">
-            <Placeholder title="Kích hoạt tài khoản" />
+            <ActivatePage />
           </RequireAuth>
         ),
       },
