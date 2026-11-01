@@ -44,6 +44,7 @@ export const AUDIT_ACTIONS = {
   EVENT_PUBLISH: 'event.publish',
   EVENT_END: 'event.end', // Tác vụ nền event-end (E2) chuyển PUBLISHED quá endAt sang ENDED
   EVENT_CANCEL: 'event.cancel',
+  EVENT_ARCHIVE: 'event.archive', // E4: lưu trữ sự kiện từ CANCELLED/ENDED (docs/01 §9.2)
   EVENT_EXPORT: 'event.export',
   EVENT_CHECKIN: 'event.checkin',
   EVENT_EDIT_CHECKIN: 'event.edit_checkin',
