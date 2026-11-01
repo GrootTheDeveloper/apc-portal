@@ -3,15 +3,18 @@ import { Navigate, useSearchParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
 import { Button } from '../../../components/Button'
-import { Eyebrow } from '../../../components/Eyebrow'
-import { inputClass, labelClass } from '../../../components/formClass'
 import { useAuth } from '../../../hooks/useAuth'
 import { ApiError } from '../../../lib/api'
+import { ACTIVATE_PATH, needsActivation } from '../../../lib/auth'
 import { safeReturnTo } from '../../../lib/returnTo'
+import { isAppPath } from '../../../routes'
+import { Eyebrow } from '../../../components/Eyebrow'
+import { inputClass, labelClass, LOGIN_PASSWORD_MAX_LENGTH } from '../../../components/formClass'
 
 type SubmitState = { phase: 'idle' } | { phase: 'submitting' } | { phase: 'error'; message: string }
 
 const MARK_PIECES = ['/assets/home/mark/mark-red.png', '/assets/home/mark/mark-gold.png', '/assets/home/mark/mark-blue.png']
+
 
 function errorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) return 'Đã có lỗi xảy ra. Vui lòng thử lại.'
@@ -30,7 +33,7 @@ export function LoginPage() {
 
   // Đã đăng nhập (kể cả ngay sau khi bấm Đăng nhập): về trang đang định vào, mặc định /portal.
   if (status === 'authenticated' && user) {
-    const destination = user.mustChangePassword ? '/account/activate' : safeReturnTo(searchParams.get('returnTo'))
+    const destination = needsActivation(user) ? ACTIVATE_PATH : safeReturnTo(searchParams.get('returnTo'), isAppPath)
     return <Navigate to={destination} replace />
   }
 
@@ -93,7 +96,7 @@ export function LoginPage() {
                   type="password"
                   autoComplete="current-password"
                   required
-                  maxLength={128}
+                  maxLength={LOGIN_PASSWORD_MAX_LENGTH}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   disabled={submitting}
