@@ -337,15 +337,19 @@ async function uniqueSlug(title: string) {
 /**
  * Danh sách sự kiện cho trang quản trị (E4): BOARD thấy toàn CLB, DEPARTMENT_MANAGER chỉ các ban
  * mình quản lý (lọc ngay ở database theo docs/02 mục 12.2). Lọc thêm theo trạng thái, đối tượng, ban.
+ * Các điều kiện gộp bằng AND: `?departmentId=` do người gọi truyền phải nằm TRONG phạm vi được xem,
+ * không được đè lên bộ lọc phạm vi (spread đè lên sẽ lộ sự kiện ban khác qua tham số truy vấn).
  */
 export async function listAdminEvents(request: FastifyRequest, rawQuery: unknown) {
   const user = currentUser(request)
   const query = adminEventListQuery.parse(rawQuery)
   const where: Prisma.EventWhereInput = {
-    ...departmentScope(user),
-    ...(query.status ? { status: query.status } : {}),
-    ...(query.audience ? { audience: query.audience } : {}),
-    ...(query.departmentId ? { departmentId: query.departmentId } : {}),
+    AND: [
+      departmentScope(user),
+      ...(query.status ? [{ status: query.status }] : []),
+      ...(query.audience ? [{ audience: query.audience }] : []),
+      ...(query.departmentId ? [{ departmentId: query.departmentId }] : []),
+    ],
   }
   const [items, total] = await db.$transaction([
     db.event.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: adminEventSelect, ...pageArgs(query) }),
@@ -421,11 +425,20 @@ export async function createEvent(request: FastifyRequest, rawBody: unknown) {
 /**
  * Sửa nội dung sự kiện (FLOW-15): chỉ DRAFT và PUBLISHED sửa được; đã hủy, đã kết thúc, đã lưu trữ
  * là chốt hạ. Kiểm chéo thời gian trên dữ liệu SAU khi gộp (vd PATCH riêng startAt vẫn phải trước
- * endAt đang có); sức chứa không được nhỏ hơn số người đã đăng ký.
+ * endAt đang có); sức chứa không được nhỏ hơn số người đã đăng ký. Đổi đối tượng sang CLUB/PUBLIC
+ * chỉ BOARD (chống leo thang quyền công bố qua PATCH).
  */
 export async function updateEvent(request: FastifyRequest, id: string, rawBody: unknown) {
   const user = currentUser(request)
   const patch = eventUpdateSchema.parse(rawBody)
+
+  // Không lách quyền công bố qua PATCH (docs/02 §8.3): đặt đối tượng CLUB/PUBLIC là hành vi công bố,
+  // chỉ BOARD được làm. Chặn trước cả khi tải bản ghi: quản lý ban công bố sự kiện nội bộ của ban mình
+  // rồi PATCH thành PUBLIC sẽ công khai sự kiện mà không qua lượt duyệt của BOARD.
+  if (patch.audience && patch.audience !== 'DEPARTMENT' && !hasRole(user, 'BOARD')) {
+    await transitionDenied(request, AUDIT_ACTIONS.EVENT_PUBLISH, id, `Đổi đối tượng sang ${patch.audience} — chỉ BOARD được công bố mức này`)
+    throw forbidden('Chỉ Ban Chủ nhiệm được đặt đối tượng sự kiện thành toàn CLB hoặc công khai.')
+  }
 
   return db.$transaction(async (tx) => {
     const event = await tx.event.findUnique({
@@ -487,7 +500,7 @@ export async function updateEvent(request: FastifyRequest, id: string, rawBody: 
 // Mỗi bước một route; sai bước trả 409 (BR-16). Bước PUBLISHED → ENDED do tác vụ nền
 // 'event-end' làm khi qua endAt, không có route thủ công.
 
-/** Ghi audit FAILURE cho thao tác chuyển trạng thái bị chặn (ghi ngoài transaction rồi ném lỗi). */
+/** Ghi audit FAILURE cho thao tác bị chặn (sai bước chuyển, vượt quyền công bố) — ghi ngoài transaction rồi ném lỗi. */
 function transitionDenied(request: FastifyRequest, action: AuditActionName, eventId: string, reason: string) {
   return audit(request, {
     action,

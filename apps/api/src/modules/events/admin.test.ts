@@ -165,18 +165,47 @@ afterAll(async () => {
 describe('GET /admin/events', () => {
   it('board thấy mọi sự kiện, kể cả DRAFT và ARCHIVED', async () => {
     const draft = await createEventFixture({ departmentId: deptA, status: 'DRAFT' })
-    await db.event.update({ where: { id: draft.id }, data: { status: 'ARCHIVED' } })
-    await createEventFixture({ departmentId: deptB })
+    const archived = await createEventFixture({ departmentId: deptA, status: 'PUBLISHED' })
+    await db.event.update({ where: { id: archived.id }, data: { status: 'ARCHIVED' } })
+    const otherDept = await createEventFixture({ departmentId: deptB })
 
-    const response = await get('board', '/admin/events?pageSize=100')
+    // Lọc theo ban của test này để kết quả tất định: các file test chạy song song tạo thêm sự kiện
+    // (kể cả departmentId null) nên KHÔNG khẳng định gì về items[0] của danh sách không lọc.
+    const response = await get('board', `/admin/events?departmentId=${deptA}&pageSize=100`)
     expect(response.statusCode).toBe(200)
     const body = response.json()
     expect(body).toEqual(expect.objectContaining({ page: 1, pageSize: 100 }))
-    const ids = body.items.map((item: { id: string }) => item.id)
-    expect(ids).toContain(draft.id)
-    expect(body.items[0]).toEqual(
-      expect.objectContaining({ registeredCount: expect.any(Number), department: expect.anything() }),
+    const items = body.items as { id: string; status: string; registeredCount: number; department: { id: string } | null }[]
+    const byId = new Map(items.map((item) => [item.id, item]))
+    expect(byId.get(draft.id)?.status).toBe('DRAFT')
+    expect(byId.get(archived.id)?.status).toBe('ARCHIVED')
+    for (const item of items) {
+      // Mọi dòng trả ra đều đủ số đăng ký và thông tin ban quản lý.
+      expect(item.registeredCount).toEqual(expect.any(Number))
+      expect(item.department).toEqual(expect.objectContaining({ id: deptA }))
+    }
+
+    // Không lọc ban: BOARD vẫn thấy được sự kiện của ban khác trong danh sách.
+    const unfilteredIds = ((await get('board', '/admin/events?pageSize=100')).json().items as { id: string }[]).map((item) => item.id)
+    expect(unfilteredIds).toContain(otherDept.id)
+  })
+
+  it('manager lọc ?departmentId= sang ban khác nhận danh sách rỗng, không lộ dữ liệu', async () => {
+    const theirs = await createEventFixture({ departmentId: deptB })
+    const mine = await createEventFixture({ departmentId: deptA, status: 'DRAFT' })
+
+    // Lọc ban khác phải gộp AND với phạm vi ban mình: AND(ban A theo phạm vi, ban B theo lọc) → rỗng,
+    // tuyệt đối không trả dữ liệu Ban B (docs/02 §12 — không cho biết dữ liệu có tồn tại hay không).
+    const response = await get('manager', `/admin/events?departmentId=${deptB}&pageSize=100`)
+    expect(response.statusCode).toBe(200)
+    expect(response.json().items).toHaveLength(0)
+
+    // Lọc đúng ban mình vẫn hoạt động bình thường.
+    const ownIds = ((await get('manager', `/admin/events?departmentId=${deptA}&pageSize=100`)).json().items as { id: string }[]).map(
+      (item) => item.id,
     )
+    expect(ownIds).toContain(mine.id)
+    expect(ownIds).not.toContain(theirs.id)
   })
 
   it('manager chỉ thấy sự kiện các ban mình quản lý, lọc status hoạt động', async () => {
@@ -330,6 +359,38 @@ describe('PATCH /admin/events/:id', () => {
   it('manager sửa sự kiện Ban B nhận 404', async () => {
     const other = await createEventFixture({ departmentId: deptB })
     expect((await patchReq('manager', `/admin/events/${other.id}`, { title: 'X' })).statusCode).toBe(404)
+  })
+
+  it('leo thang quyền: công bố sự kiện nội bộ xong PATCH audience thành PUBLIC nhận 403, có audit FAILURE', async () => {
+    // Kịch bản tấn công: manager công bố sự kiện DEPARTMENT (được phép), rồi PATCH đổi đối tượng
+    // thành PUBLIC để công khai mà không qua BOARD (docs/02 §8.3).
+    const event = await createEventFixture({ departmentId: deptA, status: 'DRAFT', audience: 'DEPARTMENT' })
+    expect((await post('manager', `/admin/events/${event.id}/publish`)).statusCode).toBe(200)
+
+    const response = await patchReq('manager', `/admin/events/${event.id}`, { audience: 'PUBLIC' })
+    expect(response.statusCode).toBe(403)
+    expect(response.json().error).toBe('forbidden')
+
+    // Dữ liệu không đổi: vẫn nội bộ, vẫn đang công bố.
+    const stored = await db.event.findUniqueOrThrow({ where: { id: event.id } })
+    expect(stored).toEqual(expect.objectContaining({ audience: 'DEPARTMENT', status: 'PUBLISHED' }))
+
+    // Vụ bị chặn phải có dấu vết audit FAILURE (ngay cả khi không có dòng nào được sửa).
+    const audits = await db.auditLog.findMany({
+      where: { targetType: 'EVENT', targetId: event.id, action: 'event.publish', result: 'FAILURE' },
+    })
+    expect(audits).toHaveLength(1)
+    expect(audits[0]?.reason).toContain('PUBLIC')
+  })
+
+  it('manager PATCH audience thành CLUB cũng nhận 403; sửa nội dung khác vẫn bình thường', async () => {
+    const event = await createEventFixture({ departmentId: deptA, status: 'PUBLISHED', audience: 'DEPARTMENT' })
+    expect((await patchReq('manager', `/admin/events/${event.id}`, { audience: 'CLUB' })).statusCode).toBe(403)
+
+    // PATCH không đụng audience thì không bị chặn: công bố CLUB/PUBLIC chỉ chặn ở bước publish (§8.3).
+    const ok = await patchReq('manager', `/admin/events/${event.id}`, { title: 'Tiêu đề vẫn nội bộ' })
+    expect(ok.statusCode).toBe(200)
+    expect(ok.json()).toEqual(expect.objectContaining({ title: 'Tiêu đề vẫn nội bộ', audience: 'DEPARTMENT' }))
   })
 })
 
