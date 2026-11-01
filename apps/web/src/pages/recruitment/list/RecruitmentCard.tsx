@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
 
 import { formatDateTime } from '../../../lib/format'
-import type { RecruitmentRoundItem } from '../mock'
 import { roundPhase } from '../roundPhase'
+import type { RecruitmentRound } from '../types'
 
 // Class literal để Tailwind JIT nhận diện được.
 const PHASE_CHIPS = {
@@ -12,13 +12,13 @@ const PHASE_CHIPS = {
 } as const
 
 /** Nhãn giai đoạn của đợt tuyển; dùng cho danh sách và trang chi tiết. */
-export function PhaseChip({ round }: { round: RecruitmentRoundItem }) {
+export function PhaseChip({ round }: { round: RecruitmentRound }) {
   const chip = PHASE_CHIPS[roundPhase(round)]
   return <span className={`rounded-md px-2 py-1 font-code text-[13px] font-bold ${chip.className}`}>{chip.label}</span>
 }
 
 /** Một hàng trong danh sách đợt tuyển: cả hàng bấm được, rê chuột thì tên đổi màu và mũi tên nhích sang. */
-export function RecruitmentCard({ round }: { round: RecruitmentRoundItem }) {
+export function RecruitmentCard({ round }: { round: RecruitmentRound }) {
   return (
     <article className="group relative grid gap-5 border-b-2 border-ink py-8 md:grid-cols-[minmax(0,1fr)_minmax(0,360px)_40px] md:items-center md:gap-10">
       <div className="min-w-0">

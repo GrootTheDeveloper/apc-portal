@@ -196,6 +196,6 @@ Don't
 ## 11. Known gaps
 
 - No dark theme yet; colours are defined for the light page only.
-- Portal and admin layouts (A3) are not designed; `MenuPlaceholder` uses `PageHero` + ruled rows as a stopgap.
+- Portal and admin layouts (A3) use `AreaLayout` (role-filtered side menu + breadcrumb) but have no dedicated visual design yet; menu items without a real page show `AreaPlaceholder` (compact `StatusScreen`).
 - Modal/dialog and toast styles are not defined.
 - `tailwind.config.cjs` keeps temporary aliases for the v01 tokens (`on-surface`, `surface-container-*`, `outline-variant`, `font-headline-*`, `rounded-apc`…) so pages written before v02 still render in the new palette. New code uses the v02 tokens; remove the aliases once no file uses them.

@@ -25,6 +25,8 @@ Nguồn sự thật nghiệp vụ: `docs/01-prd.md` (yêu cầu), `docs/02-roles
   - `/admin/*` — quản trị (luôn kèm `requireRole`/`requireScope`)
 - Phiên đăng nhập: cookie `apc_session`, lưu ở bảng `sessions` (docs/06 §5). Không dùng JWT, không lưu token ở `localStorage`.
 - User đã đăng nhập: `request.user = { id, departmentId, roles }`; `roles` là các dòng `ACTIVE` trong bảng `user_roles` (`{ role, departmentId }`). Mọi tài khoản mặc định có vai trò nền `MEMBER`. Chặn quyền bằng `requireAuth`, `requireRole(...)`, `requireScope(...)` trong `src/modules/auth/rbac.ts`. **Không tự viết kiểm quyền riêng.**
+- Tài khoản chờ kích hoạt hoặc đang dùng mật khẩu tạm (`status = PENDING_ACTIVATION` hoặc `mustChangePassword`) có `request.user.pendingActivation = true`; `requireAuth` trả 403 cho tài khoản này. `requireSession` (chỉ cần phiên hợp lệ, cho qua tài khoản pending) **chỉ dùng cho `/auth/me`, `/auth/logout`, `/auth/activate`**; route mới luôn dùng `requireAuth`/`requireRole`/`requireScope`.
+- Vai trò `BOARD`/`TECH_ADMIN` chỉ có trong `roles` khi phiên đã nhập mã 2 lớp (`request.twoFactorVerified`); không tự đọc bảng `user_roles` để kiểm quyền.
 - Request `POST`/`PATCH`/`PUT`/`DELETE` phải có header `Origin` trùng `WEB_URL` (chống CSRF), thiếu thì 403. Web gọi qua `api(...)` đã tự có; test gửi `headers: { origin: 'http://localhost:5173' }`.
 - Validate mọi input bằng Zod (`schema.parse(...)`). Lỗi trả `{ error: '<code>', message: '<tiếng Việt>' }` theo docs/03 §14: 401 `unauthenticated`, 403 `forbidden`, 404 `not_found`, 409 `conflict`, 422 `validation` (kèm `issues`), 429 `rate_limited`. Chỉ cần `throw`; `src/lib/errors.ts` tự đổi ZodError → 422, trùng unique (P2002) → 409, lỗi khác → 500 kèm mã tham chiếu.
 - Truy cập dữ liệu ngoài phạm vi ban (người dùng không được biết dữ liệu tồn tại) trả 404, không trả 403 (docs/02 §12).
@@ -45,13 +47,15 @@ Nguồn sự thật nghiệp vụ: `docs/01-prd.md` (yêu cầu), `docs/02-roles
 
 ## Quy ước Web (`apps/web`)
 - Trang: `src/pages/<khu>/<trang>/`. Gọi API qua `api(...)` trong `src/lib/api.ts` (không `fetch` rải rác); lỗi là `ApiError` có `status`, `code`, `message`, `issues`.
-- Component dùng chung ở `src/components/`: `Button`/`buttonClass`/`pillClass`, `Eyebrow`, `PageHero` (đầu mỗi trang con), `Breadcrumb`, `Pagination`, `StatusScreen`, `EventCard`/`NewsCard`/`ProjectCard`. Navbar/Footer ở `src/layouts/`.
+- Component dùng chung ở `src/components/`: `Button`/`buttonClass`/`pillClass`, `Eyebrow`, `PageHero` (đầu mỗi trang con), `Breadcrumb`, `Pagination`, `StatusScreen` (`compact` trong khung portal/quản trị), `inputClass`/`labelClass` (`formClass.ts`), `PasswordField`, `ConfirmDialog` (xác nhận hành động nhạy cảm, hỏi lý do, 409 có nút Tải lại), `EventCard`/`NewsCard`/`ProjectCard`. Navbar/Footer ở `src/layouts/`.
 - Hiệu ứng hiện dần: gắn `data-rv` cho phần tử trong `<section>` (độ trễ `style={{ '--d': '90ms' }}`), không tự viết IntersectionObserver.
 - Mọi trang có đủ 4 trạng thái: loading / empty / error / success. Dùng `useApi(...)` (`src/hooks/useApi.ts`) và `<AsyncState>` (`src/components/AsyncState.tsx`).
 - Ngày giờ hiển thị bằng `formatDate`/`formatDateTime` trong `src/lib/format.ts` (giờ Việt Nam), không tự `toLocaleString`.
 - Dữ liệu lặp khai báo mảng rồi `map`. Class Tailwind viết literal đầy đủ (không `text-${x}`).
 - Màu/chữ/nút/chuyển động theo `DESIGN.md`: mảng màu đặc, không card viền mảnh, không đổ bóng, không gradient; dùng lại component có sẵn trước khi tạo mới.
 - Route theo `docs/04-sitemap.md`, URL tiếng Anh.
+- Thêm trang portal/quản trị: **không** sửa `src/routes.tsx`. Thêm một mục vào `PORTAL_MENU`/`ADMIN_MENU` trong `src/lib/menu.ts` với `roles` (ai được mở) và `page: () => import('…').then((m) => ({ Component: m.TenTrang }))`. Router tự sinh route, tự bọc `<RequireAuth roles>` và tự hiện menu theo vai trò. Trang chi tiết/tạo mới/sửa không nằm trong menu thì khai báo trong `children` của mục cha. Trang công khai mới mới khai báo trực tiếp trong `src/routes.tsx`.
+- Thứ tự chặn route (phiên → kích hoạt → 2 lớp → vai trò) nằm trong `guardRedirect` (`src/lib/auth.ts`); `<RequireAuth>` chỉ gọi hàm này. Lỗi API 403/404 để `<AsyncState>` tự hiện màn "không có quyền"/"không tìm thấy".
 
 ## Test tối thiểu
 - API: mỗi endpoint có 1 test thành công và 1 test **bị từ chối** (401/403, hoặc 404 khi sai phạm vi ban).
