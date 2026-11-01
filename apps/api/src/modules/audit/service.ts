@@ -38,6 +38,7 @@ export const AUDIT_ACTIONS = {
   APPLICATION_CONVERT_USER: 'application.convert_user',
   RECRUITMENT_EXPORT: 'recruitment.export',
   APPLICATION_WITHDRAW: 'application.withdraw',
+  RECRUITMENT_WITHDRAW_APPLICATION: 'recruitment.withdraw_application',
   // Thành viên
   MEMBER_IMPORT: 'member.import',
   MEMBER_EXPORT: 'member.export',

@@ -98,16 +98,20 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (createdRoundIds.length > 0) {
-    await db.auditLog.deleteMany({
-      where: { targetId: { in: createdRoundIds } },
-    })
-
     // Lấy danh sách hồ sơ test đã tạo để dọn consent và email
     const apps = await db.membershipApplication.findMany({
       where: { recruitmentRoundId: { in: createdRoundIds } },
       select: { id: true },
     })
     const appIds = apps.map((a) => a.id)
+    await db.auditLog.deleteMany({
+      where: {
+        OR: [
+          { targetId: { in: createdRoundIds } },
+          { targetId: { in: appIds } },
+        ],
+      },
+    })
     if (appIds.length > 0) {
       await db.consentRecord.deleteMany({
         where: { subjectType: 'APPLICATION', subjectId: { in: appIds } },
@@ -765,6 +769,71 @@ describe('Recruitment Module (R2)', () => {
       expect(res.json().message).toBe(
         'Không thể nộp đơn với thông tin này. Nếu đã nộp, vui lòng dùng trang tra cứu.',
       )
+    })
+  })
+  // ─── 8. TRA CỨU VÀ RÚT ĐƠN (R4) ───────────────────────────
+  describe('Tra cứu và rút đơn (R4)', () => {
+    let testAppCode: string
+    let lookupRoundSlug: string
+    const applicantEmail = `lookup-${tag}@example.com`
+
+    beforeAll(async () => {
+      lookupRoundSlug = `lookup-round-${tag}`
+      const round = await db.recruitmentRound.create({
+        data: {
+          title: `Đợt tuyển tra cứu ${tag}`,
+          slug: lookupRoundSlug,
+          description: 'Mô tả đợt tuyển thử nghiệm tra cứu',
+          audience: 'Sinh viên',
+          requirements: 'Không yêu cầu',
+          status: 'OPEN',
+          opensAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          closesAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          createdById: createdUserIds[0]!,
+          departments: { connect: [{ id: deptAId }] },
+        },
+      })
+      createdRoundIds.push(round.id)
+
+      // Nộp 1 hồ sơ hợp lệ để dùng cho test tra cứu và rút đơn
+      const res = await app.inject({
+        method: 'POST',
+        url: `/public/recruitment-rounds/${lookupRoundSlug}/applications`,
+        headers: { origin: ORIGIN },
+        payload: {
+          applicantName: 'Nguyễn Văn Tra Cứu',
+          applicantEmail,
+          studentId: `88${tag.slice(0, 6)}`,
+          desiredDepartmentId: deptAId,
+          consent: true,
+        },
+      })
+      expect(res.statusCode).toBe(201)
+      testAppCode = res.json().profileCode
+    })
+
+    it('Tra cứu đúng trả về 200, đúng trạng thái và KHÔNG để lộ ghi chú nội bộ (BR-07)', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/public/applications/lookup',
+        headers: { origin: ORIGIN },
+        payload: {
+          email: applicantEmail,
+          code: testAppCode,
+        },
+      })
+
+      expect(res.statusCode).toBe(200)
+      const data = res.json()
+      expect(data.profileCode).toBe(testAppCode)
+      expect(data.status).toBe('NEW')
+      expect(data.canWithdraw).toBe(true)
+      expect(data.roundSlug).toBe(lookupRoundSlug)
+
+      // Kiểm tra bảo mật: Không được lộ ghi chú, đánh giá, câu trả lời
+      expect(data.internalNote).toBeUndefined()
+      expect(data.reviewedById).toBeUndefined()
+      expect(data.answers).toBeUndefined()
     })
   })
 })

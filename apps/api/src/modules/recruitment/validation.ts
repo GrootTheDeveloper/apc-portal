@@ -180,3 +180,15 @@ export const SubmitApplicationSchema = z.object({
 })
 
 export type SubmitApplicationInput = z.infer<typeof SubmitApplicationSchema>
+
+export const LookupApplicationSchema = z.object({
+  email: z.string().trim().email('Email không đúng định dạng'),
+  code: z.string().trim().min(1, 'Mã hồ sơ không được để trống'),
+})
+export type LookupApplicationInput = z.infer<typeof LookupApplicationSchema>
+
+export const WithdrawApplicationSchema = z.object({
+  email: z.string().trim().email('Email không đúng định dạng'),
+  code: z.string().trim().min(1, 'Mã hồ sơ không được để trống'),
+})
+export type WithdrawApplicationInput = z.infer<typeof WithdrawApplicationSchema>

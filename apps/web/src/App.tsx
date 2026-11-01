@@ -26,6 +26,7 @@ import { AdminRecruitmentListPage } from './pages/admin/recruitment/AdminRecruit
 import { AdminRecruitmentNewPage } from './pages/admin/recruitment/AdminRecruitmentNewPage'
 import { AdminRecruitmentPreviewPage } from './pages/admin/recruitment/AdminRecruitmentPreviewPage'
 import { RecruitmentApplyPage } from './pages/recruitment/apply/RecruitmentApplyPage'
+import { RecruitmentLookupPage } from './pages/recruitment/lookup/RecruitmentLookupPage'
 
 const router = createBrowserRouter([
   {
@@ -43,7 +44,7 @@ const router = createBrowserRouter([
       { path: 'projects', element: <ProjectListPage /> },
       { path: 'projects/:slug', element: <ProjectDetailPage /> },
       { path: 'recruitment', element: <RecruitmentListPage /> },
-      { path: 'recruitment/application-lookup', element: <Placeholder title="Tra cứu hồ sơ ứng tuyển" /> },
+      { path: 'recruitment/application-lookup', element: <RecruitmentLookupPage /> },
       { path: 'recruitment/:slug', element: <RecruitmentDetailPage /> },
       { path: 'recruitment/:slug/apply', element: <RecruitmentApplyPage /> },
       { path: 'privacy', element: <PrivacyPage /> },

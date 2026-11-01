@@ -45,6 +45,29 @@ export const EMAIL_TEMPLATES = {
 <p>Trân trọng,<br>Câu lạc bộ Lập trình ứng dụng (APC)</p>`,
     }
   },
+
+  /** Email thông báo cập nhật trạng thái hồ sơ (R4, R5, NTF-01) */
+  APPLICATION_STATUS: async (applicationId) => {
+    const app = await db.membershipApplication.findUnique({
+      where: { id: applicationId },
+      include: { recruitmentRound: true },
+    })
+    if (!app) return null
+
+    const applicantName = escapeHtml(app.applicantName)
+    const roundTitle = escapeHtml(app.recruitmentRound.title)
+    const statusText = app.status === 'WITHDRAWN' ? 'Đã rút đơn' : app.status
+    const lookupUrl = '/recruitment/application-lookup'
+
+    return {
+      subject: `[APC] Cập nhật trạng thái hồ sơ tuyển thành viên: ${app.recruitmentRound.title}`,
+      text: `Xin chào ${app.applicantName},\n\nHồ sơ ứng tuyển của bạn cho đợt "${app.recruitmentRound.title}" đã được chuyển sang trạng thái: ${statusText}.\n\nBạn có thể kiểm tra chi tiết tại: ${lookupUrl}\n\nTrân trọng,\nCâu lạc bộ Lập trình ứng dụng (APC)`,
+      html: `<p>Xin chào <strong>${applicantName}</strong>,</p>
+<p>Hồ sơ ứng tuyển của bạn cho đợt tuyển <strong>${roundTitle}</strong> đã được chuyển sang trạng thái: <strong>${statusText}</strong>.</p>
+<p>Bạn có thể kiểm tra chi tiết tại: <a href="${lookupUrl}">${lookupUrl}</a></p>
+<p>Trân trọng,<br>Câu lạc bộ Lập trình ứng dụng (APC)</p>`,
+    }
+  },
 } satisfies Record<string, Template>
 
 export type EmailType = keyof typeof EMAIL_TEMPLATES

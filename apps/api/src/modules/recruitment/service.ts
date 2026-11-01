@@ -15,8 +15,10 @@ import type { Question } from './validation.js'
 import {
   ChangeRoundStatusSchema,
   CreateRecruitmentRoundSchema,
+  LookupApplicationSchema,
   SubmitApplicationSchema,
   UpdateRecruitmentRoundSchema,
+  WithdrawApplicationSchema,
 } from './validation.js'
 
 
@@ -661,5 +663,126 @@ export async function submitApplication(
       throw conflict('Không thể nộp đơn với thông tin này. Nếu đã nộp, vui lòng dùng trang tra cứu.')
     }
     throw error
+  }
+}
+
+/**
+ * Tra cứu trạng thái hồ sơ ứng tuyển (R4, FLOW-05)
+ * Trả về thông tin an toàn: KHÔNG bao gồm ghi chú nội bộ, đánh giá, người xét (BR-07)
+ */
+export async function lookupApplication(input: unknown) {
+  const { email, code } = LookupApplicationSchema.parse(input)
+
+  const app = await db.membershipApplication.findFirst({
+    where: {
+      profileCode: code.trim(),
+      applicantEmail: { equals: email.trim(), mode: 'insensitive' },
+    },
+    include: {
+      recruitmentRound: {
+        select: {
+          title: true,
+          slug: true,
+        },
+      },
+      desiredDepartment: {
+        select: {
+          name: true,
+          code: true,
+        },
+      },
+    },
+  })
+
+  // Sai email hoặc sai mã trả cùng một thông báo chung (FLOW-05)
+  if (!app) {
+    throw notFound('Không tìm thấy hồ sơ với thông tin đã cung cấp.')
+  }
+
+  return {
+    profileCode: app.profileCode,
+    applicantName: app.applicantName,
+    roundTitle: app.recruitmentRound.title,
+    roundSlug: app.recruitmentRound.slug,
+    desiredDepartmentName: app.desiredDepartment?.name ?? 'Chưa phân ban',
+    status: app.status,
+    submittedAt: app.submittedAt,
+    updatedAt: app.updatedAt,
+    canWithdraw: ['NEW', 'REVIEWING', 'INTERVIEW'].includes(app.status),
+  }
+}
+
+/**
+ * Rút hồ sơ ứng tuyển (R4, FLOW-05)
+ * Chỉ cho phép rút khi hồ sơ chưa có kết quả cuối (NEW, REVIEWING, INTERVIEW)
+ */
+export async function withdrawApplication(request: FastifyRequest, input: unknown) {
+  const { email, code } = WithdrawApplicationSchema.parse(input)
+
+  const app = await db.membershipApplication.findFirst({
+    where: {
+      profileCode: code.trim(),
+      applicantEmail: { equals: email.trim(), mode: 'insensitive' },
+    },
+    select: {
+      id: true,
+      profileCode: true,
+      applicantEmail: true,
+      status: true,
+    },
+  })
+
+  if (!app) {
+    throw notFound('Không tìm thấy hồ sơ với thông tin đã cung cấp.')
+  }
+
+  const allowedStatuses = ['NEW', 'REVIEWING', 'INTERVIEW']
+  if (!allowedStatuses.includes(app.status)) {
+    throw conflict('Hồ sơ không ở trạng thái có thể rút đơn.')
+  }
+
+  const updated = await db.$transaction(async (tx) => {
+    const res = await tx.membershipApplication.update({
+      where: { id: app.id },
+      data: { status: 'WITHDRAWN' },
+      select: {
+        id: true,
+        status: true,
+        updatedAt: true,
+      },
+    })
+
+    // Ghi audit log: TUYỆT ĐỐI không ghi mã hồ sơ (OPS-11, BR-07)
+    await audit(
+      request,
+      {
+        action: AUDIT_ACTIONS.RECRUITMENT_WITHDRAW_APPLICATION,
+        category: AuditCategory.BUSINESS,
+        result: AuditResult.SUCCESS,
+        targetType: 'APPLICATION',
+        targetId: app.id,
+        metadata: {
+          fromStatus: app.status,
+          toStatus: 'WITHDRAWN',
+        },
+      },
+      tx,
+    )
+
+    // Đẩy email thông báo vào hàng đợi (QĐ-7: người bị rút đơn hộ biết ngay)
+    await enqueueEmail(tx, {
+      type: 'APPLICATION_STATUS',
+      to: app.applicantEmail,
+      refType: 'APPLICATION',
+      refId: app.id,
+    })
+
+    return res
+  })
+
+  return {
+    success: true,
+    status: updated.status,
+    updatedAt: updated.updatedAt,
   }
 }

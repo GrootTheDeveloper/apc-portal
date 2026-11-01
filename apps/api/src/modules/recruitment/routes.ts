@@ -7,8 +7,10 @@ import {
   getPublicRecruitmentRoundBySlug,
   listAdminRecruitmentRounds,
   listPublicRecruitmentRounds,
+  lookupApplication,
   submitApplication,
   updateRecruitmentRound,
+  withdrawApplication,
 } from './service.js'
 
 export async function recruitmentRoutes(app: FastifyInstance) {
@@ -32,6 +34,47 @@ export async function recruitmentRoutes(app: FastifyInstance) {
       const user = request.user
       const result = await submitApplication(slug, request.body, idempotencyKey, user)
       return reply.code(201).send(result)
+    },
+  )
+   // Tra cứu hồ sơ (R4, FLOW-05, SEC-05)
+  app.post(
+    '/public/applications/lookup',
+    {
+      config: {
+        rateLimit: {
+          max: 5,
+          timeWindow: '15 minutes',
+          hook: 'preHandler',
+          keyGenerator: (request) => {
+            const body = request.body as { email?: string } | undefined
+            const email = body?.email?.toLowerCase().trim() || ''
+            return `${request.ip}:${email}`
+          },
+        },
+      },
+    },
+    async (request) => {
+      return lookupApplication(request.body)
+    },
+  )
+  app.post(
+    '/public/applications/withdraw',
+    {
+      config: {
+        rateLimit: {
+          max: 5,
+          timeWindow: '15 minutes',
+          hook: 'preHandler',
+          keyGenerator: (request) => {
+            const body = request.body as { email?: string } | undefined
+            const email = body?.email?.toLowerCase().trim() || ''
+            return `${request.ip}:${email}`
+          },
+        },
+      },
+    },
+    async (request) => {
+      return withdrawApplication(request, request.body)
     },
   )
 
