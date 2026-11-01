@@ -16,12 +16,14 @@ export const ROLE_LABEL: Record<Role, string> = {
   TECH_ADMIN: 'Quản trị viên kỹ thuật',
 }
 
-/** Điều kiện "vai trò đang có hiệu lực": ACTIVE, đã tới startsAt, chưa qua expiresAt. */
-export const activeRoleWhere = (now: Date) => ({
-  status: 'ACTIVE' as const,
+/** Khoảng hiệu lực của một dòng user_roles: đã tới startsAt, chưa qua expiresAt (dòng quá hạn chưa chuyển EXPIRED vẫn không tính). */
+export const effectiveRoleWindow = (now: Date) => ({
   startsAt: { lte: now },
   OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
 })
+
+/** Điều kiện "vai trò đang có hiệu lực": ACTIVE và trong khoảng hiệu lực. */
+export const activeRoleWhere = (now: Date) => ({ status: 'ACTIVE' as const, ...effectiveRoleWindow(now) })
 
 /**
  * Khóa advisory dùng chung cho MỌI thao tác làm thay đổi số người giữ vai trò đặc quyền (khóa, ngừng hoạt động,

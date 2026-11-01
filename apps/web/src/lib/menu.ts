@@ -113,11 +113,28 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
             page: () =>
               import('../pages/admin/accounts/detail/AccountDetailPage').then((m) => ({ Component: m.AccountDetailPage })),
           },
+          {
+            label: 'Vai trò và phạm vi',
+            to: '/admin/accounts/:id/roles',
+            roles: BOARD_OR_TECH,
+            page: () =>
+              import('../pages/admin/accounts/roles/AccountRolesPage').then((m) => ({ Component: m.AccountRolesPage })),
+          },
         ],
       },
     ],
   },
-  { label: 'Phân quyền', items: [{ label: 'Phân quyền', to: '/admin/access-control', roles: BOARD_OR_TECH }] },
+  {
+    label: 'Phân quyền',
+    items: [
+      {
+        label: 'Phân quyền',
+        to: '/admin/access-control',
+        roles: BOARD_OR_TECH,
+        page: () => import('../pages/admin/access-control/AccessControlPage').then((m) => ({ Component: m.AccessControlPage })),
+      },
+    ],
+  },
   { label: 'Sự kiện', items: [{ label: 'Sự kiện', to: '/admin/events', roles: MANAGER_OR_BOARD }] },
   {
     label: 'Bài viết và thông báo',

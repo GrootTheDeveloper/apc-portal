@@ -157,6 +157,9 @@ export function AccountDetailPage() {
                 {data.fullName}
               </h1>
               <StatusBadge status={data.status} />
+              <Link className="font-bold text-apc-blue underline" to={`/admin/accounts/${data.id}/roles`}>
+                Vai trò và phạm vi →
+              </Link>
             </div>
 
             <div role="tablist" aria-label="Thông tin tài khoản" className="flex flex-wrap gap-2">

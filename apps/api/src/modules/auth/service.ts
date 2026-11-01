@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db } from '../../db/client.js'
 import { conflict, forbidden, rateLimited, unauthenticated } from '../../lib/errors.js'
 import { hashPassword, verifyPassword } from '../../lib/password.js'
+import { activeRoleWhere, effectiveRoleWindow } from '../accounts/privileged.js'
 import { AUDIT_ACTIONS, audit, AuditCategory, type AuditRequestLike, AuditResult } from '../audit/service.js'
 import { fieldError, newPasswordSchema, PASSWORD_MAX, passwordString } from './password-policy.js'
 import type { AuthUser, RoleGrant } from './rbac.js'
@@ -30,11 +31,7 @@ export async function loadAuthUser(
       mustChangePassword: true,
       departmentId: true,
       roles: {
-        where: {
-          status: 'ACTIVE',
-          startsAt: { lte: now },
-          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-        },
+        where: activeRoleWhere(now),
         select: { role: true, departmentId: true },
       },
     },
@@ -154,8 +151,7 @@ async function twoFactorStep(userId: string, sessionVerified: boolean, now: Date
       userId,
       role: { in: ['BOARD', 'TECH_ADMIN'] },
       status: { in: ['ACTIVE', 'PENDING'] },
-      startsAt: { lte: now },
-      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      ...effectiveRoleWindow(now),
     },
     select: { status: true },
   })
