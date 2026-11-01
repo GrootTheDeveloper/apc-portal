@@ -6,8 +6,10 @@ import { Button } from '../../../components/Button'
 import { pillClass } from '../../../components/buttonClass'
 import { PageHero } from '../../../components/PageHero'
 import { Pagination } from '../../../components/Pagination'
-import { useMockApi } from '../../../hooks/useMockApi'
-import { DEFAULT_MONTH_KEY, EVENT_TYPES, listEvents } from '../mock'
+import { useApi } from '../../../hooks/useApi'
+import type { Page } from '../../../lib/api'
+import { currentMonthKey } from '../../../lib/vnTime'
+import { EVENT_TYPES, type EventListItem } from '../types'
 import { EventCalendar } from './EventCalendar'
 
 const PAGE_SIZE = 9
@@ -25,7 +27,7 @@ export function EventsListPage() {
   const view = searchParams.get('view') === 'calendar' ? 'calendar' : 'list'
   const type = searchParams.get('type') ?? ''
   const page = Math.max(1, Number(searchParams.get('page')) || 1)
-  const month = searchParams.get('month') ?? DEFAULT_MONTH_KEY
+  const month = searchParams.get('month') ?? currentMonthKey()
   const from = `${location.pathname}${location.search}`
 
   const updateParams = (changes: Record<string, string | null>) => {
@@ -37,16 +39,17 @@ export function EventsListPage() {
     setSearchParams(next)
   }
 
-  const events = useMockApi(
-    () =>
-      listEvents({
-        page: view === 'calendar' ? 1 : page,
-        pageSize: view === 'calendar' ? 100 : PAGE_SIZE,
-        type: type || null,
-        month: view === 'calendar' ? month : null,
-      }),
-    [view, page, type, month],
-  )
+  // Chế độ lịch lấy cả tháng hiện tại (?month=), chế độ danh sách lấy từng trang (?page=, ?type=).
+  const query = new URLSearchParams()
+  if (view === 'calendar') {
+    query.set('month', month)
+    query.set('pageSize', '100')
+  } else {
+    query.set('page', String(page))
+    query.set('pageSize', String(PAGE_SIZE))
+    if (type) query.set('type', type)
+  }
+  const events = useApi<Page<EventListItem>>(`/public/events?${query}`)
 
   const items = events.data?.items ?? []
   const total = events.data?.total ?? 0
