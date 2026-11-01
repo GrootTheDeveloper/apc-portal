@@ -23,6 +23,9 @@ const environmentSchema = z.object({
   FILE_SCAN_MODE: z.enum(['clamav', 'skip']).default('skip'),
   CLAMAV_HOST: z.string().default('127.0.0.1'),
   CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
+  // Ngưỡng chặn dò mã của khách (SEC-05, cùng quy tắc R4): sai email/mã quá N lần trong 15 phút
+  // thì chặn 15 phút (429). Nâng số này khi chạy e2e để luồng test không dính 429.
+  LOOKUP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
   // RP-06, RP-07: không khóa/ngừng hoạt động/thu hồi làm số BOARD hoặc TECH_ADMIN đang hoạt động dưới 2.
   // Chỉ bật sau khi production phát hành (giai đoạn bootstrap trước đó được ngoại lệ, RP-15). A5, A6.
   ENFORCE_PRIVILEGED_MINIMUM: z.stringbool().default(false),

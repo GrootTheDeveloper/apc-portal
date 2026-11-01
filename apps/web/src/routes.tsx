@@ -10,6 +10,8 @@ import { AboutPage } from './pages/about/AboutPage'
 import { ActivatePage } from './pages/account/activate/ActivatePage'
 import { AreaPlaceholder } from './pages/area/AreaPlaceholder'
 import { EventDetailPage } from './pages/events/detail/EventDetailPage'
+import { RegistrationLookupPage } from './pages/events/lookup/RegistrationLookupPage'
+import { EventRegisterPage } from './pages/events/register/EventRegisterPage'
 import { EventsListPage } from './pages/events/list/EventsListPage'
 import { HomePage } from './pages/home/HomePage'
 import { NewsDetailPage } from './pages/news/detail/NewsDetailPage'
@@ -55,7 +57,8 @@ export const appRoutes: RouteObject[] = [
       { path: 'news', element: <NewsListPage /> },
       { path: 'news/:slug', element: <NewsDetailPage /> },
       // Route tĩnh khai báo trước route động /events/:slug (Sitemap §15.1).
-      { path: 'events/registration-lookup', element: <Placeholder title="Tra cứu đăng ký sự kiện" /> },
+      { path: 'events/registration-lookup', element: <RegistrationLookupPage /> },
+      { path: 'events/:slug/register', element: <EventRegisterPage /> },
       { path: 'events', element: <EventsListPage /> },
       { path: 'events/:slug', element: <EventDetailPage /> },
       { path: 'projects', element: <ProjectListPage /> },
