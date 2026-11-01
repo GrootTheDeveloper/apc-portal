@@ -97,7 +97,26 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
       { label: 'Nhập từ CSV', to: '/admin/members/import', roles: BOARD },
     ],
   },
-  { label: 'Tài khoản', items: [{ label: 'Tài khoản', to: '/admin/accounts', roles: BOARD_OR_TECH }] },
+  {
+    label: 'Tài khoản',
+    items: [
+      {
+        label: 'Tài khoản',
+        to: '/admin/accounts',
+        roles: BOARD_OR_TECH,
+        page: () => import('../pages/admin/accounts/list/AccountListPage').then((m) => ({ Component: m.AccountListPage })),
+        children: [
+          {
+            label: 'Chi tiết tài khoản',
+            to: '/admin/accounts/:id',
+            roles: BOARD_OR_TECH,
+            page: () =>
+              import('../pages/admin/accounts/detail/AccountDetailPage').then((m) => ({ Component: m.AccountDetailPage })),
+          },
+        ],
+      },
+    ],
+  },
   { label: 'Phân quyền', items: [{ label: 'Phân quyền', to: '/admin/access-control', roles: BOARD_OR_TECH }] },
   { label: 'Sự kiện', items: [{ label: 'Sự kiện', to: '/admin/events', roles: MANAGER_OR_BOARD }] },
   {
