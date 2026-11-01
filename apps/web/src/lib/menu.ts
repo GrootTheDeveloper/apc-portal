@@ -14,9 +14,11 @@ export const PORTAL_MENU: readonly MenuItem[] = [
   { label: 'Tổng quan', to: '/portal', roles: ['MEMBER'] },
   { label: 'Thông báo', to: '/portal/announcements', roles: ['MEMBER'] },
   { label: 'Sự kiện', to: '/portal/events', roles: ['MEMBER'] },
+  { label: 'Lịch sử hoạt động', to: '/portal/activity-history', roles: ['MEMBER'] },
   { label: 'Tài liệu', to: '/portal/documents', roles: ['MEMBER'] },
   { label: 'Danh bạ', to: '/portal/members', roles: ['MEMBER'] },
   { label: 'Hồ sơ của tôi', to: '/portal/profile', roles: ['MEMBER'] },
+  { label: 'Vai trò của tôi', to: '/portal/account/roles', roles: ['MEMBER'] },
   { label: 'Bảo mật tài khoản', to: '/portal/account/security', roles: ['MEMBER'] },
 ]
 

@@ -6,6 +6,9 @@ describe('safeReturnTo', () => {
   it('keeps internal paths with their query string', () => {
     expect(safeReturnTo('/admin')).toBe('/admin')
     expect(safeReturnTo('/portal')).toBe('/portal')
+    expect(safeReturnTo('/portal/profile')).toBe('/portal/profile')
+    expect(safeReturnTo('/portal/activity-history')).toBe('/portal/activity-history')
+    expect(safeReturnTo('/portal/account/roles')).toBe('/portal/account/roles')
     expect(safeReturnTo('/news?page=2')).toBe('/news?page=2')
   })
 

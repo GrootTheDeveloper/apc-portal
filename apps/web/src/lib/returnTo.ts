@@ -16,6 +16,9 @@ export const RETURN_TO_ROUTES = [
   '/privacy',
   '/account/activate',
   '/portal',
+  '/portal/profile',
+  '/portal/activity-history',
+  '/portal/account/roles',
   '/admin',
 ] as const
 

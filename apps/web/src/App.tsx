@@ -4,7 +4,7 @@ import { AuthProvider } from './components/AuthProvider'
 import { RequireAuth } from './components/RequireAuth'
 import { RootLayout } from './layouts/RootLayout'
 import { ADMIN_ROLES } from './lib/auth'
-import { ADMIN_MENU, PORTAL_MENU } from './lib/menu'
+import { ADMIN_MENU } from './lib/menu'
 import { AboutPage } from './pages/about/AboutPage'
 import { LoginPage } from './pages/auth/login/LoginPage'
 import { EventDetailPage } from './pages/events/detail/EventDetailPage'
@@ -19,6 +19,10 @@ import { ProjectDetailPage } from './pages/projects/detail/ProjectDetailPage'
 import { ProjectListPage } from './pages/projects/list/ProjectListPage'
 import { RecruitmentDetailPage } from './pages/recruitment/detail/RecruitmentDetailPage'
 import { RecruitmentListPage } from './pages/recruitment/list/RecruitmentListPage'
+import { ActivityHistoryPage } from './pages/portal/activity/ActivityHistoryPage'
+import { PortalDashboard } from './pages/portal/dashboard/PortalDashboard'
+import { ProfilePage } from './pages/portal/profile/ProfilePage'
+import { MyRolesPage } from './pages/portal/roles/MyRolesPage'
 
 const router = createBrowserRouter([
   {
@@ -55,7 +59,17 @@ const router = createBrowserRouter([
             <Outlet />
           </RequireAuth>
         ),
-        children: [{ index: true, element: <MenuPlaceholder title="Trang thành viên" menu={PORTAL_MENU} /> }],
+        children: [
+          { index: true, element: <PortalDashboard /> },
+          { path: 'profile', element: <ProfilePage /> },
+          { path: 'activity-history', element: <ActivityHistoryPage /> },
+          { path: 'account/roles', element: <MyRolesPage /> },
+          { path: 'announcements', element: <Placeholder title="Thông báo nội bộ" /> },
+          { path: 'events', element: <Placeholder title="Sự kiện nội bộ" /> },
+          { path: 'documents', element: <Placeholder title="Tài liệu nội bộ" /> },
+          { path: 'members', element: <Placeholder title="Danh bạ thành viên" /> },
+          { path: 'account/security', element: <Placeholder title="Bảo mật tài khoản" /> },
+        ],
       },
       {
         path: 'admin',

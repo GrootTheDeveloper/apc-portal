@@ -49,6 +49,7 @@ erDiagram
     String id PK
     String username UK "Tên đăng nhập (AUTH-02, BR-02)"
     String email UK
+    String contactEmail "tùy chọn. Email liên hệ tùy chọn (QĐ-8, MEM-03)"
     String passwordHash "Băm Argon2id (SEC-02)"
     AccountStatus status "PENDING_ACTIVATION / ACTIVE / LOCKED / INACTIVE"
     Boolean mustChangePassword
