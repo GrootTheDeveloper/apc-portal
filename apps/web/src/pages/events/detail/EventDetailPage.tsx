@@ -5,11 +5,12 @@ import { AsyncState } from '../../../components/AsyncState'
 import { Breadcrumb } from '../../../components/Breadcrumb'
 import { Button } from '../../../components/Button'
 import { PageHero } from '../../../components/PageHero'
+import { Seo } from '../../../components/Seo'
 import { EVENT_STATUS_STYLES, eventPhoto, type EventCardStatus } from '../../../lib/eventVisual'
 import { NotFound } from '../../NotFound'
 import { formatDate, formatDateTime, formatTime, vnParts } from '../../../lib/format'
-import { useMockApi } from '../../../hooks/useMockApi'
-import { getEventBySlug, type EventDetail } from '../mock'
+import { useApi } from '../../../hooks/useApi'
+import type { EventDetail } from '../types'
 
 /** Chỉ mở đăng ký khi sự kiện còn diễn ra và trong thời gian nhận đăng ký (BR-08). */
 function registrationState(event: EventDetail): 'open' | 'not_open' | 'closed' | null {
@@ -29,7 +30,7 @@ export function EventDetailPage() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const event = useMockApi(() => (slug ? getEventBySlug(slug) : Promise.reject(new Error('missing slug'))), [slug])
+  const event = useApi<EventDetail>(slug ? `/public/events/${slug}` : null)
 
   if (event.error?.status === 404) return <NotFound />
   if (event.loading) {
@@ -82,6 +83,13 @@ export function EventDetailPage() {
 
   return (
     <main>
+      {/* SEO-01: title, description, canonical, Open Graph; mô tả lấy đoạn đầu nội dung */}
+      <Seo
+        title={data.title}
+        description={data.description.split('\n\n')[0].slice(0, 160)}
+        path={`/events/${data.slug}`}
+        imageUrl={data.coverImageUrl}
+      />
       <PageHero
         tone="blue"
         top={

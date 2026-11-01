@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 
 import { buttonClass } from '../../../components/buttonClass'
-import type { EventListItem } from '../mock'
+import type { EventListItem } from '../types'
 import { formatTime, vnParts } from '../../../lib/format'
 import { addMonths, calendarCells, monthKeyLabel, parseMonthKey, vnTodayParts } from '../../../lib/vnTime'
 

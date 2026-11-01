@@ -42,6 +42,7 @@ export const AUDIT_ACTIONS = {
   MEMBER_UPDATE_MANAGED: 'member.update_managed_data',
   // Sự kiện
   EVENT_PUBLISH: 'event.publish',
+  EVENT_END: 'event.end', // Tác vụ nền event-end (E2) chuyển PUBLISHED quá endAt sang ENDED
   EVENT_CANCEL: 'event.cancel',
   EVENT_EXPORT: 'event.export',
   EVENT_CHECKIN: 'event.checkin',
