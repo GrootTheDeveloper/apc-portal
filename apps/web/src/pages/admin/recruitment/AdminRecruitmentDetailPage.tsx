@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AsyncState } from '../../../components/AsyncState'
 import { Button } from '../../../components/Button'
+import { Breadcrumb } from '../../../components/Breadcrumb'
+import { buttonClass } from '../../../components/buttonClass'
 import { Eyebrow } from '../../../components/Eyebrow'
 import { useApi } from '../../../hooks/useApi'
 import { useAuth } from '../../../hooks/useAuth'
@@ -18,12 +20,12 @@ const STATUS_CONFIG: Record<RecruitmentRoundStatus, { label: string; color: stri
   },
   OPEN: {
     label: 'Đang mở nhận đơn',
-    color: 'bg-emerald-50 text-emerald-700 font-semibold',
+    color: 'bg-ink text-paper font-bold',
     desc: 'Đợt tuyển đang công khai trên website và đang tiếp nhận hồ sơ ứng tuyển.',
   },
   CLOSED: {
     label: 'Đã đóng nhận đơn',
-    color: 'bg-amber-50 text-amber-700',
+    color: 'bg-soft text-ink font-bold',
     desc: 'Đã hết hạn hoặc đóng nhận đơn. Ứng viên không thể nộp thêm hồ sơ.',
   },
   ARCHIVED: {
@@ -92,13 +94,13 @@ export function AdminRecruitmentDetailPage() {
   return (
     <main className="mx-auto max-w-container-max px-gutter py-10 md:py-14">
       {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-2 text-sm text-on-surface-variant">
-        <Link to="/admin" className="hover:text-apc-red transition-colors">Quản trị</Link>
-        <span>/</span>
-        <Link to="/admin/recruitment" className="hover:text-apc-red transition-colors">Tuyển thành viên</Link>
-        <span>/</span>
-        <span className="text-on-surface font-medium truncate max-w-xs">{round?.title ?? 'Chi tiết'}</span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: 'quản trị', to: '/admin' },
+          { label: 'tuyển thành viên', to: '/admin/recruitment' },
+          { label: round?.title ?? 'Chi tiết' },
+        ]}
+      />
 
       <AsyncState loading={loading} error={error} empty={!round} onRetry={reload} emptyText="Không tìm thấy đợt tuyển.">
         {round && (
@@ -118,19 +120,15 @@ export function AdminRecruitmentDetailPage() {
 
               {/* Action buttons */}
               <div className="flex flex-wrap items-center gap-3">
-                <Link to={`/admin/recruitment/${round.id}/preview`}>
-                  <Button variant="outline" className="shadow-sm">
+                <Link to={`/admin/recruitment/${round.id}/preview`} className={buttonClass('outline')}>
                     <span className="material-symbols-outlined text-lg">visibility</span>
                     Xem trước giao diện
-                  </Button>
                 </Link>
 
                 {isBoard && (
-                  <Link to={`/admin/recruitment/${round.id}/edit`}>
-                    <Button variant="outline" className="shadow-sm">
-                      <span className="material-symbols-outlined text-lg">edit</span>
-                      Chỉnh sửa
-                    </Button>
+                  <Link to={`/admin/recruitment/${round.id}/edit`} className={buttonClass('outline')}>
+                    <span className="material-symbols-outlined text-lg">edit</span>
+                    Chỉnh sửa
                   </Link>
                 )}
 
@@ -174,7 +172,7 @@ export function AdminRecruitmentDetailPage() {
             </div>
 
             {errorMessage && (
-              <div className="mt-6 rounded-apc bg-error-container p-4 text-sm font-medium text-on-error-container">
+              <div className="mt-6 rounded-xl border-2 border-apc-red bg-apc-red-pale/40 p-4 font-bold text-apc-red">
                 {errorMessage}
               </div>
             )}
@@ -206,7 +204,7 @@ export function AdminRecruitmentDetailPage() {
                 <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Đường dẫn công khai</p>
                 <p className="mt-2 text-sm font-mono text-on-surface truncate">/recruitment/{round.slug}</p>
                 <p className="mt-3 text-xs text-on-surface-variant">
-                  {round.status === 'OPEN' ? '🟢 Đang công khai' : '⚪ Chưa công khai'}
+                  {round.status === 'OPEN' ? 'Đang công khai' : 'Chưa công khai'}
                 </p>
               </div>
             </div>
@@ -319,7 +317,7 @@ export function AdminRecruitmentDetailPage() {
                     <div className="space-y-3">
                       {round.departments.map((dept) => (
                         <div key={dept.id} className="rounded-apc border border-outline-variant p-3 bg-surface-container-low">
-                          <span className="inline-block rounded bg-primary-pale px-2 py-0.5 text-[11px] font-bold text-apc-red mb-1">
+                          <span className="inline-block rounded  bg-ink px-2 py-0.5 text-[11px] font-bold text-paper mb-1">
                             {dept.code}
                           </span>
                           <p className="text-sm font-semibold text-on-surface">{dept.name}</p>

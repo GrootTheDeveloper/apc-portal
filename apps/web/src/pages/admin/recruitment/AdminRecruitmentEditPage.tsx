@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AsyncState } from '../../../components/AsyncState'
+import { Breadcrumb } from '../../../components/Breadcrumb'
+import { buttonClass } from '../../../components/buttonClass'
 import { Button } from '../../../components/Button'
 import { Eyebrow } from '../../../components/Eyebrow'
 import { useApi } from '../../../hooks/useApi'
@@ -28,17 +30,14 @@ export function AdminRecruitmentEditPage() {
   return (
     <main className="mx-auto max-w-container-max px-gutter py-10 md:py-14">
       {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-2 text-sm text-on-surface-variant">
-        <Link to="/admin" className="hover:text-apc-red transition-colors">Quản trị</Link>
-        <span>/</span>
-        <Link to="/admin/recruitment" className="hover:text-apc-red transition-colors">Tuyển thành viên</Link>
-        <span>/</span>
-        <Link to={id ? `/admin/recruitment/${id}` : '/admin/recruitment'} className="hover:text-apc-red transition-colors">
-          {round?.title ?? 'Chi tiết'}
-        </Link>
-        <span>/</span>
-        <span className="text-on-surface font-medium">Chỉnh sửa</span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: 'quản trị', to: '/admin' },
+          { label: 'tuyển thành viên', to: '/admin/recruitment' },
+          { label: round?.title ?? 'Chi tiết', to: `/admin/recruitment/${id}` },
+          { label: 'chỉnh sửa' },
+        ]}
+      />
 
       <AsyncState loading={loading} error={error} empty={!round} onRetry={reload} emptyText="Không tìm thấy đợt tuyển.">
         {round && <EditRoundForm round={round} departments={departments} />}
@@ -191,7 +190,7 @@ function EditRoundForm({
       )}
 
       {errorMessage && (
-        <div className="mt-6 rounded-apc bg-error-container p-4 text-sm font-medium text-on-error-container">
+        <div className="mt-6 rounded-xl border-2 border-apc-red bg-apc-red-pale/40 p-4 font-bold text-apc-red">
           {errorMessage}
         </div>
       )}
@@ -300,7 +299,7 @@ function EditRoundForm({
         </div>
 
         {/* Chọn ban chuyên môn */}
-        <div className="rounded-apc border border-outline-variant bg-surface-container-lowest p-6 shadow-sm">
+        <div className="rounded-xl border-2 border-ink bg-paper p-6">
           <h2 className="text-lg font-bold text-on-surface mb-4">Các ban chuyên môn tuyển đợt này</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {departments.map((dept) => {
@@ -310,8 +309,8 @@ function EditRoundForm({
                   key={dept.id}
                   className={`flex items-center gap-3 p-3 rounded-apc border cursor-pointer transition-colors ${
                     checked
-                      ? 'border-apc-red bg-primary-pale/30 text-on-surface font-semibold'
-                      : 'border-outline-variant bg-surface-container-low hover:bg-surface-container text-on-surface-variant'
+                      ? 'border-ink bg-soft font-bold text-ink'
+                      : 'border-ink/20 bg-paper hover:bg-soft text-ink'
                   }`}
                 >
                   <input
@@ -328,7 +327,7 @@ function EditRoundForm({
         </div>
 
         {/* Thiết kế câu hỏi nghiệp vụ */}
-        <div className="rounded-apc border border-outline-variant bg-surface-container-lowest p-6 shadow-sm space-y-6">
+        <div className="rounded-xl border-2 border-ink bg-paper p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-outline-variant pb-4">
             <div>
               <h2 className="text-lg font-bold text-on-surface">Câu hỏi nghiệp vụ ứng tuyển</h2>
@@ -485,9 +484,9 @@ function EditRoundForm({
 
         {/* Nút submit */}
         <div className="flex items-center justify-end gap-3">
-          <Link to={`/admin/recruitment/${round.id}`}>
-            <Button type="button" variant="outline">Hủy bỏ</Button>
-          </Link>
+          <Link to={`/admin/recruitment/${round.id}`} className={buttonClass('outline')}>
+          Hủy bỏ
+        </Link>
           <Button type="submit" variant="primary" disabled={submitting}>
             {submitting ? 'Đang lưu...' : 'Lưu thay đổi'}
           </Button>

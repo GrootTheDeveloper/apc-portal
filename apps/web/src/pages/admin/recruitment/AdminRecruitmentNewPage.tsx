@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Button } from '../../../components/Button'
+import { AsyncState } from '../../../components/AsyncState'
+import { Breadcrumb } from '../../../components/Breadcrumb'
+import {Button} from '../../../components/Button'
+import { buttonClass } from '../../../components/buttonClass'
 import { Eyebrow } from '../../../components/Eyebrow'
 import { useApi } from '../../../hooks/useApi'
 import { api, ApiError } from '../../../lib/api'
@@ -13,7 +16,7 @@ type AboutData = {
 
 export function AdminRecruitmentNewPage() {
   const navigate = useNavigate()
-  const { data: aboutData } = useApi<AboutData>('/public/about')
+  const { data: aboutData, loading: loadingAbout, error: errorAbout, reload: reloadAbout } = useApi<AboutData>('/public/about')
   const departments = aboutData?.departments ?? []
 
   const [title, setTitle] = useState('')
@@ -127,26 +130,26 @@ export function AdminRecruitmentNewPage() {
 
   return (
     <main className="mx-auto max-w-4xl px-gutter py-10 md:py-14">
-      <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-2 text-sm text-on-surface-variant">
-        <Link to="/admin" className="hover:text-apc-red transition-colors">Quản trị</Link>
-        <span>/</span>
-        <Link to="/admin/recruitment" className="hover:text-apc-red transition-colors">Tuyển thành viên</Link>
-        <span>/</span>
-        <span className="text-on-surface font-medium">Tạo đợt tuyển mới</span>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: 'quản trị', to: '/admin' },
+          { label: 'tuyển thành viên', to: '/admin/recruitment' },
+          { label: 'tạo đợt tuyển mới' },
+        ]}
+      />
 
       <Eyebrow>Ban Chủ nhiệm</Eyebrow>
       <h1 className="mt-2 text-3xl font-extrabold text-on-surface">Tạo đợt tuyển thành viên mới</h1>
 
       {errorMessage && (
-        <div className="mt-6 rounded-apc bg-red-50 border border-red-200 p-4 text-sm font-medium text-red-700">
+        <div className="mt-6 rounded-xl border-2 border-apc-red bg-apc-red-pale/40 p-4 font-bold text-apc-red">
           {errorMessage}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-8">
         {/* Thông tin cơ bản */}
-        <section className="rounded-apc border border-outline-variant bg-surface-container-lowest p-6 space-y-5">
+        <section className="rounded-xl border-2 border-ink bg-paper p-6 space-y-5">
           <h2 className="text-lg font-bold text-on-surface">1. Thông tin chung</h2>
 
           <div>
@@ -249,34 +252,44 @@ export function AdminRecruitmentNewPage() {
         </section>
 
         {/* Các ban tuyển */}
-        <section className="rounded-apc border border-outline-variant bg-surface-container-lowest p-6">
+        <section className="rounded-xl border-2 border-ink bg-paper p-6">
           <h2 className="text-lg font-bold text-on-surface">2. Ban chuyên môn tuyển đợt này *</h2>
           <p className="mt-1 text-xs text-on-surface-variant">Chọn ít nhất một ban chuyên môn mở nhận đơn.</p>
 
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {departments.map((dept) => (
-              <label
-                key={dept.id}
-                className={`flex items-center gap-3 p-3 rounded-apc border cursor-pointer transition-colors ${
-                  selectedDeptIds.includes(dept.id)
-                    ? 'border-apc-blue bg-blue-50/40 text-apc-blue font-semibold'
-                    : 'border-outline-variant hover:bg-surface-container-low text-on-surface'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedDeptIds.includes(dept.id)}
-                  onChange={() => toggleDept(dept.id)}
-                  className="rounded text-apc-blue focus:ring-apc-blue"
-                />
-                <span className="text-sm">{dept.name}</span>
-              </label>
-            ))}
+          <div className="mt-4">
+            <AsyncState
+              loading={loadingAbout}
+              error={errorAbout}
+              empty={departments.length === 0}
+              emptyText="Không tìm thấy danh sách ban chuyên môn."
+              onRetry={reloadAbout}
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {departments.map((dept) => (
+                  <label
+                    key={dept.id}
+                    className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors ${
+                      selectedDeptIds.includes(dept.id)
+                        ? 'border-ink bg-soft text-ink font-bold'
+                        : 'border-ink/20 hover:bg-soft text-ink'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedDeptIds.includes(dept.id)}
+                      onChange={() => toggleDept(dept.id)}
+                      className="accent-ink h-4 w-4"
+                    />
+                    <span className="text-sm">{dept.name}</span>
+                  </label>
+                ))}
+              </div>
+            </AsyncState>
           </div>
         </section>
 
         {/* Cấu hình câu hỏi bổ sung */}
-        <section className="rounded-apc border border-outline-variant bg-surface-container-lowest p-6 space-y-4">
+        <section className="rounded-xl border-2 border-ink bg-paper p-6 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h2 className="text-lg font-bold text-on-surface">3. Câu hỏi bổ sung của biểu mẫu</h2>
@@ -381,10 +394,8 @@ export function AdminRecruitmentNewPage() {
 
         {/* Nút hành động */}
         <div className="flex items-center justify-end gap-3 pt-4">
-          <Link to="/admin/recruitment">
-            <Button type="button" variant="outline">
-              Hủy bỏ
-            </Button>
+          <Link to="/admin/recruitment" className={buttonClass('outline')}>
+            Hủy bỏ
           </Link>
           <Button type="submit" variant="primary" disabled={submitting}>
             {submitting ? 'Đang lưu…' : 'Lưu bản nháp'}
