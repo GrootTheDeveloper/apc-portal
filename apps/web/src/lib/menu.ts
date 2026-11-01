@@ -88,7 +88,40 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
   },
   {
     label: 'Tuyển thành viên',
-    items: [{ label: 'Đợt tuyển', to: '/admin/recruitment', roles: MANAGER_OR_BOARD }],
+    items: [
+      {
+        label: 'Đợt tuyển',
+        to: '/admin/recruitment',
+        roles: MANAGER_OR_BOARD,
+        page: () => import('../pages/admin/recruitment/AdminRecruitmentListPage').then((m) => ({ Component: m.AdminRecruitmentListPage })),
+        children: [
+          {
+            label: 'Tạo đợt tuyển',
+            to: '/admin/recruitment/new',
+            roles: BOARD,
+            page: () => import('../pages/admin/recruitment/AdminRecruitmentNewPage').then((m) => ({ Component: m.AdminRecruitmentNewPage })),
+          },
+          {
+            label: 'Chi tiết đợt tuyển',
+            to: '/admin/recruitment/:id',
+            roles: MANAGER_OR_BOARD,
+            page: () => import('../pages/admin/recruitment/AdminRecruitmentDetailPage').then((m) => ({ Component: m.AdminRecruitmentDetailPage })),
+          },
+          {
+            label: 'Sửa đợt tuyển',
+            to: '/admin/recruitment/:id/edit',
+            roles: BOARD,
+            page: () => import('../pages/admin/recruitment/AdminRecruitmentEditPage').then((m) => ({ Component: m.AdminRecruitmentEditPage })),
+          },
+          {
+            label: 'Xem trước đợt tuyển',
+            to: '/admin/recruitment/:id/preview',
+            roles: MANAGER_OR_BOARD,
+            page: () => import('../pages/admin/recruitment/AdminRecruitmentPreviewPage').then((m) => ({ Component: m.AdminRecruitmentPreviewPage })),
+          },
+        ],
+      },
+    ],
   },
   {
     label: 'Thành viên',

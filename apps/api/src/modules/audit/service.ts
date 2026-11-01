@@ -31,6 +31,11 @@ export const AUDIT_ACTIONS = {
   ROLE_UPDATE_SCOPE: 'role.update_scope',
   // Tuyển thành viên
   RECRUITMENT_CREATE_ROUND: 'recruitment.create_round',
+  RECRUITMENT_UPDATE_ROUND: 'recruitment.update_round',
+  RECRUITMENT_OPEN_ROUND: 'recruitment_open_round',
+  RECRUITMENT_CLOSE_ROUND: 'recruitment_close_round',
+  RECRUITMENT_ARCHIVE_ROUND: 'recruiment.archive_round',
+  RECRUITMENT_AUTO_CLOSE: 'recruitment_auto_close',
   APPLICATION_STATUS_CHANGE: 'application.status_change',
   RECRUITMENT_FINALIZE: 'recruitment.finalize',
   APPLICATION_CONVERT_USER: 'application.convert_user',
