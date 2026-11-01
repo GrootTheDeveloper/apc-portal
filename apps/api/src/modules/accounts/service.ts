@@ -254,20 +254,24 @@ export async function unlockAccount(actor: Actor, userId: string, input: unknown
  */
 export async function resetTemporaryPassword(actor: Actor, userId: string, input: unknown, options: Options) {
   const body = actionBase.parse(input ?? {})
-  const now = options.now ?? new Date()
-  const temporaryPassword = generateTemporaryPassword()
-  const fields = await temporaryPasswordFields(temporaryPassword, now)
-  await db.$transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
     const user = await loadTarget(tx, actor, userId, body.updatedAt)
     assertFrom(user.status, ['PENDING_ACTIVATION', 'ACTIVE', 'LOCKED'], 'Tài khoản đã ngừng hoạt động.')
-    await transitionAccount(tx, userId, ['PENDING_ACTIVATION', 'ACTIVE', 'LOCKED'], fields, 'Tài khoản đã ngừng hoạt động.')
-    const revokedSessions = await revokeAllSessions(tx, userId, now)
-    await audit(
-      actor,
-      accountAudit(AUDIT_ACTIONS.ACCOUNT_RESET_PASSWORD, userId, { reason: body.reason, metadata: { revokedSessions } }),
-      tx,
-    )
+    return reissueTemporaryPassword(tx, actor, userId, body.reason, options.now)
   })
+}
+
+/**
+ * Đặt mật khẩu tạm mới 72 giờ, thu hồi mọi phiên, ghi audit (không ghi mật khẩu). Trả mật khẩu tạm để hiện một lần.
+ * Dùng trong transaction của nghiệp vụ: trang quản trị (A5) và lệnh bootstrap (A7).
+ */
+export async function reissueTemporaryPassword(tx: Tx, actor: AuditRequestLike, userId: string, reason: string, now = new Date()) {
+  const temporaryPassword = generateTemporaryPassword()
+  const fields = await temporaryPasswordFields(temporaryPassword, now)
+  // Có điều kiện trạng thái: tài khoản vừa bị ngừng hoạt động bởi thao tác khác thì 409, không ghi đè.
+  await transitionAccount(tx, userId, ['PENDING_ACTIVATION', 'ACTIVE', 'LOCKED'], fields, 'Tài khoản đã ngừng hoạt động.')
+  const revokedSessions = await revokeAllSessions(tx, userId, now)
+  await audit(actor, accountAudit(AUDIT_ACTIONS.ACCOUNT_RESET_PASSWORD, userId, { reason, metadata: { revokedSessions } }), tx)
   return { temporaryPassword, expiresAt: fields.temporaryPasswordExpiresAt }
 }
 
