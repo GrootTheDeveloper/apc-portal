@@ -74,7 +74,7 @@ export function AdminRecruitmentDetailPage() {
 
     try {
       await api(`/admin/recruitment/${id}/status`, {
-        method: 'PATCH',
+        method: 'POST',
         body: { status: newStatus },
       })
       reload()
@@ -197,14 +197,9 @@ export function AdminRecruitmentDetailPage() {
                   </span>
                   <span className="text-xs text-on-surface-variant">hồ sơ đã nộp</span>
                 </div>
-                <div className="mt-3">
-                  <Link
-                    to={`/admin/recruitment/${round.id}/applications`}
-                    className="text-xs font-semibold text-apc-blue hover:text-apc-red inline-flex items-center gap-1"
-                  >
-                    Xem danh sách hồ sơ →
-                  </Link>
-                </div>
+                  <p className="mt-3 text-xs text-muted">
+                    (Tính năng duyệt hồ sơ sẽ mở ở đợt R5)
+                  </p>
               </div>
 
               <div className="rounded-apc border border-outline-variant bg-surface-container-lowest p-6 shadow-sm">

@@ -72,7 +72,7 @@ export async function recruitmentRoutes(app: FastifyInstance) {
     { preHandler: [requireAuth, requireRole('BOARD')] },
     async (request) => {
       const { id } = request.params as { id: string }
-      return updateRecruitmentRound(id, request.body)
+      return updateRecruitmentRound(request, id, request.body)
     },
   )
 

@@ -5,6 +5,7 @@ import { Eyebrow } from '../../../components/Eyebrow'
 import { useApi } from '../../../hooks/useApi'
 import { api, ApiError } from '../../../lib/api'
 import type { QuestionType, RecruitmentQuestion } from '../../recruitment/types'
+import { fromVnDatetimeInput } from '../../../lib/format'
 
 type AboutData = {
   departments: { id: string; name: string }[]
@@ -50,14 +51,14 @@ export function AdminRecruitmentNewPage() {
 
   // Thêm câu hỏi
   function addQuestion(type: QuestionType) {
-    const qId = `q_${Date.now()}`
+    const qId = crypto.randomUUID()
     const newQ: RecruitmentQuestion = {
       id: qId,
       type,
       label: '',
       required: false,
       options: type === 'single_choice' || type === 'multiple_choice'
-        ? [{ id: `opt_${Date.now()}_1`, label: 'Lựa chọn 1' }]
+        ? [{ id: `opt_${crypto.randomUUID()}_1`, label: 'Lựa chọn 1' }]
         : [],
     }
     setQuestions([...questions, newQ])
@@ -73,8 +74,8 @@ export function AdminRecruitmentNewPage() {
 
   function addOption(qIndex: number) {
     const q = questions[qIndex]
-    const optId = `opt_${Date.now()}`
-    const newOpts = [...(q.options ?? []), { id: optId, label: `Lựa chọn ${(q.options?.length ?? 0) + 1}` }]
+    if (!q) return
+    const newOpts = [...(q.options || []), { id: crypto.randomUUID(), label: `Lựa chọn ${(q.options?.length || 0) + 1}` }]
     updateQuestion(qIndex, { options: newOpts })
   }
 
@@ -102,8 +103,8 @@ export function AdminRecruitmentNewPage() {
         description: description.trim(),
         audience: audience.trim(),
         requirements: requirements.trim(),
-        opensAt: new Date(opensAt).toISOString(),
-        closesAt: new Date(closesAt).toISOString(),
+        opensAt: fromVnDatetimeInput(opensAt),
+        closesAt: fromVnDatetimeInput(closesAt),
         departmentIds: selectedDeptIds,
         questions,
       }

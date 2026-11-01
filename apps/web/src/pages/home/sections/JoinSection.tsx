@@ -35,18 +35,48 @@ function useCountdown(target: string | undefined) {
  * phải nền trắng là lộ trình xét hồ sơ (docs/01 mục 9.2) xếp dọc, logo APC đánh dấu bước đang diễn ra.
  */
 export function JoinSection() {
-  const { data } = useApi<Page<RecruitmentRound>>('/public/recruitment-rounds')
+  const { data, loading, error, reload } = useApi<Page<RecruitmentRound>>('/public/recruitment-rounds')
   const rounds = data?.items ?? []
   const round = rounds.find((item) => roundPhase(item) === 'open')
   const units = useCountdown(round?.closesAt)
   const open = units.some((unit) => unit.value > 0)
 
-  if (!round) {
+  // Reviewer Item 14: Xử lý loading và error thay vì lúc nào cũng hiện "Chưa mở đợt tuyển mới"
+  if (loading) {
+    return (
+      <section className="screen flex items-center justify-center bg-apc-red px-4 text-paper md:px-8">
+        <p className="font-code text-lg font-bold">
+          đang tải<span aria-hidden className="caret" />
+        </p>
+      </section>
+    )
+  }
+  if (error) {
+    return (
+      <section className="screen flex flex-col items-center justify-center bg-apc-red px-4 text-center text-paper md:px-8">
+        <p className="font-code text-sm font-bold text-apc-gold-soft">{'// lỗi tải đợt tuyển'}</p>
+        <p className="mt-2 text-xl font-bold">{error.message}</p>
+        <button
+          type="button"
+          onClick={reload}
+          className={buttonClass('light', 'mt-6')}
+        >
+          Thử lại
+        </button>
+      </section>
+    )
+  }
+
+if (!round) {
     return (
       <section className="screen flex items-center bg-apc-red px-4 py-[clamp(40px,8vh,96px)] text-paper md:px-8">
         <div className="mx-auto w-full max-w-container-max">
-          <h2 className="font-display text-[clamp(40px,min(5vw,9vh),88px)] font-extrabold leading-[0.95]">Chưa mở đợt tuyển mới.</h2>
-          <p className="mt-4 max-w-[44ch] text-[18px] leading-relaxed text-paper/90">Đợt tiếp theo sẽ được thông báo trên trang Gia nhập APC.</p>
+          <h2 className="font-display text-[clamp(40px,min(5vw,9vh),88px)] font-extrabold leading-[0.95]">
+            Chưa mở đợt tuyển mới.
+          </h2>
+          <p className="mt-4 max-w-[44ch] text-[18px] leading-relaxed text-paper/90">
+            Đợt tiếp theo sẽ được thông báo trên trang Gia nhập APC.
+          </p>
           <Link className={buttonClass('light', 'mt-8')} to="/recruitment">
             Xem các đợt tuyển →
           </Link>

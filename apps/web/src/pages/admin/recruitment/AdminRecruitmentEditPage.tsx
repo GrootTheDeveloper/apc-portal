@@ -5,22 +5,16 @@ import { Button } from '../../../components/Button'
 import { Eyebrow } from '../../../components/Eyebrow'
 import { useApi } from '../../../hooks/useApi'
 import { api, ApiError } from '../../../lib/api'
+import { toVnDatetimeInput, fromVnDatetimeInput } from '../../../lib/format'
 import type { QuestionType, RecruitmentQuestion, RecruitmentRound } from '../../recruitment/types'
 
 type AboutData = {
   departments: { id: string; name: string }[]
 }
 
-function toInputDateTime(isoStr?: string): string {
-  if (!isoStr) return ''
-  const d = new Date(isoStr)
-  if (isNaN(d.getTime())) return ''
-  const pad = (n: number) => n.toString().padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
 
-function makeId(prefix: string): string {
-  return `${prefix}_${Math.random().toString(36).slice(2, 9)}`
+function makeId(): string {
+  return crypto.randomUUID()
 }
 
 export function AdminRecruitmentEditPage() {
@@ -67,8 +61,8 @@ function EditRoundForm({
   const [description, setDescription] = useState(round.description)
   const [audience, setAudience] = useState(round.audience)
   const [requirements, setRequirements] = useState(round.requirements)
-  const [opensAt, setOpensAt] = useState(toInputDateTime(round.opensAt))
-  const [closesAt, setClosesAt] = useState(toInputDateTime(round.closesAt))
+  const [opensAt, setOpensAt] = useState(toVnDatetimeInput(round.opensAt))
+  const [closesAt, setClosesAt] = useState(toVnDatetimeInput(round.closesAt))
   const [selectedDeptIds, setSelectedDeptIds] = useState<string[]>(
     round.departments?.map((d) => d.id) ?? [],
   )
@@ -87,7 +81,7 @@ function EditRoundForm({
   }
 
   function addQuestion(type: QuestionType) {
-    const qId = makeId('q')
+    const qId = makeId()
     const newQ: RecruitmentQuestion = {
       id: qId,
       type,
@@ -95,7 +89,7 @@ function EditRoundForm({
       required: false,
       options:
         type === 'single_choice' || type === 'multiple_choice'
-          ? [{ id: makeId('opt'), label: 'Lựa chọn 1' }]
+          ? [{ id: makeId(), label: 'Lựa chọn 1' }]
           : [],
     }
     setQuestions([...questions, newQ])
@@ -104,7 +98,7 @@ function EditRoundForm({
   function removeQuestion(index: number) {
     const q = questions[index]
     if (hasApplications && originalQuestionIds.has(q.id)) {
-      alert('Không thể xóa câu hỏi đã có hồ sơ nộp (REC-15). Bạn có thể chọn Ẩn câu hỏi.')
+      setErrorMessage('Không thể xóa câu hỏi đã có hồ sơ nộp (REC-15). Bạn có thể chọn Ẩn câu hỏi.')
       return
     }
     setQuestions(questions.filter((_, i) => i !== index))
@@ -121,7 +115,7 @@ function EditRoundForm({
 
   function addOption(qIndex: number) {
     const q = questions[qIndex]
-    const optId = makeId('opt')
+    const optId = makeId()
     const newOpts = [...(q.options ?? []), { id: optId, label: `Lựa chọn ${(q.options?.length ?? 0) + 1}` }]
     updateQuestion(qIndex, { options: newOpts })
   }
@@ -129,7 +123,7 @@ function EditRoundForm({
   function removeOption(qIndex: number, optId: string) {
     const q = questions[qIndex]
     if (hasApplications && originalQuestionIds.has(q.id)) {
-      alert('Không thể xóa lựa chọn của câu hỏi đã có hồ sơ nộp (REC-15).')
+      setErrorMessage('Không thể xóa lựa chọn của câu hỏi đã có hồ sơ nộp (REC-15).')
       return
     }
     const newOpts = (q.options ?? []).filter((o) => o.id !== optId)
@@ -154,8 +148,8 @@ function EditRoundForm({
         description: description.trim(),
         audience: audience.trim(),
         requirements: requirements.trim(),
-        opensAt: new Date(opensAt).toISOString(),
-        closesAt: new Date(closesAt).toISOString(),
+        opensAt: fromVnDatetimeInput(opensAt),
+        closesAt: fromVnDatetimeInput(closesAt),    
         departmentIds: selectedDeptIds,
         questions,
       }
