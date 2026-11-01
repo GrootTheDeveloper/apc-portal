@@ -6,6 +6,7 @@ import { Button } from '../../../components/Button'
 import { pillClass } from '../../../components/buttonClass'
 import { PageHero } from '../../../components/PageHero'
 import { Pagination } from '../../../components/Pagination'
+import { SearchBox } from '../../../components/SearchBox'
 import { useApi } from '../../../hooks/useApi'
 import type { Page } from '../../../lib/api'
 import { currentMonthKey } from '../../../lib/vnTime'
@@ -102,6 +103,8 @@ export function EventsListPage() {
               </button>
             ))}
           </div>
+
+          <SearchBox />
 
           {view === 'calendar' ? (
             <AsyncState loading={events.loading} error={events.error} empty={false} onRetry={events.reload}>

@@ -47,6 +47,7 @@ beforeAll(async () => {
       fullName: 'Board Test',
       passwordHash: 'dummy',
       status: 'ACTIVE',
+      mustChangePassword: false,
       roles: {
         create: {
           role: 'BOARD',
@@ -58,7 +59,7 @@ beforeAll(async () => {
     },
   })
   createdUserIds.push(boardUser.id)
-  boardToken = await createSession(boardUser.id, { ipAddress: '127.0.0.1', userAgent: 'test' })
+  boardToken = (await createSession(boardUser.id, { ipAddress: '127.0.0.1', userAgent: 'test' })).token
 
   // 3. Tạo User DEPARTMENT_MANAGER Ban A
   const managerAUser = await db.user.create({
@@ -68,6 +69,7 @@ beforeAll(async () => {
       fullName: 'Manager Test',
       passwordHash: 'dummy',
       status: 'ACTIVE',
+      mustChangePassword: false,
       roles: {
         create: {
           role: 'DEPARTMENT_MANAGER',
@@ -80,7 +82,7 @@ beforeAll(async () => {
     },
   })
   createdUserIds.push(managerAUser.id)
-  managerAToken = await createSession(managerAUser.id, { ipAddress: '127.0.0.1', userAgent: 'test' })
+  managerAToken = (await createSession(managerAUser.id, { ipAddress: '127.0.0.1', userAgent: 'test' })).token
 
   // 4. Tạo User MEMBER bình thường
   const memberUser = await db.user.create({
@@ -90,10 +92,11 @@ beforeAll(async () => {
       fullName: 'Member Test',
       passwordHash: 'dummy',
       status: 'ACTIVE',
+      mustChangePassword: false,
     },
   })
   createdUserIds.push(memberUser.id)
-  memberToken = await createSession(memberUser.id, { ipAddress: '127.0.0.1', userAgent: 'test' })
+  memberToken = (await createSession(memberUser.id, { ipAddress: '127.0.0.1', userAgent: 'test' })).token
 })
 
 afterAll(async () => {
