@@ -11,6 +11,7 @@ type AsyncStateProps = {
   error?: ApiError | undefined
   empty: boolean
   emptyText?: string
+  emptyAction?: ReactNode
   onRetry?: () => void
   children: ReactNode
 }
@@ -29,6 +30,7 @@ export function AsyncState({
   error,
   empty,
   emptyText = 'Chưa có dữ liệu.',
+  emptyAction,
   onRetry,
   children,
 }: AsyncStateProps) {
@@ -70,6 +72,14 @@ export function AsyncState({
     )
   }
   if (empty) {
+    if (emptyAction) {
+      return (
+        <div className="flex flex-col items-center gap-5 py-20 text-center">
+          <p className="font-display text-[clamp(22px,2.4vw,30px)] font-bold leading-tight text-muted">{emptyText}</p>
+          {emptyAction}
+        </div>
+      )
+    }
     return <p className="py-20 text-center font-display text-[clamp(22px,2.4vw,30px)] font-bold leading-tight text-muted">{emptyText}</p>
   }
   return <>{children}</>

@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom'
 import type { ProjectItem } from '../lib/content'
 
 /** Card dự án: ảnh chụp sản phẩm (chưa có thì khung nhạt ghi tên thư mục như dòng lệnh), tên, mô tả, công nghệ. */
-export function ProjectCard({ item }: { item: ProjectItem }) {
+export function ProjectCard({ item, linkState }: { item: ProjectItem; linkState?: { from: string } }) {
   const technologies = item.technologies ?? []
 
   return (
-    <Link to={`/projects/${item.slug}`} className="group flex min-w-0 flex-col">
+    <Link to={`/projects/${item.slug}`} state={linkState} className="group flex min-w-0 flex-col">
       {item.thumbnailUrl ? (
         <div className="photo aspect-[16/10] bg-soft">
           <img alt="" className="h-full" loading="lazy" src={item.thumbnailUrl} />

@@ -19,6 +19,7 @@ import { NewsListPage } from './pages/news/list/NewsListPage'
 import { NotFound } from './pages/NotFound'
 import { Placeholder } from './pages/Placeholder'
 import { PrivacyPage } from './pages/privacy/PrivacyPage'
+import { SearchPage } from './pages/search/SearchPage'
 import { ProjectDetailPage } from './pages/projects/detail/ProjectDetailPage'
 import { ProjectListPage } from './pages/projects/list/ProjectListPage'
 import { RecruitmentDetailPage } from './pages/recruitment/detail/RecruitmentDetailPage'
@@ -67,6 +68,7 @@ export const appRoutes: RouteObject[] = [
       { path: 'recruitment/application-lookup', element: <Placeholder title="Tra cứu hồ sơ ứng tuyển" /> },
       { path: 'recruitment/:slug', element: <RecruitmentDetailPage /> },
       { path: 'privacy', element: <PrivacyPage /> },
+      { path: 'search', element: <SearchPage /> },
       // Trang đăng nhập tải lười để tránh vòng import (LoginPage dùng `isAppPath` của file này).
       { path: 'login', lazy: () => import('./pages/auth/login/LoginPage').then((m) => ({ Component: m.LoginPage })) },
       {
