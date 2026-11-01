@@ -409,7 +409,6 @@ describe('Recruitment Module (R2)', () => {
   //  ──────────────────────────────────────────
   describe('Nộp đơn ứng tuyển (R3)', () => {
     let _applyRoundSlug: string
-    let let_applyRoundId: string
 
     beforeAll(async () => {
       _applyRoundSlug = `apply-round-${tag}`
@@ -447,7 +446,6 @@ describe('Recruitment Module (R2)', () => {
           ],
         },
       })
-      let_applyRoundId = round.id
       createdRoundIds.push(round.id)
     })
 
