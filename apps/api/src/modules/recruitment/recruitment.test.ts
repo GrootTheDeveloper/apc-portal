@@ -100,9 +100,24 @@ afterAll(async () => {
     await db.auditLog.deleteMany({
       where: { targetId: { in: createdRoundIds } },
     })
-    await db.membershipApplication.deleteMany({
+
+    // Lấy danh sách hồ sơ test đã tạo để dọn consent và email
+    const apps = await db.membershipApplication.findMany({
       where: { recruitmentRoundId: { in: createdRoundIds } },
+      select: { id: true },
     })
+    const appIds = apps.map((a) => a.id)
+    if (appIds.length > 0) {
+      await db.consentRecord.deleteMany({
+        where: { subjectType: 'APPLICATION', subjectId: { in: appIds } },
+      })
+      await db.notificationDelivery.deleteMany({
+        where: { refType: 'APPLICATION', refId: { in: appIds } },
+      })
+      await db.membershipApplication.deleteMany({
+        where: { id: { in: appIds } },
+      })
+    }
     await db.recruitmentRound.deleteMany({
       where: { id: { in: createdRoundIds } },
     })
@@ -388,5 +403,228 @@ describe('Recruitment Module (R2)', () => {
       where: { id: createdRoundId },
     })
     expect(roundInDb?.status).toBe('CLOSED')
+  })
+
+  // ─── 7. NỘP ĐƠN ỨNG TUYỂN (R3)
+  //  ──────────────────────────────────────────
+  describe('Nộp đơn ứng tuyển (R3)', () => {
+    let _applyRoundSlug: string
+    let let_applyRoundId: string
+
+    beforeAll(async () => {
+      _applyRoundSlug = `apply-round-${tag}`
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
+      const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+
+      // Tạo đợt tuyển OPEN có câu hỏi bắt buộc và câu hỏi ẩn
+      const round = await db.recruitmentRound.create({
+        data: {
+          title: `Đợt tuyển nộp đơn ${tag}`,
+          slug: _applyRoundSlug,
+          description: 'Mô tả đợt tuyển thử nghiệm nộp đơn',
+          audience: 'Sinh viên năm 1, năm 2',
+          requirements: 'Có laptop cá nhân',
+          status: 'OPEN',
+          opensAt: yesterday,
+          closesAt: nextWeek,
+          createdById : createdUserIds[0]!,
+          departments: { connect: [{ id: deptAId }] },
+          questions: [
+            {
+              id: 'q_github',
+              type: 'short_text',
+              label: 'Link Github của bạn',
+              required: true,
+              hidden: false,
+            },
+            {
+              id: 'q_draft_hidden',
+              type: 'long_text',
+              label: 'Câu hỏi nháp đã ẩn',
+              required: true,
+              hidden: true, // Câu này bị ẩn, không được chặn nộp đơn
+            },
+          ],
+        },
+      })
+      let_applyRoundId = round.id
+      createdRoundIds.push(round.id)
+    })
+
+    const basePayload = {
+      applicantName: 'Nguyễn Văn Test',
+      applicantEmail: `applicant-${tag}@example.com`,
+      studentId: `24${tag.slice(0, 6)}`,
+      faculty: 'Công nghệ thông tin',
+      major: 'Kỹ thuật phần mềm',
+      cohort: 'K24',
+      skills: 'TypeScript, React',
+      experience: 'Đã làm một số project nhỏ',
+      consent: true,
+    }
+
+    it('Người dùng đã đăng nhập (MEMBER) nộp đơn bị từ chối 403', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/public/recruitment-rounds/${_applyRoundSlug}/applications`,
+        cookies: { [SESSION_COOKIE]: _memberToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          ...basePayload,
+          desiredDepartmentId: deptAId,
+          answers: { q_github: 'https://github.com/test' },
+        },
+      })
+      expect(res.statusCode).toBe(403)
+    })
+
+    it('Chưa đồng ý chính sách xử lý dữ liệu (consent = false) trả 422', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/public/recruitment-rounds/${_applyRoundSlug}/applications`,
+        headers: { origin: ORIGIN },
+        payload: {
+          ...basePayload,
+          consent: false,
+          desiredDepartmentId: deptAId,
+          answers: { q_github: 'https://github.com/test' },
+        },
+      })
+      expect(res.statusCode).toBe(422)
+    })
+
+    it('Chọn ban không thuộc đợt tuyển trả 422', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/public/recruitment-rounds/${_applyRoundSlug}/applications`,
+        headers: { origin: ORIGIN },
+        payload: {
+          ...basePayload,
+          desiredDepartmentId: deptBId, // deptB không có trong đợt này
+          answers: { q_github: 'https://github.com/test' },
+        },
+      })
+      expect(res.statusCode).toBe(422)
+    })
+
+    it('Bỏ trống câu hỏi bắt buộc trả 422', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/public/recruitment-rounds/${_applyRoundSlug}/applications`,
+        headers: { origin: ORIGIN },
+        payload: {
+          ...basePayload,
+          desiredDepartmentId: deptAId,
+          answers: {}, // Thiếu câu q_github
+        },
+      })
+      expect(res.statusCode).toBe(422)
+    })
+
+    it('Nộp đơn thành công 201; câu hidden bắt buộc không chặn nộp đơn; gửi lặp Idempotency-Key trả kết quả cũ', async () => {
+      const idempotencyKey = `idem-${randomUUID()}`
+
+      // Lần 1: Nộp thành công (bỏ qua câu q_draft_hidden)
+      const res1 = await app.inject({
+        method: 'POST',
+        url: `/public/recruitment-rounds/${_applyRoundSlug}/applications`,
+        headers: {
+          origin: ORIGIN,
+          'idempotency-key': idempotencyKey,
+        },
+        payload: {
+          ...basePayload,
+          desiredDepartmentId: deptAId,
+          answers: { q_github: 'https://github.com/test' },
+        },
+      })
+
+      expect(res1.statusCode).toBe(201)
+      const data1 = res1.json()
+      expect(data1).toHaveProperty('profileCode')
+      expect(data1.applicantName).toBe(basePayload.applicantName)
+
+      // Lần 2: Gửi lặp cùng Idempotency-Key
+      const res2 = await app.inject({
+        method: 'POST',
+        url: `/public/recruitment-rounds/${_applyRoundSlug}/applications`,
+        headers: {
+          origin: ORIGIN,
+          'idempotency-key': idempotencyKey,
+        },
+        payload: {
+          ...basePayload,
+          desiredDepartmentId: deptAId,
+          answers: { q_github: 'https://github.com/test' },
+        },
+      })
+
+      expect(res2.statusCode).toBe(201)
+      const data2 = res2.json()
+      expect(data2.profileCode).toBe(data1.profileCode) // Trả đúng mã cũ
+
+      // Chỉ có duy nhất 1 bản ghi được tạo trong database
+      const count = await db.membershipApplication.count({
+        where: { idempotencyKey },
+      })
+      expect(count).toBe(1)
+
+      // Kiểm tra ConsentRecord được tạo kèm
+      const consent = await db.consentRecord.findFirst({
+        where: {
+          purpose: 'RECRUITMENT_PROCESSING',
+          subjectType: 'APPLICATION',
+        },
+      })
+      expect(consent).not.toBeNull()
+
+      // Kiểm tra Email xác nhận có trong hàng đợi NotificationDelivery
+      const emailDelivery = await db.notificationDelivery.findFirst({
+        where: {
+          type: 'APPLICATION_SUBMITTED',
+          recipient: basePayload.applicantEmail.toLowerCase(),
+        },
+      })
+      expect(emailDelivery).not.toBeNull()
+      expect(emailDelivery?.status).toBe('PENDING')
+    })
+
+    it('Nộp đơn trùng email trong đợt trả 409 với câu thông báo bảo mật chung', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/public/recruitment-rounds/${_applyRoundSlug}/applications`,
+        headers: { origin: ORIGIN },
+        payload: {
+          ...basePayload,
+          studentId: `99${tag.slice(0, 6)}`, // MSSV khác
+          desiredDepartmentId: deptAId,
+          answers: { q_github: 'https://github.com/test' },
+        },
+      })
+
+      expect(res.statusCode).toBe(409)
+      expect(res.json().message).toBe(
+        'Không thể nộp đơn với thông tin này. Nếu đã nộp, vui lòng dùng trang tra cứu.',
+      )
+    })
+
+    it('Nộp đơn trùng MSSV trong đợt trả 409 với câu thông báo bảo mật chung', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/public/recruitment-rounds/${_applyRoundSlug}/applications`,
+        headers: { origin: ORIGIN },
+        payload: {
+          ...basePayload,
+          applicantEmail: `different-${tag}@example.com`, // Email khác
+          desiredDepartmentId: deptAId,
+          answers: { q_github: 'https://github.com/test' },
+        },
+      })
+
+      expect(res.statusCode).toBe(409)
+      expect(res.json().message).toBe(
+        'Không thể nộp đơn với thông tin này. Nếu đã nộp, vui lòng dùng trang tra cứu.',
+      )
+    })
   })
 })

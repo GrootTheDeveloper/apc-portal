@@ -21,6 +21,30 @@ export const EMAIL_TEMPLATES = {
       html: `<p>Xin chào ${escapeHtml(user.fullName)},</p><p>${body}</p>`,
     }
   },
+
+  /** Email xác nhận nộp đơn tuyển thành viên (R3, NTF-01) */
+  APPLICATION_SUBMITTED : async (applicationId) => {
+    const app = await db.membershipApplication.findUnique({
+        where : { id: applicationId},
+        include : {recruitmentRound : true},
+    })
+    if (!app) return null
+
+    const applicantName = escapeHtml(app.applicantName)
+    const roundTitle = escapeHtml(app.recruitmentRound.title)
+    const profileCode = app.profileCode
+    const lookupUrl = '/recruitment/application-lookup'
+
+    return {
+      subject : `[APC] Xác nhận nộp đơn tuyển: ${app.recruitmentRound.title}`,
+      text: `Xin chào ${app.applicantName},\n\nBạn đã nộp đơn ứng tuyển thành công cho đợt tuyển "${app.recruitmentRound.title}".\n\nMã tra cứu hồ sơ của bạn: ${profileCode}\n\nBạn có thể tra cứu trạng thái hồ sơ tại: ${lookupUrl}\n\nTrân trọng,\nCâu lạc bộ Lập trình ứng dụng (APC)`,
+      html: `<p>Xin chào <strong>${applicantName}</strong>,</p>
+<p>Bạn đã nộp đơn ứng tuyển thành công cho đợt tuyển <strong>${roundTitle}</strong>.</p>
+<p>Mã tra cứu hồ sơ của bạn: <strong style="font-size: 18px; color: #C23B22;">${profileCode}</strong></p>
+<p>Vui lòng lưu lại mã hồ sơ này để tra cứu kết quả tại: <a href="${lookupUrl}">${lookupUrl}</a></p>
+<p>Trân trọng,<br>Câu lạc bộ Lập trình ứng dụng (APC)</p>`,
+    }
+  },
 } satisfies Record<string, Template>
 
 export type EmailType = keyof typeof EMAIL_TEMPLATES

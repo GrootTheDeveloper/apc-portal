@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import type { FastifyRequest } from 'fastify'
 import { db } from '../../db/client.js'
-import type { RecruitmentRoundStatus } from '../../db/generated/client.js'
+import type { Prisma, RecruitmentRoundStatus } from '../../db/generated/client.js'
 import { conflict, notFound } from '../../lib/errors.js'
 import { pageArgs, pageQuery, toPage } from '../../lib/pagination.js'
 import { AUDIT_ACTIONS, audit, AuditCategory, AuditResult } from '../audit/service.js'
@@ -14,6 +14,12 @@ import {
   CreateRecruitmentRoundSchema,
   UpdateRecruitmentRoundSchema,
 } from './validation.js'
+import { publicCode } from '../../lib/ids.js'
+import {AppError, forbidden,} from '../../lib/errors.js'
+import { recordConsent } from '../consent/service.js'
+import { enqueueEmail } from '../email/service.js'
+import { SubmitApplicationSchema } from './validation.js'
+
 
 /**
  * 1. API CÔNG KHAI
@@ -347,5 +353,163 @@ export async function closeExpiredRecruitmentRounds() {
         tx,
       )
     })
+  }
+}
+/**
+ * 4. NỘP ĐƠN ỨNG TUYỂN (R3, FLOW-04)
+ */
+export async function submitApplication(
+  slug: string,
+  rawBody: unknown,
+  idempotencyKey?: string,
+  user?: AuthUser | null,
+) {
+  // 1. Thành viên/Admin đã đăng nhập không được nộp đơn tuyển
+  if (user) {
+    throw forbidden('Người đã đăng nhập không thể nộp đơn ứng tuyển.')
+  }
+
+  // 2. Chống gửi lặp: kiểm tra Idempotency-Key (FLOW-04, STATE-01)
+  if (idempotencyKey) {
+    const existingApp = await db.membershipApplication.findUnique({
+      where: { idempotencyKey },
+      include: { recruitmentRound: true },
+    })
+    if (existingApp) {
+      return {
+        profileCode: existingApp.profileCode,
+        applicantName: existingApp.applicantName,
+        applicantEmail: existingApp.applicantEmail,
+        roundTitle: existingApp.recruitmentRound.title,
+        submittedAt: existingApp.submittedAt.toISOString(),
+      }
+    }
+  }
+
+  // 3. Validate dữ liệu đầu vào bằng Zod
+  const input = SubmitApplicationSchema.parse(rawBody)
+
+  // 4. Kiểm tra đợt tuyển: phải OPEN và trong thời hạn nhận đơn
+  const round = await db.recruitmentRound.findUnique({
+    where: { slug },
+    include: { departments: true },
+  })
+  if (!round || round.status !== 'OPEN') {
+    throw notFound('Không tìm thấy đợt tuyển hoặc đợt tuyển chưa mở nhận đơn.')
+  }
+
+  const now = new Date()
+  if (now < round.opensAt || now > round.closesAt) {
+    throw conflict('Đợt tuyển hiện không trong thời gian nhận đơn.')
+  }
+
+  // 5. Kiểm tra ban mong muốn phải thuộc đợt tuyển
+  const validDeptIds = round.departments.map((d) => d.id)
+  if (!validDeptIds.includes(input.desiredDepartmentId)) {
+    throw new AppError(422, 'validation', 'Ban chuyên môn được chọn không thuộc đợt tuyển này.')
+  }
+
+  // 6. Kiểm tra các câu hỏi bắt buộc (bỏ qua câu bị ẩn hidden)
+  const questions = (round.questions as unknown as Question[]) || []
+  for (const q of questions) {
+    if (q.hidden) continue
+
+    if (q.required) {
+      const val = input.answers?.[q.id]
+      const isEmpty =
+        val === undefined ||
+        val === null ||
+        (typeof val === 'string' && val.trim() === '') ||
+        (Array.isArray(val) && val.length === 0)
+      if (isEmpty) {
+        throw new AppError(422, 'validation', `Vui lòng trả lời câu hỏi bắt buộc: ${q.label}`)
+      }
+    }
+  }
+
+  // 7. Lưu hồ sơ, lưu consent và xếp email trong cùng 1 Transaction
+  try {
+    return await db.$transaction(async (tx) => {
+      // Kiểm tra trùng email hoặc MSSV trong đợt tuyển (REC-05, BR-05, QĐ-1)
+      const existingApp = await tx.membershipApplication.findFirst({
+        where: {
+          recruitmentRoundId: round.id,
+          OR: [
+            { applicantEmail: input.applicantEmail.toLowerCase() },
+            { studentId: input.studentId },
+          ],
+        },
+      })
+      if (existingApp) {
+        throw conflict('Không thể nộp đơn với thông tin này. Nếu đã nộp, vui lòng dùng trang tra cứu.')
+      }
+
+      // Sinh mã hồ sơ công khai ngẫu nhiên (REC-06, không tuần tự)
+      const code = publicCode(12)
+
+      const application = await tx.membershipApplication.create({
+        data: {
+          profileCode: code,
+          recruitmentRoundId: round.id,
+          applicantName: input.applicantName,
+          applicantEmail: input.applicantEmail.toLowerCase(),
+          studentId: input.studentId,
+          faculty: input.faculty || null,
+          major: input.major || null,
+          cohort: input.cohort || null,
+          desiredDepartmentId: input.desiredDepartmentId,
+          skills: input.skills || null,
+          experience: input.experience || null,
+          answers: (input.answers ?? {}) as Prisma.InputJsonValue,
+          idempotencyKey: idempotencyKey || null,
+          status: 'NEW',
+        },
+      })
+
+      // Ghi nhận sự đồng ý xử lý dữ liệu (B2, DATA-07)
+      await recordConsent(tx, {
+        subjectType: 'APPLICATION',
+        subjectId: application.id,
+        purpose: 'RECRUITMENT_PROCESSING',
+      })
+
+      // Xếp email xác nhận vào hàng đợi (O1, NTF-01)
+      await enqueueEmail(tx, {
+        type: 'APPLICATION_SUBMITTED',
+        to: application.applicantEmail,
+        refType: 'APPLICATION',
+        refId: application.id,
+        departmentId: input.desiredDepartmentId,
+      })
+
+      return {
+        profileCode: application.profileCode,
+        applicantName: application.applicantName,
+        applicantEmail: application.applicantEmail,
+        roundTitle: round.title,
+        submittedAt: application.submittedAt.toISOString(),
+      }
+    })
+  } catch (error: any) {
+    // Bắt trường hợp race condition P2002 do trùng email hoặc MSSV đồng thời
+    if (error?.code === 'P2002') {
+      if (error?.meta?.target?.includes?.('idempotencyKey') && idempotencyKey) {
+        const existing = await db.membershipApplication.findUnique({
+          where: { idempotencyKey },
+          include: { recruitmentRound: true },
+        })
+        if (existing) {
+          return {
+            profileCode: existing.profileCode,
+            applicantName: existing.applicantName,
+            applicantEmail: existing.applicantEmail,
+            roundTitle: existing.recruitmentRound.title,
+            submittedAt: existing.submittedAt.toISOString(),
+          }
+        }
+      }
+      throw conflict('Không thể nộp đơn với thông tin này. Nếu đã nộp, vui lòng dùng trang tra cứu.')
+    }
+    throw error
   }
 }

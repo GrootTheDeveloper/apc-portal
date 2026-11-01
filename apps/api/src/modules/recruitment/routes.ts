@@ -7,6 +7,7 @@ import {
   getPublicRecruitmentRoundBySlug,
   listAdminRecruitmentRounds,
   listPublicRecruitmentRounds,
+  submitApplication,
   updateRecruitmentRound,
 } from './service.js'
 
@@ -20,6 +21,19 @@ export async function recruitmentRoutes(app: FastifyInstance) {
     const { slug } = request.params as { slug: string }
     return getPublicRecruitmentRoundBySlug(slug)
   })
+  
+    // Nộp đơn ứng tuyển đợt tuyển công khai (R3, FLOW-04)
+  app.post(
+    '/public/recruitment-rounds/:slug/applications',
+    { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+    async (request, reply) => {
+      const { slug } = request.params as { slug: string }
+      const idempotencyKey = (request.headers['idempotency-key'] as string | undefined)?.trim()
+      const user = request.user
+      const result = await submitApplication(slug, request.body, idempotencyKey, user)
+      return reply.code(201).send(result)
+    },
+  )
 
   // ─── ADMIN ROUTES ─────────────────────────────────────────────────────────
 
