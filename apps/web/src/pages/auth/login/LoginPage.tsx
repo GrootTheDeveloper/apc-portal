@@ -5,7 +5,9 @@ import { AsyncState } from '../../../components/AsyncState'
 import { Button } from '../../../components/Button'
 import { useAuth } from '../../../hooks/useAuth'
 import { ApiError } from '../../../lib/api'
+import { ACTIVATE_PATH, needsActivation } from '../../../lib/auth'
 import { safeReturnTo } from '../../../lib/returnTo'
+import { isAppPath } from '../../../routes'
 import { Eyebrow } from '../../../components/Eyebrow'
 
 type SubmitState = { phase: 'idle' } | { phase: 'submitting' } | { phase: 'error'; message: string }
@@ -34,7 +36,7 @@ export function LoginPage() {
 
   // Đã đăng nhập (kể cả ngay sau khi bấm Đăng nhập): về trang đang định vào, mặc định /portal.
   if (status === 'authenticated' && user) {
-    const destination = user.mustChangePassword ? '/account/activate' : safeReturnTo(searchParams.get('returnTo'))
+    const destination = needsActivation(user) ? ACTIVATE_PATH : safeReturnTo(searchParams.get('returnTo'), isAppPath)
     return <Navigate to={destination} replace />
   }
 

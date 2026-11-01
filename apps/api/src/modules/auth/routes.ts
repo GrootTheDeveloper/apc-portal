@@ -15,15 +15,14 @@ export function authRoutes(config: AppConfig) {
       async (request, reply) => {
         const input = loginSchema.parse(request.body)
         const userId = await verifyLogin(input)
-        // Phiên mới tạo đang tạm đặt twoFactorVerified = true (xem createSession, TODO B3).
-        const user = await loadAuthUser(userId, { twoFactorVerified: true })
-        if (!user) throw unauthenticated()
-
         // Đăng nhập lại trên cùng trình duyệt: bỏ phiên cũ trước khi cấp phiên mới.
         if (request.sessionId) await revokeSession(request.sessionId)
-        const token = await createSession(userId, { ipAddress: request.ip, userAgent: request.headers['user-agent'] })
-        reply.setCookie(SESSION_COOKIE, token, sessionCookieOptions(config))
-        return getMe(user)
+        const session = await createSession(userId, { ipAddress: request.ip, userAgent: request.headers['user-agent'] })
+        // Vai trò tính theo trạng thái 2 lớp của chính phiên vừa tạo (không ghi cứng ở đây).
+        const user = await loadAuthUser(userId, { twoFactorVerified: session.twoFactorVerified })
+        if (!user) throw unauthenticated()
+        reply.setCookie(SESSION_COOKIE, session.token, sessionCookieOptions(config))
+        return getMe(user, { twoFactorVerified: session.twoFactorVerified })
       },
     )
 
@@ -33,6 +32,8 @@ export function authRoutes(config: AppConfig) {
       return reply.code(204).send()
     })
 
-    app.get('/auth/me', { preHandler: requireAuth }, async (request) => getMe(currentUser(request)))
+    app.get('/auth/me', { preHandler: requireAuth }, async (request) =>
+      getMe(currentUser(request), { twoFactorVerified: request.twoFactorVerified }),
+    )
   }
 }
