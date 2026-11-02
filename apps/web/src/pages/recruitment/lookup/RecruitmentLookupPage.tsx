@@ -54,6 +54,13 @@ export function RecruitmentLookupPage() {
   const [confirming, setConfirming] = useState(false)
   const [withdrawing, setWithdrawing] = useState(false)
 
+  async function performLookup(targetEmail: string, targetCode: string) {
+    return api<LookupApplicationResult>('/public/applications/lookup', {
+      method: 'POST',
+      body: { email: targetEmail.trim(), code: targetCode.trim() },
+    })
+  }
+
   async function handleLookup(e: FormEvent) {
     e.preventDefault()
     setErrorMessage(null)
@@ -62,10 +69,7 @@ export function RecruitmentLookupPage() {
     setLoading(true)
 
     try {
-      const res = await api<LookupApplicationResult>('/public/applications/lookup', {
-        method: 'POST',
-        body: { email: email.trim(), code: code.trim() },
-      })
+      const res = await performLookup(email, code)
       setResult(res)
     } catch (err) {
       setResult(null)
@@ -85,25 +89,39 @@ export function RecruitmentLookupPage() {
     setErrorMessage(null)
     setSuccessMessage(null)
 
+    const targetEmail = email.trim()
+    const targetCode = (code.trim() || result.profileCode).trim()
+
     try {
-      await api<{ success: boolean; status: ApplicationStatus; updatedAt: string }>(
+      const res = await api<{ success: boolean; status: ApplicationStatus; updatedAt: string }>(
         '/public/applications/withdraw',
         {
           method: 'POST',
-          body: { email: email.trim(), code: code.trim() },
+          body: { email: targetEmail, code: targetCode },
         },
       )
       setResult({
         ...result,
-        status: 'WITHDRAWN',
+        status: res.status ?? 'WITHDRAWN',
         canWithdraw: false,
-        updatedAt: new Date().toISOString(),
+        updatedAt: res.updatedAt,
       })
       setConfirming(false)
       setSuccessMessage('Đã rút hồ sơ ứng tuyển thành công. Một email xác nhận đã được gửi đến bạn.')
     } catch (err) {
+      setConfirming(false)
       if (err instanceof ApiError) {
         setErrorMessage(err.message)
+        if (err.status === 409) {
+          // Trạng thái hồ sơ đã thay đổi (hoặc đã được rút / duyệt trước đó - BR-16)
+          // Tự động tra cứu lại từ máy chủ để hiển thị trạng thái mới nhất và ẩn nút rút đơn
+          try {
+            const fresh = await performLookup(targetEmail, targetCode)
+            setResult(fresh)
+          } catch {
+            // Giữ nguyên thông báo lỗi nếu tra cứu lại gặp sự cố mạng
+          }
+        }
       } else {
         setErrorMessage('Không thể rút hồ sơ lúc này. Vui lòng thử lại sau.')
       }
