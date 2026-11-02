@@ -1219,6 +1219,88 @@ describe('Recruitment Module (R2)', () => {
       expect(statuses[5]).toBe(429) // Lần thứ 6 chạm ngưỡng 5 lượt/15p
     })
 
+    it('Lượt tra cứu ĐÚNG giải tỏa ô đếm: sai 4 lần, tra cứu đúng, rồi được sai thêm 5 lượt mới bị chặn (chỉ tính lượt sai)', async () => {
+      const ip = nextIp()
+      const wrong = { email: applicantEmail, code: 'WRONGCODE999' }
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/public/applications/lookup',
+          headers: { origin: ORIGIN },
+          remoteAddress: ip,
+          payload: wrong,
+        })
+        expect(res.statusCode).toBe(404)
+      }
+
+      // Lượt đúng không tốn hạn mức và giải tỏa ô đếm
+      const correctRes = await app.inject({
+        method: 'POST',
+        url: '/public/applications/lookup',
+        headers: { origin: ORIGIN },
+        remoteAddress: ip,
+        payload: { email: applicantEmail, code: testAppCode },
+      })
+      expect(correctRes.statusCode).toBe(200)
+
+      // Sau khi giải tỏa, lại được sai đủ 5 lượt (nếu đếm cả lượt đúng thì đã dính 429)
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/public/applications/lookup',
+          headers: { origin: ORIGIN },
+          remoteAddress: ip,
+          payload: wrong,
+        })
+        expect(res.statusCode).toBe(404)
+      }
+      const blockedRes = await app.inject({
+        method: 'POST',
+        url: '/public/applications/lookup',
+        headers: { origin: ORIGIN },
+        remoteAddress: ip,
+        payload: wrong,
+      })
+      expect(blockedRes.statusCode).toBe(429)
+    })
+
+    it('Một IP spam nhiều email khác nhau trên tra cứu: lượt thứ 31 trong 15 phút nhận 429 theo địa chỉ nguồn (SEC-05)', async () => {
+      const ip = nextIp()
+      const statuses: number[] = []
+      for (let attempt = 0; attempt < 31; attempt++) {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/public/applications/lookup',
+          remoteAddress: ip,
+          headers: { origin: ORIGIN },
+          payload: { email: `ip-flood-${attempt}-${tag}@test.local`, code: 'XXXXXXXXXXXX' },
+        })
+        statuses.push(res.statusCode)
+      }
+      expect(statuses.slice(0, 30).every((status) => status === 404)).toBe(true)
+      expect(statuses[30]).toBe(429)
+    })
+
+    it('Ngưỡng đọc từ cấu hình: LOOKUP_MAX_ATTEMPTS=2 thì sai lần thứ 3 nhận 429 trên tra cứu hồ sơ', async () => {
+      const testApp = buildApp(loadConfig({ NODE_ENV: 'test', LOOKUP_MAX_ATTEMPTS: '2' }))
+      await testApp.ready()
+      try {
+        const wrongLookup = (email: string) =>
+          testApp.inject({
+            method: 'POST',
+            url: '/public/applications/lookup',
+            payload: { email, code: 'XXXXXXXXXXXX' },
+            headers: { origin: ORIGIN },
+            remoteAddress: nextIp(),
+          })
+        expect((await wrongLookup(`cfg-${tag}@test.local`)).statusCode).toBe(404)
+        expect((await wrongLookup(`cfg-${tag}@test.local`)).statusCode).toBe(404)
+        expect((await wrongLookup(`cfg-${tag}@test.local`)).statusCode).toBe(429)
+      } finally {
+        await testApp.close()
+      }
+    })
+
     it('Rút đơn bị từ chối 409 khi hồ sơ đã ở trạng thái ACCEPTED (kết quả cuối)', async () => {
       const acceptedCode = publicCode(12)
       const acceptedEmail = `accepted-${tag}@test.local`
