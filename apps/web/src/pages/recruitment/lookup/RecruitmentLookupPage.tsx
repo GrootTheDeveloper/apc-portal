@@ -30,12 +30,12 @@ const STATUS_DETAILS: Record<ApplicationStatus, { label: string; badgeClass: str
   ACCEPTED: {
     label: 'Đã chấp nhận',
     badgeClass: 'bg-ink text-paper font-bold',
-    desc: 'Chúc mừng bạn đã chính thức trở thành thành viên của CLB APC! Ban Chủ nhiệm sẽ liên hệ và gửi thông tin tài khoản thành viên sớm.',
+    desc: 'Chúc mừng bạn đã trúng tuyển vào CLB APC! Ban Chủ nhiệm sẽ liên hệ với bạn để thông báo các bước tiếp theo.',
   },
   REJECTED: {
-    label: 'Không phù hợp',
+    label: 'Không chấp nhận',
     badgeClass: 'bg-apc-red-pale text-apc-red font-bold',
-    desc: 'Cảm ơn bạn đã quan tâm và dành thời gian ứng tuyển vào APC. Rất tiếc hồ sơ lần này chưa phù hợp với tiêu chí của câu lạc bộ.',
+    desc: 'Cảm ơn bạn đã quan tâm và dành thời gian ứng tuyển vào APC. Rất tiếc hồ sơ của bạn chưa được chấp nhận trong đợt tuyển này.',
   },
   WITHDRAWN: {
     label: 'Đã rút đơn',

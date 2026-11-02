@@ -40,7 +40,7 @@ export const APPLICATION_STATUS_LABELS: Record<string, string> = {
   REVIEWING: 'Đang xét duyệt',
   INTERVIEW: 'Mời phỏng vấn',
   ACCEPTED: 'Đã chấp nhận',
-  REJECTED: 'Không phù hợp',
+  REJECTED: 'Không chấp nhận',
   WITHDRAWN: 'Đã rút đơn',
 }
 

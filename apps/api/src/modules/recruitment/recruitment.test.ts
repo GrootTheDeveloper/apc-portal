@@ -7,7 +7,7 @@ import { db } from '../../db/client.js'
 import { AUDIT_ACTIONS } from '../audit/service.js'
 import { createSession, SESSION_COOKIE } from '../auth/session.js'
 import { closeExpiredRecruitmentRounds } from './service.js'
-import { EMAIL_TEMPLATES } from '../email/templates.js'
+import { APPLICATION_STATUS_LABELS, EMAIL_TEMPLATES } from '../email/templates.js'
 import { publicCode } from '../../lib/ids.js'
 
 
@@ -1437,6 +1437,10 @@ describe('Recruitment Module (R2)', () => {
       expect(rendered?.html).toContain('Mời phỏng vấn')
       expect(rendered?.text).not.toContain('INTERVIEW') // Không in nguyên enum tiếng Anh
       expect(rendered?.html).toMatch(/href="https?:\/\/[^"]*\/recruitment\/application-lookup"/)
+
+      // REC-08: REJECTED hiển thị "Không chấp nhận"
+      expect(APPLICATION_STATUS_LABELS.REJECTED).toBe('Không chấp nhận')
+      expect(APPLICATION_STATUS_LABELS.ACCEPTED).toBe('Đã chấp nhận')
     })
 
     it('Hồ sơ đã ở trạng thái WITHDRAWN không được rút tiếp (409)', async () => {
