@@ -680,8 +680,28 @@ describe('Recruitment Module (R2)', () => {
       expect(res.statusCode).toBe(422)
     })
 
+    it('Gửi header Idempotency-Key không đúng chuẩn UUID trả 422', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/public/recruitment-rounds/${_applyRoundSlug}/applications`,
+        headers: {
+          origin: ORIGIN,
+          'idempotency-key': 'not-a-valid-uuid',
+        },
+        payload: {
+          ...basePayload,
+          applicantEmail: `invalid-uuid-${tag}@example.com`,
+          studentId: `IU${tag.slice(0, 6)}`,
+          desiredDepartmentId: deptAId,
+          answers: { q_github: 'https://github.com/test' },
+        },
+      })
+      expect(res.statusCode).toBe(422)
+      expect(res.json().issues[0].message).toContain('Header Idempotency-Key')
+    })
+
     it('Nộp đơn thành công 201; câu hidden bắt buộc không chặn nộp đơn; gửi lặp Idempotency-Key trả kết quả cũ', async () => {
-      const idempotencyKey = `idem-${randomUUID()}`
+      const idempotencyKey = randomUUID()
 
       // Lần 1: Nộp thành công (bỏ qua câu q_draft_hidden)
       const res1 = await app.inject({
