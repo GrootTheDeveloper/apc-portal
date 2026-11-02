@@ -1353,7 +1353,7 @@ describe('Recruitment Module (R2)', () => {
       // Audit log được ghi, metadata không được chứa mã hồ sơ
       const auditLog = await db.auditLog.findFirst({
         where: {
-          action: AUDIT_ACTIONS.RECRUITMENT_WITHDRAW_APPLICATION,
+          action: AUDIT_ACTIONS.APPLICATION_WITHDRAW,
           targetId: updated.id,
         },
       })
@@ -1436,7 +1436,7 @@ describe('Recruitment Module (R2)', () => {
       // Chỉ có duy nhất 1 dòng audit log
       const auditCount = await db.auditLog.count({
         where: {
-          action: AUDIT_ACTIONS.RECRUITMENT_WITHDRAW_APPLICATION,
+          action: AUDIT_ACTIONS.APPLICATION_WITHDRAW,
           targetId: appRecord.id,
         },
       })

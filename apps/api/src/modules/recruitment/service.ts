@@ -887,7 +887,7 @@ export async function withdrawApplication(request: FastifyRequest, input: unknow
     await audit(
       request,
       {
-        action: AUDIT_ACTIONS.RECRUITMENT_WITHDRAW_APPLICATION,
+        action: AUDIT_ACTIONS.APPLICATION_WITHDRAW,
         category: AuditCategory.BUSINESS,
         result: AuditResult.SUCCESS,
         targetType: 'APPLICATION',
