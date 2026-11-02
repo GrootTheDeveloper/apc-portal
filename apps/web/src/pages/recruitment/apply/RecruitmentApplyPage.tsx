@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type FormEvent } from 'react'
+import { useId, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AsyncState } from '../../../components/AsyncState'
 import { Breadcrumb } from '../../../components/Breadcrumb'
@@ -9,6 +9,7 @@ import { PageHero } from '../../../components/PageHero'
 import { useApi } from '../../../hooks/useApi'
 import { api, ApiError } from '../../../lib/api'
 import { roundPhase } from '../roundPhase'
+import { Seo } from '../../../components/Seo'
 import type { RecruitmentQuestion, RecruitmentRound } from '../types'
 
 export function RecruitmentApplyPage() {
@@ -17,21 +18,17 @@ export function RecruitmentApplyPage() {
     slug ? `/public/recruitment-rounds/${slug}` : null,
   )
 
-  useEffect(() => {
-    // FLOW-04 / Sitemap §15.1: Không index trang nộp đơn
-    let meta = document.querySelector('meta[name="robots"]')
-    if (!meta) {
-      meta = document.createElement('meta')
-      meta.setAttribute('name', 'robots')
-      document.head.appendChild(meta)
-    }
-    meta.setAttribute('content', 'noindex, nofollow')
-  }, [])
-
-  return (
-    <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
-      {round && <RecruitmentApplyWizard round={round} />}
-    </AsyncState>
+   return (
+    <>
+      <Seo
+        title={round ? `Nộp đơn: ${round.title}` : 'Nộp đơn ứng tuyển'}
+        path={slug ? `/recruitment/${slug}/apply` : '/recruitment'}
+        robots="noindex, nofollow"
+      />
+      <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
+        {round && <RecruitmentApplyWizard round={round} />}
+      </AsyncState>
+    </>
   )
 }
 
@@ -155,6 +152,7 @@ function RecruitmentApplyWizard({ round }: { round: RecruitmentRound }) {
         },
       )
       setCreatedProfileCode(result.profileCode)
+      
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 422 && Array.isArray(err.issues)) {
@@ -165,6 +163,20 @@ function RecruitmentApplyWizard({ round }: { round: RecruitmentRound }) {
           }
           setFieldErrors(mapped)
           setServerError('Vui lòng kiểm tra lại các trường thông tin có dấu đỏ.')
+          // Tự động chuyển về bước đầu tiên có lỗi để người dùng sửa ô đó
+          const step1Keys = ['applicantName', 'applicantEmail', 'studentId', 'faculty', 'major', 'cohort']
+          const step2Keys = ['desiredDepartmentId', 'skills', 'experience']
+          const errorKeys = Object.keys(mapped)
+          if (errorKeys.some((k) => step1Keys.includes(k))) {
+            setStep(1)
+          } else if (errorKeys.some((k) => step2Keys.includes(k))) {
+            setStep(2)
+          } else if (errorKeys.some((k) => k.startsWith('answers'))) {
+            setStep(3)
+          } else if (errorKeys.some((k) => k === 'consent')) {
+            setStep(4)
+          }
+          window.scrollTo({ top: 0, behavior: 'smooth' })
         } else {
           setServerError(err.message)
         }
@@ -187,49 +199,52 @@ function RecruitmentApplyWizard({ round }: { round: RecruitmentRound }) {
   // Màn hình thành công (hiển thị mã hồ sơ một lần)
   if (createdProfileCode) {
     return (
-      <main className="min-h-[70vh] px-4 py-16 md:px-8">
-        <div className="mx-auto max-w-2xl rounded-2xl border-2 border-ink bg-paper p-8 text-center shadow-[3px_3px_0_#C23B22]">
-          <Eyebrow className="text-apc-blue">nộp đơn thành công</Eyebrow>
-          <h1 className="mt-3 font-display text-3xl font-extrabold text-ink md:text-4xl">
-            Đơn Ứng Tuyển Đã Được Ghi Nhận!
-          </h1>
-          <p className="mt-4 text-muted">
-            Cảm ơn bạn <b>{applicantName}</b> đã quan tâm và ứng tuyển vào CLB APC. Email xác nhận đã được gửi tới <b>{applicantEmail}</b>.
-          </p>
+      <main className="min-h-[70vh]">
+        <section className="px-4 py-16 md:px-8">
+          <div data-rv className="mx-auto max-w-2xl rounded-[20px] bg-soft p-8 text-center md:p-12">
+            <Eyebrow className="text-apc-blue">nộp đơn thành công</Eyebrow>
+            <h1 className="mt-3 font-display text-3xl font-extrabold text-ink md:text-4xl">
+              Đơn Ứng Tuyển Đã Được Ghi Nhận!
+            </h1>
+            <p className="mt-4 text-muted">
+              Cảm ơn bạn <b>{applicantName}</b> đã quan tâm và ứng tuyển vào CLB APC. Email xác nhận đã được gửi tới <b>{applicantEmail}</b>.
+            </p>
 
-          <div className="my-8 rounded-xl border-2 border-dashed border-apc-red bg-apc-red-pale/20 p-6">
-            <span className="font-code text-xs font-bold uppercase tracking-wider text-apc-red">
-              Mã hồ sơ tra cứu của bạn
-            </span>
-            <div className="mt-2 font-code text-3xl font-black tracking-widest text-ink md:text-4xl">
-              {createdProfileCode}
+            {/* Khối mã hồ sơ: dùng mảng màu paper phẳng chuẩn DESIGN.md */}
+            <div className="my-8 rounded-[20px] bg-paper p-6 text-center">
+              <span className="font-code text-xs font-bold uppercase tracking-wider text-apc-red">
+                Mã hồ sơ tra cứu của bạn
+              </span>
+              <div className="mt-2 font-code text-3xl font-black tracking-widest text-ink md:text-4xl">
+                {createdProfileCode}
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyCode}
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2 font-code text-xs font-bold text-paper transition hover:bg-apc-red"
+              >
+                {copied ? 'Đã sao chép vào bộ nhớ tạm' : 'Sao chép mã hồ sơ'}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={handleCopyCode}
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-2 font-code text-xs font-bold text-paper transition hover:bg-apc-red"
-            >
-              {copied ? '✓ Đã sao chép vào bộ nhớ tạm' : '📋 Sao chép mã hồ sơ'}
-            </button>
-          </div>
 
-          <div className="rounded-xl bg-soft p-4 text-left text-sm text-ink">
-            <p className="font-bold">⚠️ Lưu ý quan trọng:</p>
-            <ul className="mt-2 list-inside list-disc space-y-1 text-muted">
-              <li>Mã hồ sơ này chỉ hiển thị một lần duy nhất trên màn hình này.</li>
-              <li>Bạn dùng mã này cùng email để theo dõi tiến độ hoặc rút đơn tại trang tra cứu.</li>
-            </ul>
-          </div>
+            <div className="rounded-[20px] bg-paper p-5 text-left text-sm text-ink">
+              <p className="font-display font-bold text-apc-red">Lưu ý quan trọng:</p>
+              <ul className="mt-2 list-inside list-disc space-y-1 text-muted">
+                <li>Mã hồ sơ này chỉ hiển thị một lần duy nhất trên màn hình này.</li>
+                <li>Bạn dùng mã này cùng email để theo dõi tiến độ hoặc rút đơn tại trang tra cứu.</li>
+              </ul>
+            </div>
 
-          <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <Link to="/recruitment/application-lookup" className={buttonClass('primary')}>
-              Đến trang tra cứu hồ sơ →
-            </Link>
-            <Link to={`/recruitment/${round.slug}`} className={buttonClass('outline')}>
-              Về trang đợt tuyển
-            </Link>
+            <div className="mt-8 flex flex-wrap justify-center gap-4">
+              <Link to="/recruitment/application-lookup" className={buttonClass('primary')}>
+                Đến trang tra cứu hồ sơ →
+              </Link>
+              <Link to={`/recruitment/${round.slug}`} className={buttonClass('outline')}>
+                Về trang đợt tuyển
+              </Link>
+            </div>
           </div>
-        </div>
+        </section>
       </main>
     )
   }
@@ -237,19 +252,21 @@ function RecruitmentApplyWizard({ round }: { round: RecruitmentRound }) {
   // Đợt đã đóng hoặc chưa mở
   if (isClosed) {
     return (
-      <main className="min-h-[60vh] px-4 py-16 md:px-8">
-        <div className="mx-auto max-w-xl text-center">
-          <Eyebrow className = "text-apc-blue">nộp đơn thanh công</Eyebrow>
-          <h1 className="mt-4 font-display text-3xl font-extrabold text-ink">Đợt tuyển hiện không mở nhận đơn</h1>
-          <p className="mt-3 text-muted">
-            Đợt tuyển <b>{round.title}</b> hiện chưa đến hạn nhận đơn hoặc đã kết thúc thời gian nộp hồ sơ.
-          </p>
-          <div className="mt-8">
-            <Link to={`/recruitment/${round.slug}`} className={buttonClass('outline')}>
-              ← Quay lại chi tiết đợt tuyển
-            </Link>
+      <main className="min-h-[60vh]">
+        <section className="px-4 py-16 md:px-8">
+          <div data-rv className="mx-auto max-w-xl text-center">
+            <Eyebrow className="text-apc-red">tuyển thành viên</Eyebrow>
+            <h1 className="mt-4 font-display text-3xl font-extrabold text-ink">Đợt tuyển hiện không mở nhận đơn</h1>
+            <p className="mt-3 text-muted">
+              Đợt tuyển <b>{round.title}</b> hiện chưa đến hạn nhận đơn hoặc đã kết thúc thời gian nộp hồ sơ.
+            </p>
+            <div className="mt-8">
+              <Link to={`/recruitment/${round.slug}`} className={buttonClass('outline')}>
+                ← Quay lại chi tiết đợt tuyển
+              </Link>
+            </div>
           </div>
-        </div>
+        </section>
       </main>
     )
   }
@@ -277,7 +294,7 @@ function RecruitmentApplyWizard({ round }: { round: RecruitmentRound }) {
       <section className="px-4 py-12 md:px-8">
         <div className="mx-auto max-w-3xl">
           {/* Thanh chỉ báo bước */}
-          <div className="mb-10 flex items-center justify-between border-b-2 border-ink pb-4">
+          <div data-rv className="mb-10 flex items-center justify-between border-b-2 border-ink pb-4">
             {[
               { num: 1, label: 'Thông tin cá nhân' },
               { num: 2, label: 'Nguyện vọng' },
@@ -315,7 +332,7 @@ function RecruitmentApplyWizard({ round }: { round: RecruitmentRound }) {
 
           {/* ── BƯỚC 1: THÔNG TIN CÁ NHÂN & HỌC TẬP ── */}
           {step === 1 && (
-            <form onSubmit={handleNextStep1} className="space-y-6">
+            <form data-rv onSubmit={handleNextStep1} className="space-y-6">
               <h2 className="font-display text-2xl font-extrabold text-ink">1. Thông tin cá nhân & học tập</h2>
 
               <div>
@@ -414,7 +431,7 @@ function RecruitmentApplyWizard({ round }: { round: RecruitmentRound }) {
 
           {/* ── BƯỚC 2: NGUYỆN VỌNG & NĂNG LỰC ── */}
           {step === 2 && (
-            <form onSubmit={handleNextStep2} className="space-y-6">
+            <form data-rv onSubmit={handleNextStep2} className="space-y-6">
               <h2 className="font-display text-2xl font-extrabold text-ink">2. Nguyện vọng & Năng lực</h2>
 
               <div>
@@ -425,7 +442,7 @@ function RecruitmentApplyWizard({ round }: { round: RecruitmentRound }) {
                       key={dept.id}
                       className={`flex cursor-pointer items-start gap-3 rounded-xl border-2 p-4 transition ${
                         desiredDepartmentId === dept.id
-                          ? 'border-apc-red bg-apc-red-pale/30 shadow-[3px_3px_0_#C23B22]'
+                          ? 'border-apc-red bg-apc-red-pale/40'
                           : 'border-ink bg-paper hover:bg-soft'
                       }`}
                     >
@@ -486,7 +503,7 @@ function RecruitmentApplyWizard({ round }: { round: RecruitmentRound }) {
 
           {/* ── BƯỚC 3: CÂU HỎI BỔ SUNG CỦA ĐỢT ── */}
           {step === 3 && (
-            <form onSubmit={handleNextStep3} className="space-y-6">
+            <form data-rv onSubmit={handleNextStep3} className="space-y-6">
               <h2 className="font-display text-2xl font-extrabold text-ink">3. Câu hỏi từ Ban Tuyển sinh</h2>
 
               <div className="space-y-6">
@@ -514,10 +531,10 @@ function RecruitmentApplyWizard({ round }: { round: RecruitmentRound }) {
 
           {/* ── BƯỚC 4: XEM LẠI & ĐỒNG Ý CHÍNH SÁCH ── */}
           {step === 4 && (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form data-rv onSubmit={handleSubmit} className="space-y-6">
               <h2 className="font-display text-2xl font-extrabold text-ink">4. Xem lại thông tin & Xác nhận nộp</h2>
 
-              <div className="rounded-2xl border-2 border-ink bg-soft p-6 space-y-4">
+              <div className="rounded-[20px] bg-soft p-6 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2 text-sm">
                   <div>
                     <span className="font-bold text-muted">Họ và tên:</span>
@@ -543,10 +560,51 @@ function RecruitmentApplyWizard({ round }: { round: RecruitmentRound }) {
                       {round.departments.find((d) => d.id === desiredDepartmentId)?.name}
                     </p>
                   </div>
+
+                  {/* Kỹ năng hiện có */}
+                  <div className="sm:col-span-2">
+                    <span className="font-bold text-muted">Kỹ năng hiện có:</span>
+                    <p className="font-body text-ink whitespace-pre-line">{skills.trim() || 'Chưa điền'}</p>
+                  </div>
+
+                  {/* Kinh nghiệm & Dự án */}
+                  <div className="sm:col-span-2">
+                    <span className="font-bold text-muted">Kinh nghiệm & Dự án:</span>
+                    <p className="font-body text-ink whitespace-pre-line">{experience.trim() || 'Chưa điền'}</p>
+                  </div>
+
+                  {/* Câu hỏi bổ sung từ đợt tuyển */}
+                  {visibleQuestions.length > 0 && (
+                    <div className="border-t border-ink/10 pt-4 sm:col-span-2 space-y-3">
+                      <p className="font-display font-bold text-ink">Câu hỏi bổ sung:</p>
+                      {visibleQuestions.map((q) => {
+                        const val = answers[q.id]
+                        let displayVal = 'Chưa điền'
+                        if (q.type === 'single_choice') {
+                          displayVal =
+                            q.options?.find((o) => o.id === val)?.label ??
+                            (typeof val === 'string' && val.trim() ? val : 'Chưa điền')
+                        } else if (q.type === 'multiple_choice') {
+                          const arr = Array.isArray(val) ? (val as string[]) : []
+                          const labels = arr.map((optId) => q.options?.find((o) => o.id === optId)?.label ?? optId)
+                          displayVal = labels.length > 0 ? labels.join(', ') : 'Chưa điền'
+                        } else if (typeof val === 'string' && val.trim()) {
+                          displayVal = val.trim()
+                        }
+
+                        return (
+                          <div key={q.id} className="text-sm">
+                            <span className="font-bold text-muted">{q.label}:</span>
+                            <p className="font-body text-ink whitespace-pre-line">{displayVal}</p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="rounded-xl border-2 border-ink bg-paper p-5">
+              <div className="rounded-[20px] bg-soft p-5">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"

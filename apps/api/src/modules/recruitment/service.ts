@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z, ZodError } from 'zod'
 
 import type { FastifyRequest } from 'fastify'
 import { db } from '../../db/client.js'
@@ -20,8 +20,6 @@ import {
   UpdateRecruitmentRoundSchema,
   WithdrawApplicationSchema,
 } from './validation.js'
-
-
 /**
  * 1. API CÔNG KHAI
  */
@@ -286,84 +284,83 @@ export async function updateRecruitmentRound(request: FastifyRequest, id: string
     }
   }
 
-  const round = await db.recruitmentRound.findUnique({
-    where: { id },
-    include: { _count: { select: { applications: true } } },
-  })
-  if (!round) throw notFound()
+  return db.$transaction(async (tx) => {
+    // Khóa dòng đợt tuyển bằng FOR UPDATE trước khi đếm đơn (tránh R3 nộp đơn chen ngang)
+    await tx.$queryRaw`SELECT id FROM "recruitment_rounds" WHERE id = ${id} FOR UPDATE`
 
-  // 1. Không cho sửa đợt đã CLOSED hoặc ARCHIVED
-  if (round.status === 'CLOSED' || round.status === 'ARCHIVED') {
-    throw conflict(`Không thể chỉnh sửa đợt tuyển đang ở trạng thái ${round.status}`)
-  }
-
-  const now = new Date()
-
-  // 2. Ràng buộc khi đợt đang OPEN
-  if (round.status === 'OPEN'){
-    // Không cho sửa slug khi đang mở
-    if (data.slug && data.slug !== round.slug){
-      throw conflict('Không thể thay đổi đường dẫn (slug) khi đợt tuyển đang mở')
-    }
-
-    // Khóa opensAT nếu đã qua thời điểm mở
-    if (round.opensAt <= now && data.opensAt && new Date(data.opensAt).getTime() !== round.opensAt.getTime()){
-      throw conflict('Không thể thay đổi thời gina bắt đầu khi đợt tuyển đã mở')
-    }
-
-    // closesAT chỉ được dời về sau (kéo dài đợt)
-    if (data.closesAt && new Date(data.closesAt) < round.closesAt){
-      throw conflict('Thời gian kết thúc chỉ được phép dời về sau khi đợt tuyển đang mở')
-    }
-  }
-  // 3. Kiểm tra tính hợp lệ của ngày (trả 422 nếu sai thứ tự ngày)
-  const opensAt = data.opensAt ? new Date(data.opensAt) : round.opensAt
-  const closesAt = data.closesAt ? new Date(data.closesAt) : round.closesAt
-  if (closesAt <= opensAt) {
-    throw new AppError(422, 'validation', 'thời gian đóng nhận đơn phải sau thời gian mở')
-  }
-
-  // 4. Không cho bỏ ban đã có hồ sơ đăng ký
-  if (data.departmentIds){
-    const removedDeptWithApp = await db.membershipApplication.findFirst({
-      where : {
-        recruitmentRoundId : id,
-        desiredDepartmentId: { notIn : data.departmentIds}      
-      },
+    const round = await tx.recruitmentRound.findUnique({
+      where: { id },
+      include: { _count: { select: { applications: true } } },
     })
-    if (removedDeptWithApp){
-      throw conflict('Không thể bỏ ban đã có hồ sơ đăng ký ứng tuyển')
+    if (!round) throw notFound()
+
+    // 1. Không cho sửa đợt đã CLOSED hoặc ARCHIVED
+    if (round.status === 'CLOSED' || round.status === 'ARCHIVED') {
+      throw conflict(`Không thể chỉnh sửa đợt tuyển đang ở trạng thái ${round.status}`)
     }
-  }
 
-  // 5. Kiểm tra sửa câu hỏi nếu đã có hồ sơ
-  if (data.questions && round._count.applications > 0) {
-    const oldQuestions = (round.questions as unknown as Question[]) || []
-    validateQuestionsUpdate(oldQuestions, data.questions)
-  }
+    const now = new Date()
 
-  return db.$transaction(async(tx) =>{
-    const updated = await tx.recruitmentRound.update ({
-    where: { id },
-    data: {
-      ...(data.title && { title: data.title }),
-      ...(data.slug && { slug: data.slug }),
-      ...(data.description && { description: data.description }),
-      ...(data.audience && { audience: data.audience }),
-      ...(data.requirements && { requirements: data.requirements }),
-      ...(data.opensAt && { opensAt }),
-      ...(data.closesAt && { closesAt }),
-      ...(data.questions && { questions: data.questions }),
-      ...(data.departmentIds && {
-        departments: {
-          set: data.departmentIds.map((deptId) => ({ id: deptId })),
+    // 2. Ràng buộc khi đợt đang OPEN
+    if (round.status === 'OPEN') {
+      if (data.slug && data.slug !== round.slug) {
+        throw conflict('Không thể thay đổi đường dẫn (slug) khi đợt tuyển đang mở')
+      }
+      if (round.opensAt <= now && data.opensAt && new Date(data.opensAt).getTime() !== round.opensAt.getTime()) {
+        throw conflict('Không thể thay đổi thời gian bắt đầu khi đợt tuyển đã mở')
+      }
+      if (data.closesAt && new Date(data.closesAt) < round.closesAt) {
+        throw conflict('Thời gian kết thúc chỉ được phép dời về sau khi đợt tuyển đang mở')
+      }
+    }
+
+    // 3. Kiểm tra tính hợp lệ của ngày
+    const opensAt = data.opensAt ? new Date(data.opensAt) : round.opensAt
+    const closesAt = data.closesAt ? new Date(data.closesAt) : round.closesAt
+    if (closesAt <= opensAt) {
+      throw new AppError(422, 'validation', 'Thời gian đóng nhận đơn phải sau thời gian mở')
+    }
+
+    // 4. Không cho bỏ ban đã có hồ sơ đăng ký (đếm đơn khi đã giữ khóa FOR UPDATE)
+    if (data.departmentIds) {
+      const removedDeptWithApp = await tx.membershipApplication.findFirst({
+        where: {
+          recruitmentRoundId: id,
+          desiredDepartmentId: { notIn: data.departmentIds },
         },
-      }),
-    },
-    include: { departments: true },
-  })
-  
-  await audit(
+      })
+      if (removedDeptWithApp) {
+        throw conflict('Không thể bỏ ban đã có hồ sơ đăng ký ứng tuyển')
+      }
+    }
+
+    // 5. Kiểm tra sửa câu hỏi nếu đã có hồ sơ
+    if (data.questions && round._count.applications > 0) {
+      const oldQuestions = (round.questions as unknown as Question[]) || []
+      validateQuestionsUpdate(oldQuestions, data.questions)
+    }
+
+    const updated = await tx.recruitmentRound.update({
+      where: { id },
+      data: {
+        ...(data.title && { title: data.title }),
+        ...(data.slug && { slug: data.slug }),
+        ...(data.description && { description: data.description }),
+        ...(data.audience && { audience: data.audience }),
+        ...(data.requirements && { requirements: data.requirements }),
+        ...(data.opensAt && { opensAt }),
+        ...(data.closesAt && { closesAt }),
+        ...(data.questions && { questions: data.questions }),
+        ...(data.departmentIds && {
+          departments: {
+            set: data.departmentIds.map((deptId) => ({ id: deptId })),
+          },
+        }),
+      },
+      include: { departments: true },
+    })
+
+    await audit(
       request,
       {
         action: AUDIT_ACTIONS.RECRUITMENT_UPDATE_ROUND,
@@ -375,6 +372,7 @@ export async function updateRecruitmentRound(request: FastifyRequest, id: string
       },
       tx,
     )
+
     return updated
   })
 }
@@ -497,7 +495,7 @@ export async function closeExpiredRecruitmentRounds() {
           category: AuditCategory.BUSINESS,
           result: AuditResult.SUCCESS,
           metadata: { 
-           froStatus: 'OPEN',
+           fromStatus: 'OPEN',
            toStatus: 'CLOSED',
            reason: 'Tự động đóng do hết hạn', 
            closesAt: round.closesAt },
@@ -516,73 +514,194 @@ export async function submitApplication(
   idempotencyKey?: string,
   user?: AuthUser | null,
 ) {
-  // 1. Thành viên/Admin đã đăng nhập không được nộp đơn tuyển
+  // 1. Chặn thành viên/Admin đã đăng nhập
   if (user) {
     throw forbidden('Người đã đăng nhập không thể nộp đơn ứng tuyển.')
   }
 
-  // 2. Chống gửi lặp: kiểm tra Idempotency-Key (FLOW-04, STATE-01)
-  if (idempotencyKey) {
-    const existingApp = await db.membershipApplication.findUnique({
-      where: { idempotencyKey },
-      include: { recruitmentRound: true },
-    })
-    if (existingApp) {
-      return {
-        profileCode: existingApp.profileCode,
-        applicantName: existingApp.applicantName,
-        applicantEmail: existingApp.applicantEmail,
-        roundTitle: existingApp.recruitmentRound.title,
-        submittedAt: existingApp.submittedAt.toISOString(),
-      }
-    }
-  }
-
-  // 3. Validate dữ liệu đầu vào bằng Zod
+  // 2. Validate dữ liệu đầu vào bằng Zod
   const input = SubmitApplicationSchema.parse(rawBody)
 
-  // 4. Kiểm tra đợt tuyển: phải OPEN và trong thời hạn nhận đơn
-  const round = await db.recruitmentRound.findUnique({
+  // 3. Đọc sơ bộ đợt tuyển để lấy ID
+  const initialRound = await db.recruitmentRound.findUnique({
     where: { slug },
-    include: { departments: true },
+    select: { id: true, status: true },
   })
-  if (!round || round.status !== 'OPEN') {
+  if (!initialRound || initialRound.status !== 'OPEN') {
     throw notFound('Không tìm thấy đợt tuyển hoặc đợt tuyển chưa mở nhận đơn.')
   }
 
-  const now = new Date()
-  if (now < round.opensAt || now > round.closesAt) {
-    throw conflict('Đợt tuyển hiện không trong thời gian nhận đơn.')
-  }
-
-  // 5. Kiểm tra ban mong muốn phải thuộc đợt tuyển
-  const validDeptIds = round.departments.map((d) => d.id)
-  if (!validDeptIds.includes(input.desiredDepartmentId)) {
-    throw new AppError(422, 'validation', 'Ban chuyên môn được chọn không thuộc đợt tuyển này.')
-  }
-
-  // 6. Kiểm tra các câu hỏi bắt buộc (bỏ qua câu bị ẩn hidden)
-  const questions = (round.questions as unknown as Question[]) || []
-  for (const q of questions) {
-    if (q.hidden) continue
-
-    if (q.required) {
-      const val = input.answers?.[q.id]
-      const isEmpty =
-        val === undefined ||
-        val === null ||
-        (typeof val === 'string' && val.trim() === '') ||
-        (Array.isArray(val) && val.length === 0)
-      if (isEmpty) {
-        throw new AppError(422, 'validation', `Vui lòng trả lời câu hỏi bắt buộc: ${q.label}`)
-      }
-    }
-  }
-
-  // 7. Lưu hồ sơ, lưu consent và xếp email trong cùng 1 Transaction
   try {
     return await db.$transaction(async (tx) => {
-      // Kiểm tra trùng email hoặc MSSV trong đợt tuyển (REC-05, BR-05, QĐ-1)
+      // 4. Khóa FOR SHARE dòng đợt tuyển: cho phép nhiều ứng viên nộp song song,
+      // nhưng buộc chờ nếu Admin đang sửa đợt (FOR UPDATE).
+      await tx.$queryRaw`SELECT id FROM "recruitment_rounds" WHERE id = ${initialRound.id} FOR SHARE`
+
+      // 5. Đọc lại dữ liệu mới nhất của đợt tuyển bên trong transaction
+      const round = await tx.recruitmentRound.findUniqueOrThrow({
+        where: { id: initialRound.id },
+        include: { departments: true },
+      })
+
+      if (round.status !== 'OPEN') {
+        throw conflict('Đợt tuyển hiện không mở nhận đơn.')
+      }
+
+      const now = new Date()
+      if (now < round.opensAt || now > round.closesAt) {
+        throw conflict('Đợt tuyển hiện không trong thời gian nhận đơn.')
+      }
+
+      // 6. Chống gửi lặp: kiểm tra Idempotency-Key và ràng buộc theo đúng đợt tuyển này
+      if (idempotencyKey) {
+        const existingApp = await tx.membershipApplication.findUnique({
+          where: { idempotencyKey },
+          include: { recruitmentRound: true },
+        })
+        if (existingApp) {
+          if (existingApp.recruitmentRoundId !== round.id) {
+            throw conflict('Khóa Idempotency-Key không thuộc đợt tuyển này.')
+          }
+          return {
+            profileCode: existingApp.profileCode,
+            applicantName: existingApp.applicantName,
+            applicantEmail: existingApp.applicantEmail,
+            roundTitle: existingApp.recruitmentRound.title,
+            submittedAt: existingApp.submittedAt.toISOString(),
+          }
+        }
+      }
+
+      // 7. Kiểm tra ban mong muốn phải thuộc danh sách ban mới nhất của đợt
+      const validDeptIds = round.departments.map((d) => d.id)
+      if (!validDeptIds.includes(input.desiredDepartmentId)) {
+        throw new ZodError([
+          {
+            code: 'custom',
+            path: ['desiredDepartmentId'],
+            message: 'Ban chuyên môn được chọn không thuộc đợt tuyển này.',
+          },
+        ])
+      }
+
+      // 8. Validate và chỉ dựng answers từ các câu hỏi không ẩn mới nhất của đợt
+      const questions = (round.questions as unknown as Question[]) || []
+      const sanitizedAnswers: Record<string, string | string[]> = {}
+      const answerIssues: z.ZodIssue[] = []
+
+      for (const q of questions) {
+        if (q.hidden) continue
+
+        const val = input.answers?.[q.id]
+        const hasValue = val !== undefined && val !== null && val !== ''
+
+        if (q.required) {
+          const isEmpty =
+            !hasValue ||
+            (typeof val === 'string' && val.trim() === '') ||
+            (Array.isArray(val) && val.length === 0)
+          if (isEmpty) {
+           answerIssues.push({
+              code: 'custom',
+              path: ['answers', q.id],
+              message: `Vui lòng trả lời câu hỏi bắt buộc: ${q.label}`,
+            })
+            continue
+          }
+        }
+
+        if (!hasValue) continue
+
+        if (q.type === 'short_text') {
+          if (typeof val !== 'string') {
+           answerIssues.push({
+              code: 'custom',
+              path: ['answers', q.id],
+              message: `Câu trả lời cho "${q.label}" phải là văn bản chuỗi.`,
+            })
+            continue
+          }
+          const trimmed = val.trim()
+          if (trimmed.length > 500) {
+            answerIssues.push({
+              code: 'custom',
+              path: ['answers', q.id],
+              message: `Câu trả lời cho "${q.label}" không được vượt quá 500 ký tự.`,
+            })
+            continue
+          }
+          if (trimmed.length > 0) sanitizedAnswers[q.id] = trimmed
+        } else if (q.type === 'long_text') {
+          if (typeof val !== 'string') {
+            answerIssues.push({
+              code: 'custom',
+              path: ['answers', q.id],
+              message: `Câu trả lời cho "${q.label}" phải là văn bản chuỗi.`,
+            })
+            continue
+          }
+           const trimmed = val.trim()
+          if (trimmed.length > 5000) {
+            answerIssues.push({
+              code: 'custom',
+              path: ['answers', q.id],
+              message: `Câu trả lời cho "${q.label}" không được vượt quá 5.000 ký tự.`,
+            })
+            continue
+          }
+          if (trimmed.length > 0) sanitizedAnswers[q.id] = trimmed
+        } else if (q.type === 'single_choice') {
+          if (typeof val !== 'string') {
+            answerIssues.push({
+              code: 'custom',
+              path: ['answers', q.id],
+              message: `Lựa chọn cho "${q.label}" không hợp lệ.`,
+            })
+            continue
+          }
+          const validOptIds = (q.options ?? []).map((o) => o.id)
+          if (!validOptIds.includes(val)) {
+            answerIssues.push({
+              code: 'custom',
+              path: ['answers', q.id],
+              message: `Lựa chọn cho "${q.label}" không nằm trong danh sách lựa chọn cho phép.`,
+            })
+            continue
+          }
+          sanitizedAnswers[q.id] = val
+        } else if (q.type === 'multiple_choice') {
+          if (!Array.isArray(val) || !val.every((item) => typeof item === 'string')) {
+            answerIssues.push({
+              code: 'custom',
+              path: ['answers', q.id],
+              message: `Lựa chọn cho "${q.label}" phải là một danh sách lựa chọn.`,
+            })
+            continue
+          }
+           const validOptIds = new Set((q.options ?? []).map((o) => o.id))
+          let hasInvalid = false
+          for (const item of val) {
+            if (!validOptIds.has(item)) {
+              answerIssues.push({
+                code: 'custom',
+                path: ['answers', q.id],
+                message: `Lựa chọn "${item}" cho "${q.label}" không hợp lệ.`,
+              })
+              hasInvalid = true
+              break
+            }
+          }
+          if (!hasInvalid) {
+            const uniqueVals = Array.from(new Set(val))
+            if (uniqueVals.length > 0) sanitizedAnswers[q.id] = uniqueVals
+          }
+        }
+      }
+      if (answerIssues.length > 0) {
+        throw new ZodError(answerIssues)
+      }
+
+      // 9. Kiểm tra trùng email hoặc MSSV trong đợt tuyển (REC-05, BR-05, QĐ-1)
       const existingApp = await tx.membershipApplication.findFirst({
         where: {
           recruitmentRoundId: round.id,
@@ -596,7 +715,7 @@ export async function submitApplication(
         throw conflict('Không thể nộp đơn với thông tin này. Nếu đã nộp, vui lòng dùng trang tra cứu.')
       }
 
-      // Sinh mã hồ sơ công khai ngẫu nhiên (REC-06, không tuần tự)
+      // 10. Sinh mã hồ sơ công khai ngẫu nhiên (REC-06, không tuần tự)
       const code = publicCode(12)
 
       const application = await tx.membershipApplication.create({
@@ -612,20 +731,20 @@ export async function submitApplication(
           desiredDepartmentId: input.desiredDepartmentId,
           skills: input.skills || null,
           experience: input.experience || null,
-          answers: (input.answers ?? {}) as Prisma.InputJsonValue,
+          answers: sanitizedAnswers as Prisma.InputJsonValue,
           idempotencyKey: idempotencyKey || null,
           status: 'NEW',
         },
       })
 
-      // Ghi nhận sự đồng ý xử lý dữ liệu (B2, DATA-07)
+      // 11. Ghi nhận sự đồng ý xử lý dữ liệu (B2, DATA-07)
       await recordConsent(tx, {
         subjectType: 'APPLICATION',
         subjectId: application.id,
         purpose: 'RECRUITMENT_PROCESSING',
       })
 
-      // Xếp email xác nhận vào hàng đợi (O1, NTF-01)
+      // 12. Xếp email xác nhận vào hàng đợi (O1, NTF-01)
       await enqueueEmail(tx, {
         type: 'APPLICATION_SUBMITTED',
         to: application.applicantEmail,
@@ -643,14 +762,13 @@ export async function submitApplication(
       }
     })
   } catch (error: any) {
-    // Bắt trường hợp race condition P2002 do trùng email hoặc MSSV đồng thời
     if (error?.code === 'P2002') {
-      if (error?.meta?.target?.includes?.('idempotencyKey') && idempotencyKey) {
+      if (idempotencyKey) {
         const existing = await db.membershipApplication.findUnique({
           where: { idempotencyKey },
           include: { recruitmentRound: true },
         })
-        if (existing) {
+        if (existing && existing.recruitmentRoundId === initialRound.id) {
           return {
             profileCode: existing.profileCode,
             applicantName: existing.applicantName,

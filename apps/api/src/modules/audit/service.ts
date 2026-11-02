@@ -22,6 +22,9 @@ export const AUDIT_ACTIONS = {
   ACCOUNT_RESET_PASSWORD: 'account.reset_password',
   ACCOUNT_DEACTIVATE: 'account.deactivate',
   ACCOUNT_REVOKE_SESSION: 'account.revoke_session',
+  // Xác thực (A4): thành viên tự kích hoạt (đổi mật khẩu tạm) và tự đổi mật khẩu; metadata ghi số phiên bị thu hồi
+  AUTH_ACTIVATE: 'auth.activate',
+  AUTH_PASSWORD_CHANGE: 'auth.password_change',
   // Phân quyền
   ROLE_GRANT: 'role.grant',
   ROLE_REVOKE: 'role.revoke',
@@ -29,10 +32,10 @@ export const AUDIT_ACTIONS = {
   // Tuyển thành viên
   RECRUITMENT_CREATE_ROUND: 'recruitment.create_round',
   RECRUITMENT_UPDATE_ROUND: 'recruitment.update_round',
-  RECRUITMENT_OPEN_ROUND: 'recruitment_open_round',
-  RECRUITMENT_CLOSE_ROUND: 'recruitment_close_round',
-  RECRUITMENT_ARCHIVE_ROUND: 'recruiment.archive_round',
-  RECRUITMENT_AUTO_CLOSE: 'recruitment_auto_close',
+  RECRUITMENT_OPEN_ROUND: 'recruitment.open_round',
+  RECRUITMENT_CLOSE_ROUND: 'recruitment.close_round',
+  RECRUITMENT_ARCHIVE_ROUND: 'recruitment.archive_round',
+  RECRUITMENT_AUTO_CLOSE: 'recruitment.auto_close',
   APPLICATION_STATUS_CHANGE: 'application.status_change',
   RECRUITMENT_FINALIZE: 'recruitment.finalize',
   APPLICATION_CONVERT_USER: 'application.convert_user',

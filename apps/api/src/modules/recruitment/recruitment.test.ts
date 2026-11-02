@@ -7,7 +7,11 @@ import { db } from '../../db/client.js'
 import { AUDIT_ACTIONS } from '../audit/service.js'
 import { createSession, SESSION_COOKIE } from '../auth/session.js'
 import { closeExpiredRecruitmentRounds } from './service.js'
+import { EMAIL_TEMPLATES } from '../email/templates.js'
 
+
+let ipCounter = 200
+const nextIp = () => `10.8.${Math.floor(++ipCounter / 250)}.${ipCounter % 250}`
 const config = loadConfig({ NODE_ENV: 'test' })
 const app = buildApp(config)
 const tag = randomUUID().slice(0, 8)
@@ -18,6 +22,7 @@ let managerAToken: string
 let memberToken: string // Đã dùng cho các test 403
 let deptAId: string
 let deptBId: string
+
 
 const createdRoundIds: string[] = []
 const createdUserIds: string[] = []
@@ -47,6 +52,7 @@ beforeAll(async () => {
       fullName: 'Board Test',
       passwordHash: 'dummy',
       status: 'ACTIVE',
+      mustChangePassword: false,
       roles: {
         create: {
           role: 'BOARD',
@@ -58,7 +64,7 @@ beforeAll(async () => {
     },
   })
   createdUserIds.push(boardUser.id)
-  boardToken = await createSession(boardUser.id, { ipAddress: '127.0.0.1', userAgent: 'test' })
+  boardToken = (await createSession(boardUser.id, { ipAddress: '127.0.0.1', userAgent: 'test' })).token
 
   // 3. Tạo User DEPARTMENT_MANAGER Ban A
   const managerAUser = await db.user.create({
@@ -68,6 +74,7 @@ beforeAll(async () => {
       fullName: 'Manager Test',
       passwordHash: 'dummy',
       status: 'ACTIVE',
+      mustChangePassword: false,
       roles: {
         create: {
           role: 'DEPARTMENT_MANAGER',
@@ -80,7 +87,7 @@ beforeAll(async () => {
     },
   })
   createdUserIds.push(managerAUser.id)
-  managerAToken = await createSession(managerAUser.id, { ipAddress: '127.0.0.1', userAgent: 'test' })
+  managerAToken = (await createSession(managerAUser.id, { ipAddress: '127.0.0.1', userAgent: 'test' })).token
 
   // 4. Tạo User MEMBER bình thường
   const memberUser = await db.user.create({
@@ -90,10 +97,11 @@ beforeAll(async () => {
       fullName: 'Member Test',
       passwordHash: 'dummy',
       status: 'ACTIVE',
+      mustChangePassword: false,
     },
   })
   createdUserIds.push(memberUser.id)
-  memberToken = await createSession(memberUser.id, { ipAddress: '127.0.0.1', userAgent: 'test' })
+  memberToken = (await createSession(memberUser.id, { ipAddress: '127.0.0.1', userAgent: 'test' })).token
 })
 
 afterAll(async () => {
@@ -583,6 +591,17 @@ describe('Recruitment Module (R2)', () => {
               hidden: false,
             },
             {
+              id: 'q_role',
+              type: 'single_choice',
+              label: 'Vị trí ứng tuyển',
+              required: false,
+              hidden: false,
+              options: [
+                { id: 'opt_fe', label: 'Frontend' },
+                { id: 'opt_be', label: 'Backend' },
+              ],
+            },
+            {
               id: 'q_draft_hidden',
               type: 'long_text',
               label: 'Câu hỏi nháp đã ẩn',
@@ -665,8 +684,28 @@ describe('Recruitment Module (R2)', () => {
       expect(res.statusCode).toBe(422)
     })
 
+    it('Gửi header Idempotency-Key không đúng chuẩn UUID trả 422', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/public/recruitment-rounds/${_applyRoundSlug}/applications`,
+        headers: {
+          origin: ORIGIN,
+          'idempotency-key': 'not-a-valid-uuid',
+        },
+        payload: {
+          ...basePayload,
+          applicantEmail: `invalid-uuid-${tag}@example.com`,
+          studentId: `IU${tag.slice(0, 6)}`,
+          desiredDepartmentId: deptAId,
+          answers: { q_github: 'https://github.com/test' },
+        },
+      })
+      expect(res.statusCode).toBe(422)
+      expect(res.json().issues[0].message).toContain('Header Idempotency-Key')
+    })
+
     it('Nộp đơn thành công 201; câu hidden bắt buộc không chặn nộp đơn; gửi lặp Idempotency-Key trả kết quả cũ', async () => {
-      const idempotencyKey = `idem-${randomUUID()}`
+      const idempotencyKey = randomUUID()
 
       // Lần 1: Nộp thành công (bỏ qua câu q_draft_hidden)
       const res1 = await app.inject({
@@ -713,24 +752,79 @@ describe('Recruitment Module (R2)', () => {
       })
       expect(count).toBe(1)
 
-      // Kiểm tra ConsentRecord được tạo kèm
+            // Lấy bản ghi đơn ứng tuyển vừa tạo trong database
+      const appRecord = await db.membershipApplication.findUniqueOrThrow({
+        where: { profileCode: data1.profileCode },
+      })
+
+      // Kiểm tra ConsentRecord được tạo kèm: PHẢI gắn đúng subjectId là id của đơn ứng tuyển
       const consent = await db.consentRecord.findFirst({
         where: {
           purpose: 'RECRUITMENT_PROCESSING',
           subjectType: 'APPLICATION',
+          subjectId: appRecord.id, // <-- Kiểm tra đúng theo subjectId
         },
       })
       expect(consent).not.toBeNull()
 
-      // Kiểm tra Email xác nhận có trong hàng đợi NotificationDelivery
+      // Kiểm tra Email xác nhận có trong hàng đợi
       const emailDelivery = await db.notificationDelivery.findFirst({
         where: {
           type: 'APPLICATION_SUBMITTED',
           recipient: basePayload.applicantEmail.toLowerCase(),
+          refId: appRecord.id,
         },
       })
       expect(emailDelivery).not.toBeNull()
       expect(emailDelivery?.status).toBe('PENDING')
+
+      // Kiểm tra nội dung email: phải chứa mã hồ sơ và link tra cứu không kèm mã trên URL (OPS-11)
+      const renderedEmail = await EMAIL_TEMPLATES.APPLICATION_SUBMITTED(appRecord.id)
+      expect(renderedEmail).not.toBeNull()
+      expect(renderedEmail?.text).toContain(data1.profileCode)
+      expect(renderedEmail?.html).toContain(data1.profileCode)
+      expect(renderedEmail?.html).toMatch(/href="[^"]*\/recruitment\/application-lookup"/)
+      expect(renderedEmail?.html).not.toContain(data1.profileCode + '/') // Không để mã lên query hay URL
+    })
+
+    it('Hai request gửi song song cùng Idempotency-Key đều trả về 201 với cùng một mã hồ sơ', async () => {
+      const parallelKey = randomUUID()
+      const parallelEmail = `parallel-${tag}@example.com`
+      const parallelPayload = {
+        ...basePayload,
+        applicantEmail: parallelEmail,
+        studentId: `66${tag.slice(0, 6)}`,
+        desiredDepartmentId: deptAId,
+        answers: { q_github: 'https://github.com/parallel-test' },
+      }
+
+      // Bắn 2 request hoàn toàn song song
+      const [resA, resB] = await Promise.all([
+        app.inject({
+          method: 'POST',
+          url: `/public/recruitment-rounds/${_applyRoundSlug}/applications`,
+          headers: { origin: ORIGIN, 'idempotency-key': parallelKey },
+          payload: parallelPayload,
+        }),
+        app.inject({
+          method: 'POST',
+          url: `/public/recruitment-rounds/${_applyRoundSlug}/applications`,
+          headers: { origin: ORIGIN, 'idempotency-key': parallelKey },
+          payload: parallelPayload,
+        }),
+      ])
+
+      // Cả 2 đều phải 201 thành công
+      expect(resA.statusCode).toBe(201)
+      expect(resB.statusCode).toBe(201)
+      // Cả 2 phải trả về cùng một mã hồ sơ
+      expect(resA.json().profileCode).toBe(resB.json().profileCode)
+
+      // Database chỉ được tạo đúng 1 bản ghi
+      const count = await db.membershipApplication.count({
+        where: { idempotencyKey: parallelKey },
+      })
+      expect(count).toBe(1)
     })
 
     it('Nộp đơn trùng email trong đợt trả 409 với câu thông báo bảo mật chung', async () => {
@@ -769,6 +863,180 @@ describe('Recruitment Module (R2)', () => {
       expect(res.json().message).toBe(
         'Không thể nộp đơn với thông tin này. Nếu đã nộp, vui lòng dùng trang tra cứu.',
       )
+    })
+        it('Nộp đơn vào đợt ở trạng thái DRAFT trả 404', async () => {
+      const draftRound = await db.recruitmentRound.create({
+        data: {
+          title: `Đợt nháp ${tag}`,
+          slug: `draft-round-${tag}`,
+          description: 'Mô tả đợt nháp',
+          audience: 'Sinh viên',
+          requirements: 'Yêu cầu',
+          status: 'DRAFT',
+          opensAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          closesAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          createdById: createdUserIds[0]!,
+          departments: { connect: [{ id: deptAId }] },
+        },
+      })
+      createdRoundIds.push(draftRound.id)
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/public/recruitment-rounds/${draftRound.slug}/applications`,
+        headers: { origin: ORIGIN },
+        payload: {
+          ...basePayload,
+          applicantEmail: `draft-${tag}@example.com`,
+          studentId: `DR${tag.slice(0, 6)}`,
+          desiredDepartmentId: deptAId,
+        },
+      })
+      expect(res.statusCode).toBe(404)
+    })
+
+    it('Nộp đơn vào đợt OPEN nhưng chưa tới ngày mở nhận đơn trả 409', async () => {
+      const futureRound = await db.recruitmentRound.create({
+        data: {
+          title: `Đợt tương lai ${tag}`,
+          slug: `future-round-${tag}`,
+          description: 'Mô tả đợt tương lai',
+          audience: 'Sinh viên',
+          requirements: 'Yêu cầu',
+          status: 'OPEN',
+          opensAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // Mở sau 2 ngày
+          closesAt: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000),
+          createdById: createdUserIds[0]!,
+          departments: { connect: [{ id: deptAId }] },
+        },
+      })
+      createdRoundIds.push(futureRound.id)
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/public/recruitment-rounds/${futureRound.slug}/applications`,
+        headers: { origin: ORIGIN },
+        payload: {
+          ...basePayload,
+          applicantEmail: `future-${tag}@example.com`,
+          studentId: `FU${tag.slice(0, 6)}`,
+          desiredDepartmentId: deptAId,
+        },
+      })
+      expect(res.statusCode).toBe(409)
+      expect(res.json().message).toContain('không trong thời gian nhận đơn')
+    })
+
+    it('Nộp đơn vào đợt OPEN nhưng đã quá hạn đóng nhận đơn trả 409', async () => {
+      const expiredRound = await db.recruitmentRound.create({
+        data: {
+          title: `Đợt hết hạn ${tag}`,
+          slug: `expired-round-${tag}`,
+          description: 'Mô tả đợt hết hạn',
+          audience: 'Sinh viên',
+          requirements: 'Yêu cầu',
+          status: 'OPEN',
+          opensAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+          closesAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // Đã đóng hôm qua
+          createdById: createdUserIds[0]!,
+          departments: { connect: [{ id: deptAId }] },
+        },
+      })
+      createdRoundIds.push(expiredRound.id)
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/public/recruitment-rounds/${expiredRound.slug}/applications`,
+        headers: { origin: ORIGIN },
+        payload: {
+          ...basePayload,
+          applicantEmail: `expired-${tag}@example.com`,
+          studentId: `EX${tag.slice(0, 6)}`,
+          desiredDepartmentId: deptAId,
+        },
+      })
+      expect(res.statusCode).toBe(409)
+      expect(res.json().message).toContain('không trong thời gian nhận đơn')
+    })
+
+        it('Chọn lựa chọn không nằm trong danh sách câu hỏi trắc nghiệm trả 422', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/public/recruitment-rounds/${_applyRoundSlug}/applications`,
+        headers: { origin: ORIGIN },
+        payload: {
+          ...basePayload,
+          applicantEmail: `invalid-opt-${tag}@example.com`,
+          studentId: `IO${tag.slice(0, 6)}`,
+          desiredDepartmentId: deptAId,
+          answers: {
+            q_github: 'https://github.com/test',
+            q_role: 'opt_khong_ton_tai', // Lựa chọn không hợp lệ
+          },
+        },
+      })
+      expect(res.statusCode).toBe(422)
+      expect(res.json().issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: ['answers', 'q_role'] }),
+        ]),
+      )
+    })
+
+        it('Hai request gửi song song cùng email (không có key) chỉ 1 request thành công 201, request kia 409', async () => {
+      const concurrentEmail = `concurrent-${tag}@example.com`
+      const payload = {
+        ...basePayload,
+        applicantEmail: concurrentEmail,
+        studentId: `CC${tag.slice(0, 6)}`,
+        desiredDepartmentId: deptAId,
+        answers: { q_github: 'https://github.com/test' },
+      }
+
+      const [resA, resB] = await Promise.all([
+        app.inject({
+          method: 'POST',
+          url: `/public/recruitment-rounds/${_applyRoundSlug}/applications`,
+          headers: { origin: ORIGIN },
+          payload,
+        }),
+        app.inject({
+          method: 'POST',
+          url: `/public/recruitment-rounds/${_applyRoundSlug}/applications`,
+          headers: { origin: ORIGIN },
+          payload,
+        }),
+      ])
+
+      const codes = [resA.statusCode, resB.statusCode].sort()
+      expect(codes).toEqual([201, 409])
+    })
+
+        it('Gửi quá 10 lần trong 15 phút từ cùng cặp (IP, email) nhận 429 rate_limited (SEC-05)', async () => {
+      const ip = nextIp()
+      const floodEmail = `flood-${tag}@example.com`
+      const floodPayload = {
+        ...basePayload,
+        applicantEmail: floodEmail,
+        studentId: `FL${tag.slice(0, 6)}`,
+        desiredDepartmentId: deptAId,
+        answers: { q_github: 'https://github.com/flood' },
+      }
+
+      const statuses: number[] = []
+      for (let i = 0; i < 11; i++) {
+        const res = await app.inject({
+          method: 'POST',
+          url: `/public/recruitment-rounds/${_applyRoundSlug}/applications`,
+          remoteAddress: ip,
+          headers: { origin: ORIGIN },
+          payload: floodPayload,
+        })
+        statuses.push(res.statusCode)
+      }
+
+      expect(statuses[0]).toBe(201)
+      expect(statuses[10]).toBe(429) // Lần thứ 11 chạm ngưỡng rate limit
     })
   })
   // ─── 8. TRA CỨU VÀ RÚT ĐƠN (R4) ───────────────────────────

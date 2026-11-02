@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { AsyncState } from '../../../components/AsyncState'
 import { PageHero } from '../../../components/PageHero'
 import { Pagination } from '../../../components/Pagination'
+import { SearchBox } from '../../../components/SearchBox'
 import { ProjectCard } from '../../../components/ProjectCard'
 import { useApi } from '../../../hooks/useApi'
 import type { Page } from '../../../lib/api'
@@ -44,6 +45,7 @@ export function ProjectListPage() {
       />
       <section className="px-4 py-[clamp(40px,7vh,80px)] md:px-8">
         <div className="mx-auto w-full max-w-container-max">
+          <SearchBox />
           <AsyncState loading={loading} error={error} empty={items.length === 0} emptyText="Chưa có dự án nào." onRetry={reload}>
             <div className="grid gap-x-8 gap-y-14 md:grid-cols-2 lg:grid-cols-3">
               {items.map((item) => (

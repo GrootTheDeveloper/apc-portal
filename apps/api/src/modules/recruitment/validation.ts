@@ -164,9 +164,9 @@ export const ChangeRoundStatusSchema = z.object({
 })
 
 export const SubmitApplicationSchema = z.object({
-  applicantName: z.string().trim().min(2,'Họ tên tối thiểu 2 ký tự').max(100),
-  applicantEmail: z.string().trim().email('Email không hợp lệ'),
-  studentId: z.string().trim().min(3,'Mã số sinh viên không hợp lệ').max(20),
+  applicantName: z.string().trim().min(2, 'Họ tên tối thiểu 2 ký tự').max(100),
+  applicantEmail: z.string().trim().email('Email không hợp lệ').max(254,'Email tối đa 254 ký tự').toLowerCase(),
+  studentId: z.string().trim().min(3, 'Mã số sinh viên không hợp lệ').max(20).toUpperCase(),
   faculty: z.string().trim().max(100).optional().nullable(),
   major: z.string().trim().max(100).optional().nullable(),
   cohort: z.string().trim().max(50).optional().nullable(),
@@ -180,7 +180,6 @@ export const SubmitApplicationSchema = z.object({
 })
 
 export type SubmitApplicationInput = z.infer<typeof SubmitApplicationSchema>
-
 export const LookupApplicationSchema = z.object({
   email: z.string().trim().email('Email không đúng định dạng'),
   code: z.string().trim().min(1, 'Mã hồ sơ không được để trống'),
