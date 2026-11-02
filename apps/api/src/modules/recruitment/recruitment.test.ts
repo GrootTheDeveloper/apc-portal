@@ -1369,12 +1369,35 @@ describe('Recruitment Module (R2)', () => {
       })
       expect(email).not.toBeNull()
       expect(email?.status).toBe('PENDING')
+      expect(email?.departmentId).toBe(deptAId) // Truyền đúng departmentId vào hàng đợi
 
-      // Kiểm tra nội dung email: không để mã trên URL hay thông báo rút (QĐ-7 & OPS-11)
+      // Kiểm tra nội dung email: không để mã trên URL hay thông báo rút (QĐ-7 & OPS-11), nhãn tiếng Việt
       const renderedEmail = await EMAIL_TEMPLATES.APPLICATION_STATUS(updated.id)
       expect(renderedEmail).not.toBeNull()
-      expect(renderedEmail?.html).toMatch(/href="[^"]*\/recruitment\/application-lookup"/)
+      expect(renderedEmail?.html).toMatch(/href="https?:\/\/[^"]*\/recruitment\/application-lookup"/)
+      expect(renderedEmail?.html).toContain('Đã rút đơn')
+      expect(renderedEmail?.text).toContain('Đã rút đơn')
       expect(renderedEmail?.html).not.toContain(testAppCode)
+    })
+
+    it('Template APPLICATION_STATUS đổi các trạng thái sang nhãn tiếng Việt và link tuyệt đối', async () => {
+      const dummyApp = await db.membershipApplication.create({
+        data: {
+          profileCode: publicCode(12),
+          recruitmentRoundId: lookupRoundId,
+          applicantName: 'Nguyễn Ứng Viên Test',
+          applicantEmail: `template-test-${tag}@test.local`,
+          studentId: `TT${tag.slice(0, 6)}`,
+          status: 'INTERVIEW',
+        },
+      })
+
+      const rendered = await EMAIL_TEMPLATES.APPLICATION_STATUS(dummyApp.id)
+      expect(rendered).not.toBeNull()
+      expect(rendered?.text).toContain('Mời phỏng vấn')
+      expect(rendered?.html).toContain('Mời phỏng vấn')
+      expect(rendered?.text).not.toContain('INTERVIEW') // Không in nguyên enum tiếng Anh
+      expect(rendered?.html).toMatch(/href="https?:\/\/[^"]*\/recruitment\/application-lookup"/)
     })
 
     it('Hồ sơ đã ở trạng thái WITHDRAWN không được rút tiếp (409)', async () => {

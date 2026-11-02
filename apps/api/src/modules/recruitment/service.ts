@@ -846,6 +846,7 @@ export async function withdrawApplication(request: FastifyRequest, input: unknow
       id: true,
       profileCode: true,
       applicantEmail: true,
+      desiredDepartmentId: true,
       status: true,
     },
   })
@@ -906,6 +907,7 @@ export async function withdrawApplication(request: FastifyRequest, input: unknow
       to: app.applicantEmail,
       refType: 'APPLICATION',
       refId: app.id,
+      departmentId: app.desiredDepartmentId ?? undefined,
     })
 
     return row

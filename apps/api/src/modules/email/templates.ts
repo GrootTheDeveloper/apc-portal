@@ -35,6 +35,15 @@ async function guestRegistrationEmailData(refId: string) {
   return { ...registration, guestFullName: registration.guestFullName }
 }
 
+export const APPLICATION_STATUS_LABELS: Record<string, string> = {
+  NEW: 'Mới nộp',
+  REVIEWING: 'Đang xét duyệt',
+  INTERVIEW: 'Mời phỏng vấn',
+  ACCEPTED: 'Đã chấp nhận',
+  REJECTED: 'Không phù hợp',
+  WITHDRAWN: 'Đã rút đơn',
+}
+
 /**
  * Mẫu email tạm (E3, trước khi O2 có khung chung): xác nhận và hủy đăng ký sự kiện của khách (NTF-01).
  * Mọi dữ liệu người dùng nhập đều qua escapeHtml trước khi chèn vào HTML.
@@ -141,14 +150,14 @@ export const EMAIL_TEMPLATES = {
 
     const applicantName = escapeHtml(app.applicantName)
     const roundTitle = escapeHtml(app.recruitmentRound.title)
-    const statusText = app.status === 'WITHDRAWN' ? 'Đã rút đơn' : app.status
+    const statusText = APPLICATION_STATUS_LABELS[app.status] ?? app.status
     const lookupUrl = APPLICATION_LOOKUP_URL
 
     return {
       subject: `[APC] Cập nhật trạng thái hồ sơ tuyển thành viên: ${app.recruitmentRound.title}`,
       text: `Xin chào ${app.applicantName},\n\nHồ sơ ứng tuyển của bạn cho đợt "${app.recruitmentRound.title}" đã được chuyển sang trạng thái: ${statusText}.\n\nBạn có thể kiểm tra chi tiết tại: ${lookupUrl}\n\nTrân trọng,\nCâu lạc bộ Lập trình ứng dụng (APC)`,
       html: `<p>Xin chào <strong>${applicantName}</strong>,</p>
-<p>Hồ sơ ứng tuyển của bạn cho đợt tuyển <strong>${roundTitle}</strong> đã được chuyển sang trạng thái: <strong>${statusText}</strong>.</p>
+<p>Hồ sơ ứng tuyển của bạn cho đợt tuyển <strong>${roundTitle}</strong> đã được chuyển sang trạng thái: <strong>${escapeHtml(statusText)}</strong>.</p>
 <p>Bạn có thể kiểm tra chi tiết tại: <a href="${escapeHtml(lookupUrl)}">${escapeHtml(lookupUrl)}</a></p>
 <p>Trân trọng,<br>Câu lạc bộ Lập trình ứng dụng (APC)</p>`,
     }
