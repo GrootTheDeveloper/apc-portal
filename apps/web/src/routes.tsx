@@ -24,6 +24,7 @@ import { ProjectDetailPage } from './pages/projects/detail/ProjectDetailPage'
 import { ProjectListPage } from './pages/projects/list/ProjectListPage'
 import { RecruitmentDetailPage } from './pages/recruitment/detail/RecruitmentDetailPage'
 import { RecruitmentListPage } from './pages/recruitment/list/RecruitmentListPage'
+import { RecruitmentApplyPage } from './pages/recruitment/apply/RecruitmentApplyPage'
 
 // MỌI route của web khai báo ở đây (A3). `isAppPath` bên dưới đọc thẳng cây này để kiểm `returnTo`,
 // nên thêm route mới chỉ cần khai báo một lần. Trang portal/quản trị khai báo trong src/lib/menu.ts
@@ -67,6 +68,7 @@ export const appRoutes: RouteObject[] = [
       { path: 'recruitment', element: <RecruitmentListPage /> },
       { path: 'recruitment/application-lookup', element: <Placeholder title="Tra cứu hồ sơ ứng tuyển" /> },
       { path: 'recruitment/:slug', element: <RecruitmentDetailPage /> },
+      { path: 'recruitment/:slug/apply', element: <RecruitmentApplyPage /> },
       { path: 'privacy', element: <PrivacyPage /> },
       { path: 'search', element: <SearchPage /> },
       // Trang đăng nhập tải lười để tránh vòng import (LoginPage dùng `isAppPath` của file này).
