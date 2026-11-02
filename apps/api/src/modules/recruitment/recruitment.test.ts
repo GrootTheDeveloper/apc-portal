@@ -1391,5 +1391,65 @@ describe('Recruitment Module (R2)', () => {
       expect(res.statusCode).toBe(409)
       expect(res.json().message).toContain('không ở trạng thái có thể rút')
     })
+
+    it('Hai request rút đơn gửi song song chỉ 1 request thành công 200, request kia trả 409, chỉ ghi 1 dòng audit và 1 email', async () => {
+      const concurrentCode = publicCode(12)
+      const concurrentEmail = `withdraw-concurrent-${tag}@test.local`
+
+      const appRecord = await db.membershipApplication.create({
+        data: {
+          profileCode: concurrentCode,
+          recruitmentRoundId: lookupRoundId,
+          applicantName: 'Ứng viên Song Song',
+          applicantEmail: concurrentEmail,
+          studentId: `CC${tag.slice(0, 6)}`,
+          status: 'NEW',
+        },
+      })
+
+      const payload = { email: concurrentEmail, code: concurrentCode }
+
+      const [resA, resB] = await Promise.all([
+        app.inject({
+          method: 'POST',
+          url: '/public/applications/withdraw',
+          headers: { origin: ORIGIN },
+          payload,
+        }),
+        app.inject({
+          method: 'POST',
+          url: '/public/applications/withdraw',
+          headers: { origin: ORIGIN },
+          payload,
+        }),
+      ])
+
+      const statusCodes = [resA.statusCode, resB.statusCode].sort()
+      expect(statusCodes).toEqual([200, 409])
+
+      // Database cập nhật sang WITHDRAWN
+      const updated = await db.membershipApplication.findUniqueOrThrow({
+        where: { id: appRecord.id },
+      })
+      expect(updated.status).toBe('WITHDRAWN')
+
+      // Chỉ có duy nhất 1 dòng audit log
+      const auditCount = await db.auditLog.count({
+        where: {
+          action: AUDIT_ACTIONS.RECRUITMENT_WITHDRAW_APPLICATION,
+          targetId: appRecord.id,
+        },
+      })
+      expect(auditCount).toBe(1)
+
+      // Chỉ có duy nhất 1 email trong hàng đợi
+      const emailCount = await db.notificationDelivery.count({
+        where: {
+          type: 'APPLICATION_STATUS',
+          refId: appRecord.id,
+        },
+      })
+      expect(emailCount).toBe(1)
+    })
   })
 })

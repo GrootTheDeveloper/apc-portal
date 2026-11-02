@@ -854,15 +854,28 @@ export async function withdrawApplication(request: FastifyRequest, input: unknow
     throw notFound('Không tìm thấy hồ sơ với thông tin đã cung cấp.')
   }
 
-  const allowedStatuses = ['NEW', 'REVIEWING', 'INTERVIEW']
-  if (!allowedStatuses.includes(app.status)) {
+  const allowedStatuses = ['NEW', 'REVIEWING', 'INTERVIEW'] as const
+  if (!allowedStatuses.includes(app.status as any)) {
     throw conflict('Hồ sơ không ở trạng thái có thể rút đơn.')
   }
 
   const updated = await db.$transaction(async (tx) => {
-    const res = await tx.membershipApplication.update({
-      where: { id: app.id },
+    // updateMany kèm điều kiện status để chống race condition: hai lượt bấm song song chỉ một lượt thắng,
+    // hoặc không thể đè trạng thái ACCEPTED/REJECTED/WITHDRAWN nếu đã thay đổi giữa chừng (BR-16).
+    const { count } = await tx.membershipApplication.updateMany({
+      where: {
+        id: app.id,
+        status: { in: [...allowedStatuses] },
+      },
       data: { status: 'WITHDRAWN' },
+    })
+
+    if (count === 0) {
+      throw conflict('Hồ sơ không ở trạng thái có thể rút đơn.')
+    }
+
+    const row = await tx.membershipApplication.findUniqueOrThrow({
+      where: { id: app.id },
       select: {
         id: true,
         status: true,
@@ -895,7 +908,7 @@ export async function withdrawApplication(request: FastifyRequest, input: unknow
       refId: app.id,
     })
 
-    return res
+    return row
   })
 
   return {
