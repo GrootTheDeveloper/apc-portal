@@ -1107,6 +1107,45 @@ describe('Recruitment Module (R2)', () => {
       expect(data.answers).toBeUndefined()
     })
 
+    it('Tra cứu thành công kể cả khi nhập mã hồ sơ bằng chữ thường hoặc thừa khoảng trắng', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/public/applications/lookup',
+        headers: { origin: ORIGIN },
+        payload: {
+          email: applicantEmail.toUpperCase(),
+          code: `  ${testAppCode.toLowerCase()}  `,
+        },
+      })
+
+      expect(res.statusCode).toBe(200)
+      expect(res.json().profileCode).toBe(testAppCode)
+    })
+
+    it('Tra cứu với mã hồ sơ quá 32 ký tự hoặc email quá 254 ký tự trả về 422', async () => {
+      const resLongCode = await app.inject({
+        method: 'POST',
+        url: '/public/applications/lookup',
+        headers: { origin: ORIGIN },
+        payload: {
+          email: applicantEmail,
+          code: 'A'.repeat(33),
+        },
+      })
+      expect(resLongCode.statusCode).toBe(422)
+
+      const resLongEmail = await app.inject({
+        method: 'POST',
+        url: '/public/applications/lookup',
+        headers: { origin: ORIGIN },
+        payload: {
+          email: `${'a'.repeat(250)}@test.com`,
+          code: testAppCode,
+        },
+      })
+      expect(resLongEmail.statusCode).toBe(422)
+    })
+
     it('Tra cứu với email sai kiểu (số 12345) trả về 422 chứ không lỗi 500', async () => {
       const res = await app.inject({
         method: 'POST',

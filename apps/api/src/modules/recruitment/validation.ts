@@ -182,12 +182,9 @@ export const SubmitApplicationSchema = z.object({
 export type SubmitApplicationInput = z.infer<typeof SubmitApplicationSchema>
 export const LookupApplicationSchema = z.object({
   email: z.string().trim().email('Email không đúng định dạng').max(254, 'Email tối đa 254 ký tự').toLowerCase(),
-  code: z.string().trim().min(1, 'Mã hồ sơ không được để trống'),
+  code: z.string().trim().min(1, 'Mã hồ sơ không được để trống').max(32, 'Mã hồ sơ tối đa 32 ký tự').toUpperCase(),
 })
 export type LookupApplicationInput = z.infer<typeof LookupApplicationSchema>
 
-export const WithdrawApplicationSchema = z.object({
-  email: z.string().trim().email('Email không đúng định dạng').max(254, 'Email tối đa 254 ký tự').toLowerCase(),
-  code: z.string().trim().min(1, 'Mã hồ sơ không được để trống'),
-})
-export type WithdrawApplicationInput = z.infer<typeof WithdrawApplicationSchema>
+export const WithdrawApplicationSchema = LookupApplicationSchema
+export type WithdrawApplicationInput = LookupApplicationInput

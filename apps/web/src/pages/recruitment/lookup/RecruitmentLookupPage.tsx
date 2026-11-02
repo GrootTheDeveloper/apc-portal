@@ -150,6 +150,7 @@ export function RecruitmentLookupPage() {
                 type="email"
                 autoComplete="email"
                 required
+                maxLength={254}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="vd: nguyenvana@example.com"
@@ -160,12 +161,12 @@ export function RecruitmentLookupPage() {
             <label className={labelClass}>
               mã hồ sơ (Profile Code) *
               <input
-                className={`${inputClass} font-code tracking-[0.12em]`}
+                className={`${inputClass} font-code tracking-[0.12em] uppercase`}
                 name="code"
                 type="text"
                 autoComplete="off"
                 required
-                maxLength={30}
+                maxLength={32}
                 spellCheck={false}
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
