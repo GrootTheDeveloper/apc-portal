@@ -1047,6 +1047,24 @@ describe('Recruitment Module (R2)', () => {
     let lookupRoundSlug: string
     const applicantEmail = `lookup-${tag}@example.com`
 
+    const postLookup = (payload: Record<string, unknown>, options?: { ip?: string }) =>
+      app.inject({
+        method: 'POST',
+        url: '/public/applications/lookup',
+        headers: { origin: ORIGIN },
+        remoteAddress: options?.ip ?? nextIp(),
+        payload,
+      })
+
+    const postWithdraw = (payload: Record<string, unknown>, options?: { ip?: string }) =>
+      app.inject({
+        method: 'POST',
+        url: '/public/applications/withdraw',
+        headers: { origin: ORIGIN },
+        remoteAddress: options?.ip ?? nextIp(),
+        payload,
+      })
+
     beforeAll(async () => {
       lookupRoundSlug = `lookup-round-${tag}`
       const round = await db.recruitmentRound.create({
@@ -1084,14 +1102,9 @@ describe('Recruitment Module (R2)', () => {
     })
 
     it('Tra cứu đúng trả về 200, đúng trạng thái và KHÔNG để lộ ghi chú nội bộ (BR-07)', async () => {
-      const res = await app.inject({
-        method: 'POST',
-        url: '/public/applications/lookup',
-        headers: { origin: ORIGIN },
-        payload: {
-          email: applicantEmail,
-          code: testAppCode,
-        },
+      const res = await postLookup({
+        email: applicantEmail,
+        code: testAppCode,
       })
 
       expect(res.statusCode).toBe(200)
@@ -1108,14 +1121,9 @@ describe('Recruitment Module (R2)', () => {
     })
 
     it('Tra cứu thành công kể cả khi nhập mã hồ sơ bằng chữ thường hoặc thừa khoảng trắng', async () => {
-      const res = await app.inject({
-        method: 'POST',
-        url: '/public/applications/lookup',
-        headers: { origin: ORIGIN },
-        payload: {
-          email: applicantEmail.toUpperCase(),
-          code: `  ${testAppCode.toLowerCase()}  `,
-        },
+      const res = await postLookup({
+        email: applicantEmail.toUpperCase(),
+        code: `  ${testAppCode.toLowerCase()}  `,
       })
 
       expect(res.statusCode).toBe(200)
@@ -1123,51 +1131,31 @@ describe('Recruitment Module (R2)', () => {
     })
 
     it('Tra cứu với mã hồ sơ quá 32 ký tự hoặc email quá 254 ký tự trả về 422', async () => {
-      const resLongCode = await app.inject({
-        method: 'POST',
-        url: '/public/applications/lookup',
-        headers: { origin: ORIGIN },
-        payload: {
-          email: applicantEmail,
-          code: 'A'.repeat(33),
-        },
+      const resLongCode = await postLookup({
+        email: applicantEmail,
+        code: 'A'.repeat(33),
       })
       expect(resLongCode.statusCode).toBe(422)
 
-      const resLongEmail = await app.inject({
-        method: 'POST',
-        url: '/public/applications/lookup',
-        headers: { origin: ORIGIN },
-        payload: {
-          email: `${'a'.repeat(250)}@test.com`,
-          code: testAppCode,
-        },
+      const resLongEmail = await postLookup({
+        email: `${'a'.repeat(250)}@test.com`,
+        code: testAppCode,
       })
       expect(resLongEmail.statusCode).toBe(422)
     })
 
     it('Tra cứu với email sai kiểu (số 12345) trả về 422 chứ không lỗi 500', async () => {
-      const res = await app.inject({
-        method: 'POST',
-        url: '/public/applications/lookup',
-        headers: { origin: ORIGIN },
-        payload: {
-          email: 12345,
-          code: testAppCode,
-        },
+      const res = await postLookup({
+        email: 12345,
+        code: testAppCode,
       })
       expect(res.statusCode).toBe(422)
     })
 
     it('Rút đơn với email sai kiểu (số 12345) trả về 422 chứ không lỗi 500', async () => {
-      const res = await app.inject({
-        method: 'POST',
-        url: '/public/applications/withdraw',
-        headers: { origin: ORIGIN },
-        payload: {
-          email: 12345,
-          code: testAppCode,
-        },
+      const res = await postWithdraw({
+        email: 12345,
+        code: testAppCode,
       })
       expect(res.statusCode).toBe(422)
     })
@@ -1176,27 +1164,17 @@ describe('Recruitment Module (R2)', () => {
       const expectedMessage = 'Không tìm thấy hồ sơ với thông tin đã cung cấp.'
 
       // Case 1: Đúng mã nhưng sai email
-      const resWrongEmail = await app.inject({
-        method: 'POST',
-        url: '/public/applications/lookup',
-        headers: { origin: ORIGIN },
-        payload: {
-          email: `wrong-email-${tag}@example.com`,
-          code: testAppCode,
-        },
+      const resWrongEmail = await postLookup({
+        email: `wrong-email-${tag}@example.com`,
+        code: testAppCode,
       })
       expect(resWrongEmail.statusCode).toBe(404)
       expect(resWrongEmail.json().message).toBe(expectedMessage)
 
       // Case 2: Đúng email nhưng sai mã
-      const resWrongCode = await app.inject({
-        method: 'POST',
-        url: '/public/applications/lookup',
-        headers: { origin: ORIGIN },
-        payload: {
-          email: applicantEmail,
-          code: 'WRONGCODE999',
-        },
+      const resWrongCode = await postLookup({
+        email: applicantEmail,
+        code: 'WRONGCODE999',
       })
       expect(resWrongCode.statusCode).toBe(404)
       expect(resWrongCode.json().message).toBe(expectedMessage)
@@ -1206,27 +1184,17 @@ describe('Recruitment Module (R2)', () => {
       const expectedMessage = 'Không tìm thấy hồ sơ với thông tin đã cung cấp.'
 
       // Case 1: Đúng mã nhưng sai email
-      const resWrongEmail = await app.inject({
-        method: 'POST',
-        url: '/public/applications/withdraw',
-        headers: { origin: ORIGIN },
-        payload: {
-          email: `wrong-email-${tag}@example.com`,
-          code: testAppCode,
-        },
+      const resWrongEmail = await postWithdraw({
+        email: `wrong-email-${tag}@example.com`,
+        code: testAppCode,
       })
       expect(resWrongEmail.statusCode).toBe(404)
       expect(resWrongEmail.json().message).toBe(expectedMessage)
 
       // Case 2: Đúng email nhưng sai mã
-      const resWrongCode = await app.inject({
-        method: 'POST',
-        url: '/public/applications/withdraw',
-        headers: { origin: ORIGIN },
-        payload: {
-          email: applicantEmail,
-          code: 'WRONGCODE999',
-        },
+      const resWrongCode = await postWithdraw({
+        email: applicantEmail,
+        code: 'WRONGCODE999',
       })
       expect(resWrongCode.statusCode).toBe(404)
       expect(resWrongCode.json().message).toBe(expectedMessage)
@@ -1262,44 +1230,20 @@ describe('Recruitment Module (R2)', () => {
       const ip = nextIp()
       const wrong = { email: applicantEmail, code: 'WRONGCODE999' }
       for (let attempt = 0; attempt < 4; attempt++) {
-        const res = await app.inject({
-          method: 'POST',
-          url: '/public/applications/lookup',
-          headers: { origin: ORIGIN },
-          remoteAddress: ip,
-          payload: wrong,
-        })
+        const res = await postLookup(wrong, { ip })
         expect(res.statusCode).toBe(404)
       }
 
       // Lượt đúng không tốn hạn mức và giải tỏa ô đếm
-      const correctRes = await app.inject({
-        method: 'POST',
-        url: '/public/applications/lookup',
-        headers: { origin: ORIGIN },
-        remoteAddress: ip,
-        payload: { email: applicantEmail, code: testAppCode },
-      })
+      const correctRes = await postLookup({ email: applicantEmail, code: testAppCode }, { ip })
       expect(correctRes.statusCode).toBe(200)
 
       // Sau khi giải tỏa, lại được sai đủ 5 lượt (nếu đếm cả lượt đúng thì đã dính 429)
       for (let attempt = 0; attempt < 5; attempt++) {
-        const res = await app.inject({
-          method: 'POST',
-          url: '/public/applications/lookup',
-          headers: { origin: ORIGIN },
-          remoteAddress: ip,
-          payload: wrong,
-        })
+        const res = await postLookup(wrong, { ip })
         expect(res.statusCode).toBe(404)
       }
-      const blockedRes = await app.inject({
-        method: 'POST',
-        url: '/public/applications/lookup',
-        headers: { origin: ORIGIN },
-        remoteAddress: ip,
-        payload: wrong,
-      })
+      const blockedRes = await postLookup(wrong, { ip })
       expect(blockedRes.statusCode).toBe(429)
     })
 
@@ -1307,13 +1251,10 @@ describe('Recruitment Module (R2)', () => {
       const ip = nextIp()
       const statuses: number[] = []
       for (let attempt = 0; attempt < 31; attempt++) {
-        const res = await app.inject({
-          method: 'POST',
-          url: '/public/applications/lookup',
-          remoteAddress: ip,
-          headers: { origin: ORIGIN },
-          payload: { email: `ip-flood-${attempt}-${tag}@test.local`, code: 'XXXXXXXXXXXX' },
-        })
+        const res = await postLookup(
+          { email: `ip-flood-${attempt}-${tag}@test.local`, code: 'XXXXXXXXXXXX' },
+          { ip },
+        )
         statuses.push(res.statusCode)
       }
       expect(statuses.slice(0, 30).every((status) => status === 404)).toBe(true)
@@ -1324,13 +1265,14 @@ describe('Recruitment Module (R2)', () => {
       const testApp = buildApp(loadConfig({ NODE_ENV: 'test', LOOKUP_MAX_ATTEMPTS: '2' }))
       await testApp.ready()
       try {
+        const testIp = nextIp()
         const wrongLookup = (email: string) =>
           testApp.inject({
             method: 'POST',
             url: '/public/applications/lookup',
             payload: { email, code: 'XXXXXXXXXXXX' },
             headers: { origin: ORIGIN },
-            remoteAddress: nextIp(),
+            remoteAddress: testIp,
           })
         expect((await wrongLookup(`cfg-${tag}@test.local`)).statusCode).toBe(404)
         expect((await wrongLookup(`cfg-${tag}@test.local`)).statusCode).toBe(404)
@@ -1355,14 +1297,9 @@ describe('Recruitment Module (R2)', () => {
         },
       })
 
-      const res = await app.inject({
-        method: 'POST',
-        url: '/public/applications/withdraw',
-        headers: { origin: ORIGIN },
-        payload: {
-          email: acceptedEmail,
-          code: acceptedCode,
-        },
+      const res = await postWithdraw({
+        email: acceptedEmail,
+        code: acceptedCode,
       })
 
       expect(res.statusCode).toBe(409)
@@ -1370,14 +1307,9 @@ describe('Recruitment Module (R2)', () => {
     })
 
     it('Rút đơn thành công chuyển status sang WITHDRAWN, ghi audit không lộ mã và gửi email thông báo', async () => {
-      const res = await app.inject({
-        method: 'POST',
-        url: '/public/applications/withdraw',
-        headers: { origin: ORIGIN },
-        payload: {
-          email: applicantEmail,
-          code: testAppCode,
-        },
+      const res = await postWithdraw({
+        email: applicantEmail,
+        code: testAppCode,
       })
 
       expect(res.statusCode).toBe(200)
@@ -1444,14 +1376,9 @@ describe('Recruitment Module (R2)', () => {
     })
 
     it('Hồ sơ đã ở trạng thái WITHDRAWN không được rút tiếp (409)', async () => {
-      const res = await app.inject({
-        method: 'POST',
-        url: '/public/applications/withdraw',
-        headers: { origin: ORIGIN },
-        payload: {
-          email: applicantEmail,
-          code: testAppCode,
-        },
+      const res = await postWithdraw({
+        email: applicantEmail,
+        code: testAppCode,
       })
 
       expect(res.statusCode).toBe(409)
@@ -1474,20 +1401,11 @@ describe('Recruitment Module (R2)', () => {
       })
 
       const payload = { email: concurrentEmail, code: concurrentCode }
+      const testIp = nextIp()
 
       const [resA, resB] = await Promise.all([
-        app.inject({
-          method: 'POST',
-          url: '/public/applications/withdraw',
-          headers: { origin: ORIGIN },
-          payload,
-        }),
-        app.inject({
-          method: 'POST',
-          url: '/public/applications/withdraw',
-          headers: { origin: ORIGIN },
-          payload,
-        }),
+        postWithdraw(payload, { ip: testIp }),
+        postWithdraw(payload, { ip: testIp }),
       ])
 
       const statusCodes = [resA.statusCode, resB.statusCode].sort()
