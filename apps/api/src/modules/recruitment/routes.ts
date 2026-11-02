@@ -1,5 +1,7 @@
-import type { FastifyInstance } from 'fastify'
+import { z } from 'zod'
+import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { currentUser, requireAuth, requireRole } from '../auth/rbac.js'
+import { rateLimited } from '../../lib/errors.js'
 import {
   changeRecruitmentRoundStatus,
   createRecruitmentRound,
@@ -11,7 +13,35 @@ import {
   updateRecruitmentRound,
 } from './service.js'
 
+/**
+ * Khóa giới hạn tần suất theo cả địa chỉ nguồn lẫn email trong body (SEC-05):
+ * Mỗi cặp (IP, email) có một ô đếm riêng. Cắt email ở 120 ký tự để tránh phình bộ nhớ cache.
+ */
+function rateLimitKey(prefix: string) {
+  return (request: FastifyRequest) => {
+    const body = request.body && typeof request.body === 'object' ? (request.body as Record<string, unknown>) : {}
+    const email = String(body.applicantEmail ?? body.email ?? '')
+    return `${prefix}:${request.ip}:${email.toLowerCase().trim().slice(0, 120)}`
+  }
+}
+
 export async function recruitmentRoutes(app: FastifyInstance) {
+  /**
+   * Lớp 2 của chặn lạm dụng (SEC-05): Giới hạn theo mỗi địa chỉ nguồn (IP) —
+   * Một IP xoay nhiều email vẫn chỉ gửi được tối đa 30 lượt/15 phút trên toàn bộ route công khai (E3).
+   */
+  const sourceIpLimiter = app.createRateLimit({
+    max: 30,
+    timeWindow: '15 minutes',
+    keyGenerator: (request) => `recruitment-public:${request.ip}`,
+  })
+
+  const limitPerSourceIp = async (request: FastifyRequest) => {
+    const result = await sourceIpLimiter(request)
+    if (!result.isAllowed && result.isExceeded) {
+      throw rateLimited('Bạn thao tác quá nhiều lần từ địa chỉ này. Vui lòng thử lại sau.')
+    }
+  }
   // ─── PUBLIC ROUTES ────────────────────────────────────────────────────────
   app.get('/public/recruitment-rounds', async (request) => {
     return listPublicRecruitmentRounds(request.query)
@@ -21,19 +51,36 @@ export async function recruitmentRoutes(app: FastifyInstance) {
     const { slug } = request.params as { slug: string }
     return getPublicRecruitmentRoundBySlug(slug)
   })
-  // Nộp đơn ứng tuyển đợt tuyển công khai (R3, FLOW-04)
+  
+  // Nộp đơn ứng tuyển đợt tuyển công khai (R3, FLOW-04, SEC-05)
   app.post(
     '/public/recruitment-rounds/:slug/applications',
-    { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+    {
+      preHandler: limitPerSourceIp, // Lớp 2: chặn IP xoay email (> 30 lần/15p)
+      config: {
+        rateLimit: {
+          max: 10, // Lớp 1: mỗi cặp (IP, email) tối đa 10 lần/15p
+          timeWindow: '15 minutes',
+          hook: 'preHandler',
+          keyGenerator: rateLimitKey('recruitment-apply'),
+        },
+      },
+    },
     async (request, reply) => {
       const { slug } = request.params as { slug: string }
-      const idempotencyKey = (request.headers['idempotency-key'] as string | undefined)?.trim()
+
+      // Validate header Idempotency-Key bắt buộc chuẩn UUID nếu có gửi lên
+      const rawKey = request.headers['idempotency-key']
+      const idempotencyKey =
+        typeof rawKey === 'string' && rawKey.trim() !== ''
+          ? z.string().trim().uuid('Header Idempotency-Key phải có định dạng UUID hợp lệ.').parse(rawKey)
+          : undefined
+
       const user = request.user
       const result = await submitApplication(slug, request.body, idempotencyKey, user)
       return reply.code(201).send(result)
     },
   )
-
   // ─── ADMIN ROUTES ─────────────────────────────────────────────────────────
 
   // Danh sách đợt tuyển: BOARD hoặc DEPARTMENT_MANAGER
