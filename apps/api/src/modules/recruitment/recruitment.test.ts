@@ -1103,5 +1103,123 @@ describe('Recruitment Module (R2)', () => {
       expect(data.reviewedById).toBeUndefined()
       expect(data.answers).toBeUndefined()
     })
+
+    it('Tra cứu với email sai kiểu (số 12345) trả về 422 chứ không lỗi 500', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/public/applications/lookup',
+        headers: { origin: ORIGIN },
+        payload: {
+          email: 12345,
+          code: testAppCode,
+        },
+      })
+      expect(res.statusCode).toBe(422)
+    })
+
+    it('Rút đơn với email sai kiểu (số 12345) trả về 422 chứ không lỗi 500', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/public/applications/withdraw',
+        headers: { origin: ORIGIN },
+        payload: {
+          email: 12345,
+          code: testAppCode,
+        },
+      })
+      expect(res.statusCode).toBe(422)
+    })
+
+    it('Tra cứu sai thông tin trả 404 với thông báo bảo mật chung', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/public/applications/lookup',
+        headers: { origin: ORIGIN },
+        payload: {
+          email: 'wrong@example.com',
+          code: testAppCode,
+        },
+      })
+      expect(res.statusCode).toBe(404)
+      expect(res.json().message).toContain('Không tìm thấy hồ sơ')
+    })
+
+    it('Tra cứu quá 5 lần từ cùng cặp (IP, email) nhận 429 rate_limited', async () => {
+      const ip = nextIp()
+      const lookupFloodEmail = `lookup-flood-${tag}@test.local`
+
+      const statuses: number[] = []
+      for (let i = 0; i < 6; i++) {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/public/applications/lookup',
+          remoteAddress: ip,
+          headers: { origin: ORIGIN },
+          payload: {
+            email: lookupFloodEmail,
+            code: 'WRONGCODE123',
+          },
+        })
+        statuses.push(res.statusCode)
+      }
+
+      expect(statuses.slice(0, 5).every((s) => s === 404)).toBe(true)
+      expect(statuses[5]).toBe(429) // Lần thứ 6 chạm ngưỡng 5 lượt/15p
+    })
+
+    it('Rút đơn thành công chuyển status sang WITHDRAWN, ghi audit không lộ mã và gửi email thông báo', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/public/applications/withdraw',
+        headers: { origin: ORIGIN },
+        payload: {
+          email: applicantEmail,
+          code: testAppCode,
+        },
+      })
+
+      expect(res.statusCode).toBe(200)
+      expect(res.json().status).toBe('WITHDRAWN')
+
+      // Database được cập nhật
+      const updated = await db.membershipApplication.findUniqueOrThrow({
+        where: { profileCode: testAppCode },
+      })
+      expect(updated.status).toBe('WITHDRAWN')
+
+      // Audit log được ghi, metadata không được chứa mã hồ sơ
+      const auditLog = await db.auditLog.findFirst({
+        where: {
+          action: AUDIT_ACTIONS.RECRUITMENT_WITHDRAW_APPLICATION,
+          targetId: updated.id,
+        },
+      })
+      expect(auditLog).not.toBeNull()
+      expect(JSON.stringify(auditLog?.metadata)).not.toContain(testAppCode)
+
+      // Email thông báo rút đơn có trong queue
+      const email = await db.notificationDelivery.findFirst({
+        where: {
+          type: 'APPLICATION_STATUS',
+          refId: updated.id,
+        },
+      })
+      expect(email).not.toBeNull()
+    })
+
+    it('Hồ sơ đã ở trạng thái WITHDRAWN không được rút tiếp (409)', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/public/applications/withdraw',
+        headers: { origin: ORIGIN },
+        payload: {
+          email: applicantEmail,
+          code: testAppCode,
+        },
+      })
+
+      expect(res.statusCode).toBe(409)
+      expect(res.json().message).toContain('không ở trạng thái có thể rút')
+    })
   })
 })
