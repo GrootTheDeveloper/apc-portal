@@ -13,7 +13,7 @@ const safeHttpUrl = (value: string | null) => (value && /^https?:\/\//.test(valu
 // Đọc cấu hình đúng một lần khi nạp module (server.ts đã nạp .env trước khi import app);
 // không gọi loadConfig() lại trong từng lần render email.
 const REGISTRATION_LOOKUP_URL = `${loadConfig().WEB_URL.replace(/\/+$/, '')}/events/registration-lookup`
-
+const APPLICATION_LOOKUP_URL = `${loadConfig().WEB_URL.replace(/\/+$/, '')}/recruitment/application-lookup`
 /**
  * Tham chiếu đăng ký của khách đọc theo refId của email; mã đăng ký chỉ lấy ở đây,
  * không truyền qua hàng đợi (FLOW-26, OPS-11). Email tạm của E3 chỉ dành cho khách —
@@ -33,6 +33,15 @@ async function guestRegistrationEmailData(refId: string) {
   // Email tạm của E3 chỉ dành cho khách; dòng thành viên (E5) guestFullName rỗng → trả null.
   if (!registration || registration.guestFullName === null) return null
   return { ...registration, guestFullName: registration.guestFullName }
+}
+
+export const APPLICATION_STATUS_LABELS: Record<string, string> = {
+  NEW: 'Mới nộp',
+  REVIEWING: 'Đang xét duyệt',
+  INTERVIEW: 'Mời phỏng vấn',
+  ACCEPTED: 'Đã chấp nhận',
+  REJECTED: 'Không chấp nhận',
+  WITHDRAWN: 'Đã rút đơn',
 }
 
 /**
@@ -142,6 +151,53 @@ export const EMAIL_TEMPLATES = {
       subject: `APC Portal: sự kiện "${event.title}" đã bị hủy`,
       text: body,
       html,
+    }
+  },
+
+  /** Email xác nhận nộp đơn tuyển thành viên (R3, NTF-01) */
+  APPLICATION_SUBMITTED: async (applicationId) => {
+    const app = await db.membershipApplication.findUnique({
+      where: { id: applicationId },
+      include: { recruitmentRound: true },
+    })
+    if (!app) return null
+
+    const applicantName = escapeHtml(app.applicantName)
+    const roundTitle = escapeHtml(app.recruitmentRound.title)
+    const profileCode = app.profileCode
+    const lookupUrl = APPLICATION_LOOKUP_URL
+
+    return {
+      subject: `[APC] Xác nhận nộp đơn tuyển: ${app.recruitmentRound.title}`,
+      text: `Xin chào ${app.applicantName},\n\nBạn đã nộp đơn ứng tuyển thành công cho đợt tuyển "${app.recruitmentRound.title}".\n\nMã tra cứu hồ sơ của bạn: ${profileCode}\n\nBạn có thể tra cứu trạng thái hồ sơ tại: ${lookupUrl}\n\nTrân trọng,\nCâu lạc bộ Lập trình ứng dụng (APC)`,
+      html: `<p>Xin chào <strong>${applicantName}</strong>,</p>
+<p>Bạn đã nộp đơn ứng tuyển thành công cho đợt tuyển <strong>${roundTitle}</strong>.</p>
+<p>Mã tra cứu hồ sơ của bạn: <strong style="font-size: 18px; color: #C23B22;">${profileCode}</strong></p>
+<p>Vui lòng lưu lại mã hồ sơ này để tra cứu kết quả tại: <a href="${escapeHtml(lookupUrl)}">${escapeHtml(lookupUrl)}</a></p>
+<p>Trân trọng,<br>Câu lạc bộ Lập trình ứng dụng (APC)</p>`,
+    }
+  },
+
+  /** Email thông báo cập nhật trạng thái hồ sơ (R4, R5, NTF-01) */
+  APPLICATION_STATUS: async (applicationId) => {
+    const app = await db.membershipApplication.findUnique({
+      where: { id: applicationId },
+      include: { recruitmentRound: true },
+    })
+    if (!app) return null
+
+    const applicantName = escapeHtml(app.applicantName)
+    const roundTitle = escapeHtml(app.recruitmentRound.title)
+    const statusText = APPLICATION_STATUS_LABELS[app.status] ?? app.status
+    const lookupUrl = APPLICATION_LOOKUP_URL
+
+    return {
+      subject: `[APC] Cập nhật trạng thái hồ sơ tuyển thành viên: ${app.recruitmentRound.title}`,
+      text: `Xin chào ${app.applicantName},\n\nHồ sơ ứng tuyển của bạn cho đợt "${app.recruitmentRound.title}" đã được chuyển sang trạng thái: ${statusText}.\n\nBạn có thể kiểm tra chi tiết tại: ${lookupUrl}\n\nTrân trọng,\nCâu lạc bộ Lập trình ứng dụng (APC)`,
+      html: `<p>Xin chào <strong>${applicantName}</strong>,</p>
+<p>Hồ sơ ứng tuyển của bạn cho đợt tuyển <strong>${roundTitle}</strong> đã được chuyển sang trạng thái: <strong>${escapeHtml(statusText)}</strong>.</p>
+<p>Bạn có thể kiểm tra chi tiết tại: <a href="${escapeHtml(lookupUrl)}">${escapeHtml(lookupUrl)}</a></p>
+<p>Trân trọng,<br>Câu lạc bộ Lập trình ứng dụng (APC)</p>`,
     }
   },
 } satisfies Record<string, Template>

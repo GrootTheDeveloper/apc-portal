@@ -26,7 +26,11 @@ export function endsSession(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401
 }
 
-type Options = { method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'; body?: unknown }
+type Options = {
+  method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
+  body?: unknown
+  headers?: Record<string, string>
+}
 
 // Phiên hết hạn hoặc bị thu hồi giữa chừng: mọi 401 báo về đây một lần, AuthProvider đăng ký xử lý
 // (về trạng thái chưa đăng nhập → route guard đưa sang /login?returnTo=<trang đang mở>). Trang không tự xử lý 401.
@@ -35,13 +39,16 @@ export function onUnauthorized(handler: (() => void) | null) {
   unauthorizedHandler = handler
 }
 
-export async function api<T = unknown>(path: string, { method, body }: Options = {}): Promise<T> {
-  const init: RequestInit = { method: method ?? (body === undefined ? 'GET' : 'POST') }
+export async function api<T = unknown>(path: string, { method, body, headers }: Options = {}): Promise<T> {
+  const init: RequestInit = {
+    method: method ?? (body === undefined ? 'GET' : 'POST'),
+    headers: headers ? { ...headers } : undefined,
+  }
   if (body instanceof FormData) {
     // Upload tệp (D2): để trình duyệt tự đặt Content-Type kèm boundary multipart.
     init.body = body
   } else if (body !== undefined) {
-    init.headers = { 'Content-Type': 'application/json' }
+    init.headers = { 'Content-Type': 'application/json', ... (headers ?? {}) }
     init.body = JSON.stringify(body)
   }
 

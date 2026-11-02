@@ -162,3 +162,29 @@ export const UpdateRecruitmentRoundSchema = z.object({
 export const ChangeRoundStatusSchema = z.object({
   status: z.enum(['OPEN', 'CLOSED', 'ARCHIVED']),
 })
+
+export const SubmitApplicationSchema = z.object({
+  applicantName: z.string().trim().min(2, 'Họ tên tối thiểu 2 ký tự').max(100),
+  applicantEmail: z.string().trim().email('Email không hợp lệ').max(254,'Email tối đa 254 ký tự').toLowerCase(),
+  studentId: z.string().trim().min(3, 'Mã số sinh viên không hợp lệ').max(20).toUpperCase(),
+  faculty: z.string().trim().max(100).optional().nullable(),
+  major: z.string().trim().max(100).optional().nullable(),
+  cohort: z.string().trim().max(50).optional().nullable(),
+  desiredDepartmentId: z.string().min(1, 'Vui lòng chọn ban mong muốn'),
+  skills: z.string().trim().max(1000).optional().nullable(),
+  experience: z.string().trim().max(2000).optional().nullable(),
+  answers: z.record(z.string(), z.unknown()).optional().default({}),
+  consent: z.boolean().refine((val) => val === true, {
+    message: 'Bạn phải đồng ý với chính sách xử lý dữ liệu cá nhân',
+  }),
+})
+
+export type SubmitApplicationInput = z.infer<typeof SubmitApplicationSchema>
+export const LookupApplicationSchema = z.object({
+  email: z.string().trim().email('Email không đúng định dạng').max(254, 'Email tối đa 254 ký tự').toLowerCase(),
+  code: z.string().trim().min(1, 'Mã hồ sơ không được để trống').max(32, 'Mã hồ sơ tối đa 32 ký tự').toUpperCase(),
+})
+export type LookupApplicationInput = z.infer<typeof LookupApplicationSchema>
+
+export const WithdrawApplicationSchema = LookupApplicationSchema
+export type WithdrawApplicationInput = LookupApplicationInput

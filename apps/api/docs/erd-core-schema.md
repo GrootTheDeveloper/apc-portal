@@ -223,6 +223,7 @@ erDiagram
   membership_applications {
     String id PK
     String profileCode UK "Mã tra cứu công khai CSPRNG (REC-06)"
+    String idempotencyKey UK "tùy chọn. Khóa chống gửi lặp (FLOW-04, STATE-01)"
     String recruitmentRoundId FK
     String applicantName
     String applicantEmail

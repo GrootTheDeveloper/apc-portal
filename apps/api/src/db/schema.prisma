@@ -531,6 +531,7 @@ model RecruitmentRound {
 model MembershipApplication {
   id                 String           @id @default(cuid())
   profileCode        String           @unique // Mã tra cứu công khai CSPRNG (REC-06)
+  idempotencyKey     String?          @unique // Khóa chống gửi lặp (FLOW-04, STATE-01)
   recruitmentRoundId String
   recruitmentRound   RecruitmentRound @relation(fields: [recruitmentRoundId], references: [id])
 
