@@ -35,6 +35,15 @@ async function guestRegistrationEmailData(refId: string) {
   return { ...registration, guestFullName: registration.guestFullName }
 }
 
+export const APPLICATION_STATUS_LABELS: Record<string, string> = {
+  NEW: 'Mới nộp',
+  REVIEWING: 'Đang xét duyệt',
+  INTERVIEW: 'Mời phỏng vấn',
+  ACCEPTED: 'Đã chấp nhận',
+  REJECTED: 'Không chấp nhận',
+  WITHDRAWN: 'Đã rút đơn',
+}
+
 /**
  * Mẫu email tạm (E3, trước khi O2 có khung chung): xác nhận và hủy đăng ký sự kiện của khách (NTF-01).
  * Mọi dữ liệu người dùng nhập đều qua escapeHtml trước khi chèn vào HTML.
@@ -127,6 +136,29 @@ export const EMAIL_TEMPLATES = {
 <p>Bạn đã nộp đơn ứng tuyển thành công cho đợt tuyển <strong>${roundTitle}</strong>.</p>
 <p>Mã tra cứu hồ sơ của bạn: <strong style="font-size: 18px; color: #C23B22;">${profileCode}</strong></p>
 <p>Vui lòng lưu lại mã hồ sơ này để tra cứu kết quả tại: <a href="${escapeHtml(lookupUrl)}">${escapeHtml(lookupUrl)}</a></p>
+<p>Trân trọng,<br>Câu lạc bộ Lập trình ứng dụng (APC)</p>`,
+    }
+  },
+
+  /** Email thông báo cập nhật trạng thái hồ sơ (R4, R5, NTF-01) */
+  APPLICATION_STATUS: async (applicationId) => {
+    const app = await db.membershipApplication.findUnique({
+      where: { id: applicationId },
+      include: { recruitmentRound: true },
+    })
+    if (!app) return null
+
+    const applicantName = escapeHtml(app.applicantName)
+    const roundTitle = escapeHtml(app.recruitmentRound.title)
+    const statusText = APPLICATION_STATUS_LABELS[app.status] ?? app.status
+    const lookupUrl = APPLICATION_LOOKUP_URL
+
+    return {
+      subject: `[APC] Cập nhật trạng thái hồ sơ tuyển thành viên: ${app.recruitmentRound.title}`,
+      text: `Xin chào ${app.applicantName},\n\nHồ sơ ứng tuyển của bạn cho đợt "${app.recruitmentRound.title}" đã được chuyển sang trạng thái: ${statusText}.\n\nBạn có thể kiểm tra chi tiết tại: ${lookupUrl}\n\nTrân trọng,\nCâu lạc bộ Lập trình ứng dụng (APC)`,
+      html: `<p>Xin chào <strong>${applicantName}</strong>,</p>
+<p>Hồ sơ ứng tuyển của bạn cho đợt tuyển <strong>${roundTitle}</strong> đã được chuyển sang trạng thái: <strong>${escapeHtml(statusText)}</strong>.</p>
+<p>Bạn có thể kiểm tra chi tiết tại: <a href="${escapeHtml(lookupUrl)}">${escapeHtml(lookupUrl)}</a></p>
 <p>Trân trọng,<br>Câu lạc bộ Lập trình ứng dụng (APC)</p>`,
     }
   },

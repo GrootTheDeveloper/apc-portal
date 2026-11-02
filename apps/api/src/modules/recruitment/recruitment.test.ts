@@ -7,7 +7,8 @@ import { db } from '../../db/client.js'
 import { AUDIT_ACTIONS } from '../audit/service.js'
 import { createSession, SESSION_COOKIE } from '../auth/session.js'
 import { closeExpiredRecruitmentRounds } from './service.js'
-import { EMAIL_TEMPLATES } from '../email/templates.js'
+import { APPLICATION_STATUS_LABELS, EMAIL_TEMPLATES } from '../email/templates.js'
+import { publicCode } from '../../lib/ids.js'
 
 
 let ipCounter = 200
@@ -106,16 +107,20 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (createdRoundIds.length > 0) {
-    await db.auditLog.deleteMany({
-      where: { targetId: { in: createdRoundIds } },
-    })
-
     // Lấy danh sách hồ sơ test đã tạo để dọn consent và email
     const apps = await db.membershipApplication.findMany({
       where: { recruitmentRoundId: { in: createdRoundIds } },
       select: { id: true },
     })
     const appIds = apps.map((a) => a.id)
+    await db.auditLog.deleteMany({
+      where: {
+        OR: [
+          { targetId: { in: createdRoundIds } },
+          { targetId: { in: appIds } },
+        ],
+      },
+    })
     if (appIds.length > 0) {
       await db.consentRecord.deleteMany({
         where: { subjectType: 'APPLICATION', subjectId: { in: appIds } },
@@ -1033,6 +1038,402 @@ describe('Recruitment Module (R2)', () => {
 
       expect(statuses[0]).toBe(201)
       expect(statuses[10]).toBe(429) // Lần thứ 11 chạm ngưỡng rate limit
+    })
+  })
+  // ─── 8. TRA CỨU VÀ RÚT ĐƠN (R4) ───────────────────────────
+  describe('Tra cứu và rút đơn (R4)', () => {
+    let testAppCode: string
+    let lookupRoundId: string
+    let lookupRoundSlug: string
+    const applicantEmail = `lookup-${tag}@example.com`
+
+    const postLookup = (payload: Record<string, unknown>, options?: { ip?: string }) =>
+      app.inject({
+        method: 'POST',
+        url: '/public/applications/lookup',
+        headers: { origin: ORIGIN },
+        remoteAddress: options?.ip ?? nextIp(),
+        payload,
+      })
+
+    const postWithdraw = (payload: Record<string, unknown>, options?: { ip?: string }) =>
+      app.inject({
+        method: 'POST',
+        url: '/public/applications/withdraw',
+        headers: { origin: ORIGIN },
+        remoteAddress: options?.ip ?? nextIp(),
+        payload,
+      })
+
+    beforeAll(async () => {
+      lookupRoundSlug = `lookup-round-${tag}`
+      const round = await db.recruitmentRound.create({
+        data: {
+          title: `Đợt tuyển tra cứu ${tag}`,
+          slug: lookupRoundSlug,
+          description: 'Mô tả đợt tuyển thử nghiệm tra cứu',
+          audience: 'Sinh viên',
+          requirements: 'Không yêu cầu',
+          status: 'OPEN',
+          opensAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          closesAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          createdById: createdUserIds[0]!,
+          departments: { connect: [{ id: deptAId }] },
+        },
+      })
+      lookupRoundId = round.id
+      createdRoundIds.push(round.id)
+
+      // Nộp 1 hồ sơ hợp lệ để dùng cho test tra cứu và rút đơn
+      const res = await app.inject({
+        method: 'POST',
+        url: `/public/recruitment-rounds/${lookupRoundSlug}/applications`,
+        headers: { origin: ORIGIN },
+        payload: {
+          applicantName: 'Nguyễn Văn Tra Cứu',
+          applicantEmail,
+          studentId: `88${tag.slice(0, 6)}`,
+          desiredDepartmentId: deptAId,
+          consent: true,
+        },
+      })
+      expect(res.statusCode).toBe(201)
+      testAppCode = res.json().profileCode
+    })
+
+    it('Tra cứu đúng trả về 200, đúng trạng thái và KHÔNG để lộ ghi chú nội bộ (BR-07)', async () => {
+      const res = await postLookup({
+        email: applicantEmail,
+        code: testAppCode,
+      })
+
+      expect(res.statusCode).toBe(200)
+      const data = res.json()
+      expect(data.profileCode).toBe(testAppCode)
+      expect(data.status).toBe('NEW')
+      expect(data.canWithdraw).toBe(true)
+      expect(data.roundSlug).toBe(lookupRoundSlug)
+
+      // Kiểm tra bảo mật: Không được lộ ghi chú, đánh giá, câu trả lời
+      expect(data.internalNote).toBeUndefined()
+      expect(data.reviewedById).toBeUndefined()
+      expect(data.answers).toBeUndefined()
+    })
+
+    it('Tra cứu thành công kể cả khi nhập mã hồ sơ bằng chữ thường hoặc thừa khoảng trắng', async () => {
+      const res = await postLookup({
+        email: applicantEmail.toUpperCase(),
+        code: `  ${testAppCode.toLowerCase()}  `,
+      })
+
+      expect(res.statusCode).toBe(200)
+      expect(res.json().profileCode).toBe(testAppCode)
+    })
+
+    it('Tra cứu với mã hồ sơ quá 32 ký tự hoặc email quá 254 ký tự trả về 422', async () => {
+      const resLongCode = await postLookup({
+        email: applicantEmail,
+        code: 'A'.repeat(33),
+      })
+      expect(resLongCode.statusCode).toBe(422)
+
+      const resLongEmail = await postLookup({
+        email: `${'a'.repeat(250)}@test.com`,
+        code: testAppCode,
+      })
+      expect(resLongEmail.statusCode).toBe(422)
+    })
+
+    it('Tra cứu với email sai kiểu (số 12345) trả về 422 chứ không lỗi 500', async () => {
+      const res = await postLookup({
+        email: 12345,
+        code: testAppCode,
+      })
+      expect(res.statusCode).toBe(422)
+    })
+
+    it('Rút đơn với email sai kiểu (số 12345) trả về 422 chứ không lỗi 500', async () => {
+      const res = await postWithdraw({
+        email: 12345,
+        code: testAppCode,
+      })
+      expect(res.statusCode).toBe(422)
+    })
+
+    it('Tra cứu sai email hoặc sai mã đều trả 404 với cùng một thông báo chung (FLOW-05)', async () => {
+      const expectedMessage = 'Không tìm thấy hồ sơ với thông tin đã cung cấp.'
+
+      // Case 1: Đúng mã nhưng sai email
+      const resWrongEmail = await postLookup({
+        email: `wrong-email-${tag}@example.com`,
+        code: testAppCode,
+      })
+      expect(resWrongEmail.statusCode).toBe(404)
+      expect(resWrongEmail.json().message).toBe(expectedMessage)
+
+      // Case 2: Đúng email nhưng sai mã
+      const resWrongCode = await postLookup({
+        email: applicantEmail,
+        code: 'WRONGCODE999',
+      })
+      expect(resWrongCode.statusCode).toBe(404)
+      expect(resWrongCode.json().message).toBe(expectedMessage)
+    })
+
+    it('Rút đơn sai email hoặc sai mã đều trả 404 với cùng một thông báo chung (FLOW-05)', async () => {
+      const expectedMessage = 'Không tìm thấy hồ sơ với thông tin đã cung cấp.'
+
+      // Case 1: Đúng mã nhưng sai email
+      const resWrongEmail = await postWithdraw({
+        email: `wrong-email-${tag}@example.com`,
+        code: testAppCode,
+      })
+      expect(resWrongEmail.statusCode).toBe(404)
+      expect(resWrongEmail.json().message).toBe(expectedMessage)
+
+      // Case 2: Đúng email nhưng sai mã
+      const resWrongCode = await postWithdraw({
+        email: applicantEmail,
+        code: 'WRONGCODE999',
+      })
+      expect(resWrongCode.statusCode).toBe(404)
+      expect(resWrongCode.json().message).toBe(expectedMessage)
+    })
+
+    it('Tra cứu sai lần thứ 6 trong 15 phút (cùng IP + email) nhận 429 rate_limited (SEC-05)', async () => {
+      const ip = nextIp()
+      const lookupFloodEmail = `lookup-flood-${tag}@test.local`
+
+      const statuses: number[] = []
+      for (let i = 0; i < 6; i++) {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/public/applications/lookup',
+          remoteAddress: ip,
+          headers: { origin: ORIGIN },
+          payload: {
+            email: lookupFloodEmail,
+            code: 'WRONGCODE123',
+          },
+        })
+        statuses.push(res.statusCode)
+        if (i === 5) {
+          expect(res.json().error).toBe('rate_limited')
+        }
+      }
+
+      expect(statuses.slice(0, 5)).toEqual([404, 404, 404, 404, 404])
+      expect(statuses[5]).toBe(429) // Lần thứ 6 chạm ngưỡng 5 lượt/15p
+    })
+
+    it('Lượt tra cứu ĐÚNG giải tỏa ô đếm: sai 4 lần, tra cứu đúng, rồi được sai thêm 5 lượt mới bị chặn (chỉ tính lượt sai)', async () => {
+      const ip = nextIp()
+      const wrong = { email: applicantEmail, code: 'WRONGCODE999' }
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const res = await postLookup(wrong, { ip })
+        expect(res.statusCode).toBe(404)
+      }
+
+      // Lượt đúng không tốn hạn mức và giải tỏa ô đếm
+      const correctRes = await postLookup({ email: applicantEmail, code: testAppCode }, { ip })
+      expect(correctRes.statusCode).toBe(200)
+
+      // Sau khi giải tỏa, lại được sai đủ 5 lượt (nếu đếm cả lượt đúng thì đã dính 429)
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const res = await postLookup(wrong, { ip })
+        expect(res.statusCode).toBe(404)
+      }
+      const blockedRes = await postLookup(wrong, { ip })
+      expect(blockedRes.statusCode).toBe(429)
+    })
+
+    it('Một IP spam nhiều email khác nhau trên tra cứu: lượt thứ 31 trong 15 phút nhận 429 theo địa chỉ nguồn (SEC-05)', async () => {
+      const ip = nextIp()
+      const statuses: number[] = []
+      for (let attempt = 0; attempt < 31; attempt++) {
+        const res = await postLookup(
+          { email: `ip-flood-${attempt}-${tag}@test.local`, code: 'XXXXXXXXXXXX' },
+          { ip },
+        )
+        statuses.push(res.statusCode)
+      }
+      expect(statuses.slice(0, 30).every((status) => status === 404)).toBe(true)
+      expect(statuses[30]).toBe(429)
+    })
+
+    it('Ngưỡng đọc từ cấu hình: LOOKUP_MAX_ATTEMPTS=2 thì sai lần thứ 3 nhận 429 trên tra cứu hồ sơ', async () => {
+      const testApp = buildApp(loadConfig({ NODE_ENV: 'test', LOOKUP_MAX_ATTEMPTS: '2' }))
+      await testApp.ready()
+      try {
+        const testIp = nextIp()
+        const wrongLookup = (email: string) =>
+          testApp.inject({
+            method: 'POST',
+            url: '/public/applications/lookup',
+            payload: { email, code: 'XXXXXXXXXXXX' },
+            headers: { origin: ORIGIN },
+            remoteAddress: testIp,
+          })
+        expect((await wrongLookup(`cfg-${tag}@test.local`)).statusCode).toBe(404)
+        expect((await wrongLookup(`cfg-${tag}@test.local`)).statusCode).toBe(404)
+        expect((await wrongLookup(`cfg-${tag}@test.local`)).statusCode).toBe(429)
+      } finally {
+        await testApp.close()
+      }
+    })
+
+    it('Rút đơn bị từ chối 409 khi hồ sơ đã ở trạng thái ACCEPTED (kết quả cuối)', async () => {
+      const acceptedCode = publicCode(12)
+      const acceptedEmail = `accepted-${tag}@test.local`
+
+      await db.membershipApplication.create({
+        data: {
+          profileCode: acceptedCode,
+          recruitmentRoundId: lookupRoundId,
+          applicantName: 'Ứng viên Đã Trúng Tuyển',
+          applicantEmail: acceptedEmail,
+          studentId: `AC${tag.slice(0, 6)}`,
+          status: 'ACCEPTED',
+        },
+      })
+
+      const res = await postWithdraw({
+        email: acceptedEmail,
+        code: acceptedCode,
+      })
+
+      expect(res.statusCode).toBe(409)
+      expect(res.json().message).toContain('không ở trạng thái có thể rút')
+    })
+
+    it('Rút đơn thành công chuyển status sang WITHDRAWN, ghi audit không lộ mã và gửi email thông báo', async () => {
+      const res = await postWithdraw({
+        email: applicantEmail,
+        code: testAppCode,
+      })
+
+      expect(res.statusCode).toBe(200)
+      expect(res.json().status).toBe('WITHDRAWN')
+
+      // Database được cập nhật
+      const updated = await db.membershipApplication.findUniqueOrThrow({
+        where: { profileCode: testAppCode },
+      })
+      expect(updated.status).toBe('WITHDRAWN')
+
+      // Audit log được ghi, metadata không được chứa mã hồ sơ
+      const auditLog = await db.auditLog.findFirst({
+        where: {
+          action: AUDIT_ACTIONS.APPLICATION_WITHDRAW,
+          targetId: updated.id,
+        },
+      })
+      expect(auditLog).not.toBeNull()
+      expect(JSON.stringify(auditLog?.metadata)).not.toContain(testAppCode)
+
+      // Email thông báo rút đơn có trong queue
+      const email = await db.notificationDelivery.findFirst({
+        where: {
+          type: 'APPLICATION_STATUS',
+          refId: updated.id,
+        },
+      })
+      expect(email).not.toBeNull()
+      expect(email?.status).toBe('PENDING')
+      expect(email?.departmentId).toBe(deptAId) // Truyền đúng departmentId vào hàng đợi
+
+      // Kiểm tra nội dung email: không để mã trên URL hay thông báo rút (QĐ-7 & OPS-11), nhãn tiếng Việt
+      const renderedEmail = await EMAIL_TEMPLATES.APPLICATION_STATUS(updated.id)
+      expect(renderedEmail).not.toBeNull()
+      expect(renderedEmail?.html).toMatch(/href="https?:\/\/[^"]*\/recruitment\/application-lookup"/)
+      expect(renderedEmail?.html).toContain('Đã rút đơn')
+      expect(renderedEmail?.text).toContain('Đã rút đơn')
+      expect(renderedEmail?.html).not.toContain(testAppCode)
+    })
+
+    it('Template APPLICATION_STATUS đổi các trạng thái sang nhãn tiếng Việt và link tuyệt đối', async () => {
+      const dummyApp = await db.membershipApplication.create({
+        data: {
+          profileCode: publicCode(12),
+          recruitmentRoundId: lookupRoundId,
+          applicantName: 'Nguyễn Ứng Viên Test',
+          applicantEmail: `template-test-${tag}@test.local`,
+          studentId: `TT${tag.slice(0, 6)}`,
+          status: 'INTERVIEW',
+        },
+      })
+
+      const rendered = await EMAIL_TEMPLATES.APPLICATION_STATUS(dummyApp.id)
+      expect(rendered).not.toBeNull()
+      expect(rendered?.text).toContain('Mời phỏng vấn')
+      expect(rendered?.html).toContain('Mời phỏng vấn')
+      expect(rendered?.text).not.toContain('INTERVIEW') // Không in nguyên enum tiếng Anh
+      expect(rendered?.html).toMatch(/href="https?:\/\/[^"]*\/recruitment\/application-lookup"/)
+
+      // REC-08: REJECTED hiển thị "Không chấp nhận"
+      expect(APPLICATION_STATUS_LABELS.REJECTED).toBe('Không chấp nhận')
+      expect(APPLICATION_STATUS_LABELS.ACCEPTED).toBe('Đã chấp nhận')
+    })
+
+    it('Hồ sơ đã ở trạng thái WITHDRAWN không được rút tiếp (409)', async () => {
+      const res = await postWithdraw({
+        email: applicantEmail,
+        code: testAppCode,
+      })
+
+      expect(res.statusCode).toBe(409)
+      expect(res.json().message).toContain('không ở trạng thái có thể rút')
+    })
+
+    it('Hai request rút đơn gửi song song chỉ 1 request thành công 200, request kia trả 409, chỉ ghi 1 dòng audit và 1 email', async () => {
+      const concurrentCode = publicCode(12)
+      const concurrentEmail = `withdraw-concurrent-${tag}@test.local`
+
+      const appRecord = await db.membershipApplication.create({
+        data: {
+          profileCode: concurrentCode,
+          recruitmentRoundId: lookupRoundId,
+          applicantName: 'Ứng viên Song Song',
+          applicantEmail: concurrentEmail,
+          studentId: `CC${tag.slice(0, 6)}`,
+          status: 'NEW',
+        },
+      })
+
+      const payload = { email: concurrentEmail, code: concurrentCode }
+      const testIp = nextIp()
+
+      const [resA, resB] = await Promise.all([
+        postWithdraw(payload, { ip: testIp }),
+        postWithdraw(payload, { ip: testIp }),
+      ])
+
+      const statusCodes = [resA.statusCode, resB.statusCode].sort()
+      expect(statusCodes).toEqual([200, 409])
+
+      // Database cập nhật sang WITHDRAWN
+      const updated = await db.membershipApplication.findUniqueOrThrow({
+        where: { id: appRecord.id },
+      })
+      expect(updated.status).toBe('WITHDRAWN')
+
+      // Chỉ có duy nhất 1 dòng audit log
+      const auditCount = await db.auditLog.count({
+        where: {
+          action: AUDIT_ACTIONS.APPLICATION_WITHDRAW,
+          targetId: appRecord.id,
+        },
+      })
+      expect(auditCount).toBe(1)
+
+      // Chỉ có duy nhất 1 email trong hàng đợi
+      const emailCount = await db.notificationDelivery.count({
+        where: {
+          type: 'APPLICATION_STATUS',
+          refId: appRecord.id,
+        },
+      })
+      expect(emailCount).toBe(1)
     })
   })
 })

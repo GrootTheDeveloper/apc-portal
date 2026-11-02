@@ -15,8 +15,10 @@ import type { Question } from './validation.js'
 import {
   ChangeRoundStatusSchema,
   CreateRecruitmentRoundSchema,
+  LookupApplicationSchema,
   SubmitApplicationSchema,
   UpdateRecruitmentRoundSchema,
+  WithdrawApplicationSchema,
 } from './validation.js'
 /**
  * 1. API CÔNG KHAI
@@ -779,5 +781,135 @@ export async function submitApplication(
       throw conflict('Không thể nộp đơn với thông tin này. Nếu đã nộp, vui lòng dùng trang tra cứu.')
     }
     throw error
+  }
+}
+
+/**
+ * Tra cứu trạng thái hồ sơ ứng tuyển (R4, FLOW-05)
+ * Trả về thông tin an toàn: KHÔNG bao gồm ghi chú nội bộ, đánh giá, người xét (BR-07)
+ */
+export async function lookupApplication(input: unknown) {
+  const { email, code } = LookupApplicationSchema.parse(input)
+
+  const app = await db.membershipApplication.findUnique({
+    where: { profileCode: code },
+    include: {
+      recruitmentRound: {
+        select: {
+          title: true,
+          slug: true,
+        },
+      },
+      desiredDepartment: {
+        select: {
+          name: true,
+          code: true,
+        },
+      },
+    },
+  })
+
+  // Sai email hoặc sai mã trả cùng một thông báo chung (FLOW-05)
+  if (!app || app.applicantEmail.toLowerCase() !== email.toLowerCase()) {
+    throw notFound('Không tìm thấy hồ sơ với thông tin đã cung cấp.')
+  }
+
+  return {
+    profileCode: app.profileCode,
+    applicantName: app.applicantName,
+    roundTitle: app.recruitmentRound.title,
+    roundSlug: app.recruitmentRound.slug,
+    desiredDepartmentName: app.desiredDepartment?.name ?? 'Chưa phân ban',
+    status: app.status,
+    submittedAt: app.submittedAt,
+    updatedAt: app.updatedAt,
+    canWithdraw: ['NEW', 'REVIEWING', 'INTERVIEW'].includes(app.status),
+  }
+}
+
+/**
+ * Rút hồ sơ ứng tuyển (R4, FLOW-05)
+ * Chỉ cho phép rút khi hồ sơ chưa có kết quả cuối (NEW, REVIEWING, INTERVIEW)
+ */
+export async function withdrawApplication(request: FastifyRequest, input: unknown) {
+  const { email, code } = WithdrawApplicationSchema.parse(input)
+
+  const app = await db.membershipApplication.findUnique({
+    where: { profileCode: code },
+    select: {
+      id: true,
+      profileCode: true,
+      applicantEmail: true,
+      desiredDepartmentId: true,
+      status: true,
+    },
+  })
+
+  if (!app || app.applicantEmail.toLowerCase() !== email.toLowerCase()) {
+    throw notFound('Không tìm thấy hồ sơ với thông tin đã cung cấp.')
+  }
+
+  const allowedStatuses = ['NEW', 'REVIEWING', 'INTERVIEW'] as const
+  if (!allowedStatuses.includes(app.status as any)) {
+    throw conflict('Hồ sơ không ở trạng thái có thể rút đơn.')
+  }
+
+  const updated = await db.$transaction(async (tx) => {
+    // updateMany kèm điều kiện status để chống race condition: hai lượt bấm song song chỉ một lượt thắng,
+    // hoặc không thể đè trạng thái ACCEPTED/REJECTED/WITHDRAWN nếu đã thay đổi giữa chừng (BR-16).
+    const { count } = await tx.membershipApplication.updateMany({
+      where: {
+        id: app.id,
+        status: { in: [...allowedStatuses] },
+      },
+      data: { status: 'WITHDRAWN' },
+    })
+
+    if (count === 0) {
+      throw conflict('Hồ sơ không ở trạng thái có thể rút đơn.')
+    }
+
+    const row = await tx.membershipApplication.findUniqueOrThrow({
+      where: { id: app.id },
+      select: {
+        id: true,
+        status: true,
+        updatedAt: true,
+      },
+    })
+
+    // Ghi audit log: TUYỆT ĐỐI không ghi mã hồ sơ (OPS-11, BR-07)
+    await audit(
+      request,
+      {
+        action: AUDIT_ACTIONS.APPLICATION_WITHDRAW,
+        category: AuditCategory.BUSINESS,
+        result: AuditResult.SUCCESS,
+        targetType: 'APPLICATION',
+        targetId: app.id,
+        metadata: {
+          fromStatus: app.status,
+          toStatus: 'WITHDRAWN',
+        },
+      },
+      tx,
+    )
+
+    // Đẩy email thông báo vào hàng đợi (QĐ-7: người bị rút đơn hộ biết ngay)
+    await enqueueEmail(tx, {
+      type: 'APPLICATION_STATUS',
+      to: app.applicantEmail,
+      refType: 'APPLICATION',
+      refId: app.id,
+      departmentId: app.desiredDepartmentId ?? undefined,
+    })
+
+    return row
+  })
+
+  return {
+    success: true,
+    status: updated.status,
+    updatedAt: updated.updatedAt,
   }
 }

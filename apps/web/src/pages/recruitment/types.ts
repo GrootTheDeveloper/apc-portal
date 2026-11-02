@@ -39,3 +39,22 @@ export type RecruitmentRound = {
   createdAt: string
   updatedAt: string
 }
+export type ApplicationStatus =
+  | 'NEW'
+  | 'REVIEWING'
+  | 'INTERVIEW'
+  | 'ACCEPTED'
+  | 'REJECTED'
+  | 'WITHDRAWN'
+
+export type LookupApplicationResult = {
+  profileCode: string
+  applicantName: string
+  roundTitle: string
+  roundSlug: string
+  desiredDepartmentName: string
+  status: ApplicationStatus
+  submittedAt: string
+  updatedAt: string
+  canWithdraw: boolean
+}
