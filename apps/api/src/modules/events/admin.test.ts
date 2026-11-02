@@ -392,6 +392,61 @@ describe('PATCH /admin/events/:id', () => {
     expect(ok.statusCode).toBe(200)
     expect(ok.json()).toEqual(expect.objectContaining({ title: 'Tiêu đề vẫn nội bộ', audience: 'DEPARTMENT' }))
   })
+
+  it('manager sửa sự kiện PUBLIC của ban mình mà form gửi lại đối tượng cũ không bị 403', async () => {
+    const event = await createEventFixture({ departmentId: deptA, status: 'PUBLISHED', audience: 'PUBLIC' })
+    // Form quản trị gửi lại cả biểu mẫu: audience cũ 'PUBLIC' lẫn trong payload, không đổi đối tượng
+    // thì không phải hành vi công bố — chỉ chặn khi đối tượng thay đổi thật.
+    const response = await patchReq('manager', `/admin/events/${event.id}`, { title: 'Sửa sự kiện công khai của ban', audience: 'PUBLIC' })
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual(expect.objectContaining({ id: event.id, title: 'Sửa sự kiện công khai của ban', audience: 'PUBLIC' }))
+  })
+
+  it('manager hạ sự kiện PUBLIC về nội bộ: email báo hủy cho người còn đăng ký + audit', async () => {
+    const event = await createEventFixture({ departmentId: deptA, status: 'PUBLISHED', audience: 'PUBLIC' })
+    const guestEmail = `khach-ha-${randomUUID().slice(0, 6)}@test.local`
+    await createGuestRegistration(event.id, guestEmail)
+
+    const response = await patchReq('manager', `/admin/events/${event.id}`, { audience: 'DEPARTMENT', allowGuestRegistration: false })
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual(expect.objectContaining({ audience: 'DEPARTMENT', allowGuestRegistration: false }))
+
+    // Sự kiện nội bộ biến mất khỏi trang công khai (docs/02 §12) nhưng đăng ký vẫn giữ nguyên.
+    expect((await get(null, `/public/events/${event.slug}`)).statusCode).toBe(404)
+    const registration = await db.eventRegistration.findFirstOrThrow({ where: { eventId: event.id } })
+    expect(registration.status).toBe('REGISTERED')
+
+    // NTF-01: khách còn đăng ký nhận thư báo hủy xếp hàng trong cùng transaction.
+    const deliveries = await db.notificationDelivery.findMany({ where: { refType: 'EVENT', refId: event.id, type: 'EVENT_CANCELLED' } })
+    expect(deliveries.map((row) => row.recipient)).toEqual([guestEmail])
+    expect(deliveries.every((row) => row.status === 'PENDING')).toBe(true)
+
+    // Thu hồi công khai là hành động nhạy cảm: phải có audit SUCCESS kèm đối tượng trước/sau.
+    const audits = await db.auditLog.findMany({
+      where: { targetType: 'EVENT', targetId: event.id, action: 'event.unpublish', result: 'SUCCESS' },
+    })
+    expect(audits).toHaveLength(1)
+    expect(audits[0]?.metadata).toEqual(expect.objectContaining({ audience: 'DEPARTMENT', previousAudience: 'PUBLIC', notified: 1 }))
+  })
+
+  it('manager bỏ trống ban quản lý bị chặn 403, sự kiện không rơi khỏi phạm vi', async () => {
+    const event = await createEventFixture({ departmentId: deptA })
+    const response = await patchReq('manager', `/admin/events/${event.id}`, { departmentId: null })
+    expect(response.statusCode).toBe(403)
+    expect(response.json().error).toBe('forbidden')
+
+    // Dữ liệu không đổi: vẫn thuộc Ban A và manager vẫn mở được (không mất ngầm khỏi phạm vi).
+    const stored = await db.event.findUniqueOrThrow({ where: { id: event.id } })
+    expect(stored.departmentId).toBe(deptA)
+    expect((await get('manager', `/admin/events/${event.id}`)).statusCode).toBe(200)
+  })
+
+  it('board vẫn sửa được sự kiện toàn CLB khi form gửi lại departmentId rỗng', async () => {
+    const event = await createEventFixture({ departmentId: null, status: 'PUBLISHED', audience: 'CLUB' })
+    const response = await patchReq('board', `/admin/events/${event.id}`, { title: 'Sửa sự kiện toàn CLB', departmentId: null })
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual(expect.objectContaining({ title: 'Sửa sự kiện toàn CLB', departmentId: null }))
+  })
 })
 
 // ─── POST /admin/events/:id/publish ─────────────────────────────────────────

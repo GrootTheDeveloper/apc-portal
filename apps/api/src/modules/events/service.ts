@@ -694,21 +694,21 @@ export async function createEvent(request: FastifyRequest, rawBody: unknown) {
  * Sửa nội dung sự kiện (FLOW-15): chỉ DRAFT và PUBLISHED sửa được; đã hủy, đã kết thúc, đã lưu trữ
  * là chốt hạ. Kiểm chéo thời gian trên dữ liệu SAU khi gộp (vd PATCH riêng startAt vẫn phải trước
  * endAt đang có); sức chứa không được nhỏ hơn số người đã đăng ký. Đổi đối tượng sang CLUB/PUBLIC
- * chỉ BOARD (chống leo thang quyền công bố qua PATCH).
+ * chỉ BOARD (chống leo thang quyền công bố qua PATCH) — form gửi lại đối tượng hiện có thì không chặn.
+ * Khóa dòng sự kiện `FOR UPDATE` trước khi đếm chỗ để không đua với đăng ký của khách; hạ sự kiện
+ * khỏi PUBLIC thì chạy luồng email báo hủy cho người còn đăng ký (NTF-01) và ghi audit.
  */
 export async function updateEvent(request: FastifyRequest, id: string, rawBody: unknown) {
   const user = currentUser(request)
   const patch = eventUpdateSchema.parse(rawBody)
 
-  // Không lách quyền công bố qua PATCH (docs/02 §8.3): đặt đối tượng CLUB/PUBLIC là hành vi công bố,
-  // chỉ BOARD được làm. Chặn trước cả khi tải bản ghi: quản lý ban công bố sự kiện nội bộ của ban mình
-  // rồi PATCH thành PUBLIC sẽ công khai sự kiện mà không qua lượt duyệt của BOARD.
-  if (patch.audience && patch.audience !== 'DEPARTMENT' && !hasRole(user, 'BOARD')) {
-    await transitionDenied(request, AUDIT_ACTIONS.EVENT_PUBLISH, id, `Đổi đối tượng sang ${patch.audience} — chỉ BOARD được công bố mức này`)
-    throw forbidden('Chỉ Ban Chủ nhiệm được đặt đối tượng sự kiện thành toàn CLB hoặc công khai.')
-  }
-
   return db.$transaction(async (tx) => {
+    // Khóa dòng sự kiện trước khi đọc (như registerGuest): đếm chỗ dưới đây phải tuần tự với
+    // đăng ký/hủy của khách (cùng khóa dòng này) nếu không hai bên đếm chéo lúc vừa có người
+    // đăng ký song song sẽ vượt sức chứa hoặc chặn nhầm.
+    const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM events WHERE id = ${id} FOR UPDATE`
+    if (locked.length === 0) throw notFound('Không tìm thấy sự kiện.')
+
     const event = await tx.event.findUnique({
       where: { id },
       select: {
@@ -735,12 +735,26 @@ export async function updateEvent(request: FastifyRequest, id: string, rawBody: 
       throw conflict('Sự kiện đã hủy, đã kết thúc hoặc đã lưu trữ nên không sửa được nữa.')
     }
 
-    if (patch.departmentId && patch.departmentId !== event.departmentId) {
-      // Đổi ban quản lý: quản lý ban không vượt khỏi các ban mình quản lý; BOARD bất kỳ ban ACTIVE nào.
-      if (!hasRole(user, 'BOARD') && !managedDepartmentIds(user).includes(patch.departmentId)) {
-        throw forbidden('Bạn chỉ có thể giữ sự kiện ở các ban mình đang quản lý.')
+    // Không lách quyền công bố qua PATCH (docs/02 §8.3): ĐỔI đối tượng sang CLUB/PUBLIC là hành vi
+    // công bố, chỉ BOARD được làm. Chỉ chặn khi đối tượng thay đổi thật: quản lý ban sửa sự kiện
+    // toàn CLB thuộc ban mình mà form gửi lại đối tượng cũ không bị 403 oan.
+    if (patch.audience && patch.audience !== event.audience && patch.audience !== 'DEPARTMENT' && !hasRole(user, 'BOARD')) {
+      await transitionDenied(request, AUDIT_ACTIONS.EVENT_PUBLISH, id, `Đổi đối tượng sang ${patch.audience} — chỉ BOARD được công bố mức này`)
+      throw forbidden('Chỉ Ban Chủ nhiệm được đặt đối tượng sự kiện thành toàn CLB hoặc công khai.')
+    }
+
+    if (patch.departmentId !== undefined) {
+      if (patch.departmentId === null) {
+        // Bỏ trống ban quản lý làm sự kiện rơi khỏi phạm vi mọi quản lý ban (chỉ BOARD còn thấy):
+        // quản lý ban bị chặn để sự kiện không mất ngầm khỏi phạm vi; BOARD chủ động bỏ được như khi tạo.
+        if (!hasRole(user, 'BOARD')) throw forbidden('Không thể bỏ trống ban quản lý của sự kiện.')
+      } else if (patch.departmentId !== event.departmentId) {
+        // Đổi ban quản lý: quản lý ban không vượt khỏi các ban mình quản lý; BOARD bất kỳ ban ACTIVE nào.
+        if (!hasRole(user, 'BOARD') && !managedDepartmentIds(user).includes(patch.departmentId)) {
+          throw forbidden('Bạn chỉ có thể giữ sự kiện ở các ban mình quản lý.')
+        }
+        await assertDepartmentAcceptsEvents(tx, patch.departmentId)
       }
-      await assertDepartmentAcceptsEvents(tx, patch.departmentId)
     }
 
     // Kiểm chéo thời gian trên dữ liệu đã gộp; bỏ qua kết quả, sai thì ZodError tự thành 422.
@@ -760,6 +774,36 @@ export async function updateEvent(request: FastifyRequest, id: string, rawBody: 
       data: patch as Prisma.EventUncheckedUpdateInput,
       select: adminEventSelect,
     })
+
+    // Hạ sự kiện khỏi PUBLIC (vd PUBLIC → DEPARTMENT nội bộ): trang công khai trả 404 trong khi
+    // khách vẫn REGISTERED — chạy luồng email báo hủy như khi hủy sự kiện (NTF-01, EVT-09), giữ
+    // nguyên dữ liệu đăng ký, và ghi audit để truy vết vì đây là hành động thu hồi công khai.
+    if (event.audience === 'PUBLIC' && patch.audience !== undefined && patch.audience !== 'PUBLIC') {
+      const registrants = await tx.eventRegistration.findMany({
+        where: { eventId: id, status: 'REGISTERED' },
+        select: { user: { select: { email: true } }, guestEmail: true },
+      })
+      const recipients = [
+        ...new Set(registrants.map((row) => row.user?.email ?? row.guestEmail).filter((email): email is string => email !== null)),
+      ]
+      for (const to of recipients) {
+        // Chỉ truyền tham chiếu, không truyền mã hay nội dung (FLOW-26, OPS-11).
+        await enqueueEmail(tx, { type: 'EVENT_CANCELLED', to, refType: 'EVENT', refId: id, departmentId: updated.departmentId ?? undefined })
+      }
+      await audit(
+        request,
+        {
+          action: AUDIT_ACTIONS.EVENT_UNPUBLISH,
+          targetType: 'EVENT',
+          targetId: id,
+          category: AuditCategory.BUSINESS,
+          result: AuditResult.SUCCESS,
+          metadata: { audience: patch.audience, previousAudience: event.audience, notified: recipients.length },
+        },
+        tx,
+      )
+    }
+
     return toAdminEvent(updated)
   })
 }
