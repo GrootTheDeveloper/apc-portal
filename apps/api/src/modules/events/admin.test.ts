@@ -285,6 +285,44 @@ describe('POST /admin/events', () => {
     expect(response.json().issues[0].path).toEqual(['allowGuestRegistration'])
   })
 
+  it('thời gian không phải chuỗi ISO 8601 kèm múi giờ trả 422 (không coerce "5" thành mốc lịch sử)', async () => {
+    const garbage = await post('manager', '/admin/events', validPayload({ startAt: '5' }))
+    expect(garbage.statusCode).toBe(422)
+    expect(garbage.json().issues[0].path).toEqual(['startAt'])
+
+    // Thiếu múi giờ cũng bị từ chối (BR-14): không cho máy chủ tự đoán múi giờ.
+    const naive = await post('manager', '/admin/events', validPayload({ endAt: '2026-11-05T08:00:00' }))
+    expect(naive.statusCode).toBe(422)
+    expect(naive.json().issues[0].path).toEqual(['endAt'])
+  })
+
+  it('ảnh bìa chỉ nhận tệp nội bộ /api/public/files/<id>: URL ngoài và javascript: trả 422', async () => {
+    const external = await post('manager', '/admin/events', validPayload({ coverImageUrl: 'https://example.com/anh.png' }))
+    expect(external.statusCode).toBe(422)
+    const xss = await post('manager', '/admin/events', validPayload({ coverImageUrl: 'javascript:alert(1)' }))
+    expect(xss.statusCode).toBe(422)
+
+    const ok = await post('manager', '/admin/events', validPayload({ coverImageUrl: '/api/public/files/ckx8h2q9f4' }))
+    expect(ok.statusCode).toBe(201)
+    expect(ok.json().coverImageUrl).toBe('/api/public/files/ckx8h2q9f4')
+    eventIds.push(ok.json().id)
+  })
+
+  it('capacity trên 1.000.000 trả 422', async () => {
+    const response = await post('manager', '/admin/events', validPayload({ capacity: 1_000_001 }))
+    expect(response.statusCode).toBe(422)
+    expect(response.json().issues[0].path).toEqual(['capacity'])
+  })
+
+  it('tiêu đề sinh slug trùng trang tĩnh /events/registration-lookup được tự thêm hậu tố', async () => {
+    const response = await post('manager', '/admin/events', validPayload({ title: 'Registration lookup' }))
+    expect(response.statusCode).toBe(201)
+    const slug = response.json().slug as string
+    expect(slug).not.toBe('registration-lookup')
+    expect(slug).toMatch(/^registration-lookup-/)
+    eventIds.push(response.json().id)
+  })
+
   it('board tạo cho ban đã lưu trữ trả 422 (ORG-06)', async () => {
     const response = await post('board', '/admin/events', validPayload({ departmentId: deptArchived }))
     expect(response.statusCode).toBe(422)
@@ -400,6 +438,19 @@ describe('PATCH /admin/events/:id', () => {
     const response = await patchReq('manager', `/admin/events/${event.id}`, { title: 'Sửa sự kiện công khai của ban', audience: 'PUBLIC' })
     expect(response.statusCode).toBe(200)
     expect(response.json()).toEqual(expect.objectContaining({ id: event.id, title: 'Sửa sự kiện công khai của ban', audience: 'PUBLIC' }))
+  })
+
+  it('manager sửa sự kiện CLUB của ban mình mà form gửi lại audience cũ cũng không bị 403', async () => {
+    const event = await createEventFixture({ departmentId: deptA, status: 'PUBLISHED', audience: 'CLUB' })
+    const response = await patchReq('manager', `/admin/events/${event.id}`, { title: 'Sửa sự kiện CLUB của ban', audience: 'CLUB' })
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual(expect.objectContaining({ title: 'Sửa sự kiện CLUB của ban', audience: 'CLUB' }))
+  })
+
+  it('PATCH và hủy sự kiện với thành viên thường nhận 403', async () => {
+    const event = await createEventFixture({ departmentId: deptA })
+    expect((await patchReq('member', `/admin/events/${event.id}`, { title: 'Thành viên tự sửa' })).statusCode).toBe(403)
+    expect((await post('member', `/admin/events/${event.id}/cancel`, { reason: 'Thành viên tự hủy' })).statusCode).toBe(403)
   })
 
   it('manager hạ sự kiện PUBLIC về nội bộ: email báo hủy cho người còn đăng ký + audit', async () => {
@@ -568,5 +619,13 @@ describe('POST /admin/events/:id/archive', () => {
     const archivedEvent = await createEventFixture({ departmentId: deptA, status: 'ENDED' })
     await post('manager', `/admin/events/${archivedEvent.id}/archive`)
     expect((await post('manager', `/admin/events/${archivedEvent.id}/archive`)).statusCode).toBe(409)
+  })
+
+  it('manager lưu trữ sự kiện Ban B nhận 404, thành viên thường nhận 403', async () => {
+    const other = await createEventFixture({ departmentId: deptB, status: 'ENDED' })
+    expect((await post('manager', `/admin/events/${other.id}/archive`)).statusCode).toBe(404)
+
+    const own = await createEventFixture({ departmentId: deptA, status: 'ENDED' })
+    expect((await post('member', `/admin/events/${own.id}/archive`)).statusCode).toBe(403)
   })
 })

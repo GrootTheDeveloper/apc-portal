@@ -10,7 +10,7 @@ import { publicCode, slugify } from '../../lib/ids.js'
 import { pageArgs, pageQuery, toPage } from '../../lib/pagination.js'
 import { formatVnDateTime } from '../../lib/vnTime.js'
 import { AUDIT_ACTIONS, audit, type AuditActionName, AuditCategory, AuditResult } from '../audit/service.js'
-import { currentUser, departmentScope, hasRole, type AuthUser } from '../auth/rbac.js'
+import { canAccessDepartment, currentUser, departmentScope, hasRole, type AuthUser } from '../auth/rbac.js'
 import { recordConsent } from '../consent/service.js'
 import { enqueueEmail } from '../email/service.js'
 
@@ -473,6 +473,25 @@ export async function endPastEvents(log: FastifyBaseLogger) {
 const invalidInput = (message: string) => new AppError(422, 'validation', message)
 
 /**
+ * Chuỗi thời gian ISO 8601 **kèm múi giờ** (Z hoặc ±hh:mm), đổi thành Date. Thay cho `z.coerce.date()`
+ * từng nhận mọi thứ JS Date hiểu được: "5" thành mốc lịch sử, thiếu múi giờ thì tùy máy chủ đoán (BR-14).
+ */
+const isoDateTime = z
+  .string()
+  .datetime({ offset: true, message: 'Thời gian phải là chuỗi ISO 8601 kèm múi giờ, ví dụ 2026-11-05T08:00:00Z.' })
+  .transform((value) => new Date(value))
+
+/**
+ * Ảnh bìa chỉ nhận tệp đã tải lên qua module files, theo đúng đường dẫn công khai `/api/public/files/<mã tệp>`
+ * (component FileUpload của web sinh đúng dạng này). Chặn URL ngoài và payload như `javascript:` (XSS)
+ * vì web render thẳng giá trị này vào `src` của ảnh.
+ */
+const coverImageUrl = z
+  .string()
+  .trim()
+  .regex(/^\/api\/public\/files\/[A-Za-z0-9]+$/, 'Ảnh bìa phải là tệp đã tải lên của CLB (/api/public/files/<mã tệp>).')
+
+/**
  * Các trường nội dung quản lý sửa được (EVT-02, EVT-03) — không có trường trạng thái.
  * Kiểm chéo thời gian gắn ở `eventCreateSchema`, dùng chung cho tạo và cho sửa (trên dữ liệu đã gộp).
  */
@@ -481,7 +500,7 @@ const eventBaseSchema = z.object({
   description: z.string().trim().min(1).max(20000),
   eventType: z.string().trim().min(1).max(50),
   audience: z.enum(['PUBLIC', 'CLUB', 'DEPARTMENT']),
-  coverImageUrl: z.string().trim().max(2000).nullish(),
+  coverImageUrl: coverImageUrl.nullish(),
   location: z.string().trim().max(200).nullish(),
   // FLOW-18: chỉ nhận link http/https
   onlineUrl: z
@@ -492,11 +511,12 @@ const eventBaseSchema = z.object({
     .nullish(),
   contactPoint: z.string().trim().max(200).nullish(),
   departmentId: z.string().min(1).nullish(), // ban QUẢN LÝ sự kiện, không phải đối tượng tham gia (EVT-02)
-  startAt: z.coerce.date(),
-  endAt: z.coerce.date(),
-  registrationOpensAt: z.coerce.date().nullish(),
-  registrationClosesAt: z.coerce.date().nullish(),
-  capacity: z.number().int().min(1).nullish(), // null = không giới hạn
+  startAt: isoDateTime,
+  endAt: isoDateTime,
+  registrationOpensAt: isoDateTime.nullish(),
+  registrationClosesAt: isoDateTime.nullish(),
+  // null = không giới hạn; chặn trần vô lý (số 2 tỷ khiến đếm chỗ và UI thất thường)
+  capacity: z.number().int().min(1).max(1_000_000).nullish(),
   allowGuestRegistration: z.boolean(),
 })
 
@@ -506,6 +526,10 @@ export const eventCreateSchema = eventBaseSchema
     allowGuestRegistration: eventBaseSchema.shape.allowGuestRegistration.default(false),
   })
   .superRefine((data, ctx) => {
+    // Zod 4 vẫn chạy superRefine với dữ liệu thô khi một trường thời gian sai định dạng (lỗi định dạng
+    // đã được báo ở từng trường): bỏ qua kiểm chéo trong lượt đó, không `.getTime()` trên chuỗi.
+    const dates = [data.startAt, data.endAt, data.registrationOpensAt, data.registrationClosesAt]
+    if (!dates.every((value) => value === null || value === undefined || value instanceof Date)) return
     if (data.endAt.getTime() <= data.startAt.getTime()) {
       ctx.addIssue({ code: 'custom', path: ['endAt'], message: 'Thời gian kết thúc phải sau thời gian bắt đầu.' })
     }
@@ -589,13 +613,19 @@ async function assertDepartmentAcceptsEvents(tx: Prisma.TransactionClient | Pris
   if (department.status === 'ARCHIVED') throw invalidInput('Ban đã lưu trữ, không nhận sự kiện mới.')
 }
 
-/** Slug từ tiêu đề; trùng thì thêm hậu tố ngẫu nhiên (lib/ids.ts). */
+/**
+ * Slug đè lên trang tĩnh của web dưới `/events/*` (apps/web/src/routes.tsx, Sitemap §15.1): web khớp
+ * route tĩnh trước route động `/events/:slug`, nên sự kiện có slug này sẽ không bao giờ mở được trang chi tiết.
+ */
+const RESERVED_SLUGS = ['registration-lookup']
+
+/** Slug từ tiêu đề; trùng hoặc trùng trang tĩnh của web thì thêm hậu tố ngẫu nhiên (lib/ids.ts). */
 async function uniqueSlug(title: string) {
   const base = slugify(title) || 'su-kien'
   for (let attempt = 0; attempt < 5; attempt++) {
     const candidate = attempt === 0 ? base : `${base}-${randomUUID().slice(0, 6)}`
     const existing = await db.event.findUnique({ where: { slug: candidate }, select: { id: true } })
-    if (!existing) return candidate
+    if (!existing && !RESERVED_SLUGS.includes(candidate)) return candidate
   }
   throw conflict('Tiêu đề trùng với quá nhiều sự kiện, hãy đặt tên khác.')
 }
@@ -651,10 +681,11 @@ export async function createEvent(request: FastifyRequest, rawBody: unknown) {
       departmentId = input.departmentId
     }
   } else {
-    const managed = managedDepartmentIds(user)
-    if (input.departmentId && !managed.includes(input.departmentId)) {
+    // Quyền theo ban dùng hàm chung của rbac (không tự so sánh danh sách ban quản lý riêng).
+    if (input.departmentId && !canAccessDepartment(user, input.departmentId)) {
       throw forbidden('Bạn chỉ có thể tạo sự kiện cho ban mình đang quản lý.')
     }
+    const managed = managedDepartmentIds(user)
     if (!input.departmentId && managed.length > 1) {
       throw invalidInput('Bạn quản lý nhiều ban, hãy chọn ban quản lý sự kiện.')
     }
@@ -749,16 +780,26 @@ export async function updateEvent(request: FastifyRequest, id: string, rawBody: 
         // quản lý ban bị chặn để sự kiện không mất ngầm khỏi phạm vi; BOARD chủ động bỏ được như khi tạo.
         if (!hasRole(user, 'BOARD')) throw forbidden('Không thể bỏ trống ban quản lý của sự kiện.')
       } else if (patch.departmentId !== event.departmentId) {
-        // Đổi ban quản lý: quản lý ban không vượt khỏi các ban mình quản lý; BOARD bất kỳ ban ACTIVE nào.
-        if (!hasRole(user, 'BOARD') && !managedDepartmentIds(user).includes(patch.departmentId)) {
+        // Đổi ban quản lý: quyền theo ban dùng hàm chung của rbac — quản lý ban không vượt khỏi
+        // các ban mình quản lý, BOARD bất kỳ ban ACTIVE nào.
+        if (!canAccessDepartment(user, patch.departmentId)) {
           throw forbidden('Bạn chỉ có thể giữ sự kiện ở các ban mình quản lý.')
         }
         await assertDepartmentAcceptsEvents(tx, patch.departmentId)
       }
     }
 
-    // Kiểm chéo thời gian trên dữ liệu đã gộp; bỏ qua kết quả, sai thì ZodError tự thành 422.
-    eventCreateSchema.parse({ ...event, ...patch })
+    // Kiểm chéo thời gian trên dữ liệu đã gộp; sai thì ZodError tự thành 422. Schema giờ nhận chuỗi
+    // ISO 8601 (không còn coerce.date), nên đưa Date của bản ghi và của patch (sau transform) về chuỗi ISO.
+    const chosen = <T>(patched: T | undefined, current: T): T => (patched !== undefined ? patched : current)
+    eventCreateSchema.parse({
+      ...event,
+      ...patch,
+      startAt: chosen(patch.startAt, event.startAt).toISOString(),
+      endAt: chosen(patch.endAt, event.endAt).toISOString(),
+      registrationOpensAt: chosen(patch.registrationOpensAt, event.registrationOpensAt)?.toISOString() ?? null,
+      registrationClosesAt: chosen(patch.registrationClosesAt, event.registrationClosesAt)?.toISOString() ?? null,
+    })
 
     if (patch.capacity !== undefined && patch.capacity !== null) {
       const registered = await tx.eventRegistration.count({ where: { eventId: id, status: 'REGISTERED' } })
@@ -804,8 +845,9 @@ export async function updateEvent(request: FastifyRequest, id: string, rawBody: 
       )
     }
 
+    // Timeout 30s như lúc hủy: luồng hạ PUBLIC cũng xếp email tuần tự cho từng người nhận.
     return toAdminEvent(updated)
-  })
+  }, { timeout: 30_000 })
 }
 
 // ─── QUẢN TRỊ: CHUYỂN TRẠNG THÁI (docs/01 §9.2) ────────────────────────────
@@ -830,17 +872,24 @@ function transitionDenied(request: FastifyRequest, action: AuditActionName, even
  */
 export async function publishEvent(request: FastifyRequest, id: string) {
   const user = currentUser(request)
-  const current = await db.event.findUnique({ where: { id }, select: { status: true, audience: true } })
-  if (!current) throw notFound('Không tìm thấy sự kiện.')
-
-  if (current.audience !== 'DEPARTMENT' && !hasRole(user, 'BOARD')) {
-    await transitionDenied(request, AUDIT_ACTIONS.EVENT_PUBLISH, id, 'Chỉ Ban Chủ nhiệm được công bố sự kiện toàn CLB hoặc công khai')
-    throw forbidden('Chỉ Ban Chủ nhiệm được công bố sự kiện toàn CLB hoặc công khai.')
-  }
 
   return db.$transaction(async (tx) => {
-    // updateMany kèm điều kiện trạng thái: hai request công bố cùng lúc chỉ một thắng.
-    const result = await tx.event.updateMany({ where: { id, status: 'DRAFT' }, data: { status: 'PUBLISHED' } })
+    // Đọc đối tượng trong transaction để quyền và điều kiện cập nhật dựa trên một ảnh chụp nhất quán:
+    // PATCH đổi đối tượng chạy song song sẽ chờ khóa, không công bố theo đối tượng đã đọc cũ.
+    const current = await tx.event.findUnique({ where: { id }, select: { status: true, audience: true } })
+    if (!current) throw notFound('Không tìm thấy sự kiện.')
+
+    if (current.audience !== 'DEPARTMENT' && !hasRole(user, 'BOARD')) {
+      await transitionDenied(request, AUDIT_ACTIONS.EVENT_PUBLISH, id, 'Chỉ Ban Chủ nhiệm được công bố sự kiện toàn CLB hoặc công khai')
+      throw forbidden('Chỉ Ban Chủ nhiệm được công bố sự kiện toàn CLB hoặc công khai.')
+    }
+
+    // updateMany kèm điều kiện trạng thái VÀ đối tượng vừa đọc: hai request công bố/đổi đối tượng chạy
+    // cùng lúc chỉ một thắng, và không bao giờ công bố nhầm sau khi đối tượng đã bị đổi ở client khác.
+    const result = await tx.event.updateMany({
+      where: { id, status: 'DRAFT', audience: current.audience },
+      data: { status: 'PUBLISHED' },
+    })
     if (result.count === 0) {
       const status = (await tx.event.findUnique({ where: { id }, select: { status: true } }))?.status
       await transitionDenied(request, AUDIT_ACTIONS.EVENT_PUBLISH, id, `Sai bước chuyển từ trạng thái ${status ?? 'không rõ'}`)
@@ -874,6 +923,8 @@ export async function cancelEvent(request: FastifyRequest, id: string, rawBody: 
   // Route đã chặn bằng requireRole; dòng này để gọi trực tiếp service cũng phải có người đăng nhập.
   currentUser(request)
 
+  // Timeout 30s thay mặc định 5s: xếp email báo hủy tuần tự cho từng người nhận (NTF-01), sự kiện
+  // lớn dễ vượt 5s và rollback mất cả thao tác hủy.
   return db.$transaction(async (tx) => {
     const event = await tx.event.findUnique({ where: { id }, select: { status: true, departmentId: true } })
     if (!event) throw notFound('Không tìm thấy sự kiện.')
@@ -920,7 +971,7 @@ export async function cancelEvent(request: FastifyRequest, id: string, rawBody: 
     const updated = await tx.event.findUnique({ where: { id }, select: adminEventSelect })
     if (!updated) throw notFound('Không tìm thấy sự kiện.')
     return toAdminEvent(updated)
-  })
+  }, { timeout: 30_000 })
 }
 
 /** Lưu trữ sự kiện: chỉ từ CANCELLED hoặc ENDED (docs/01 §9.2); ARCHIVED là trạng thái cuối. */
