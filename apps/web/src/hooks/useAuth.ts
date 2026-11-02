@@ -8,6 +8,10 @@ export type AuthState = {
   user: Me | null
   login: (username: string, password: string) => Promise<Me>
   logout: () => Promise<void>
+  /** Hỏi lại /auth/me (sau khi đổi vai trò, kích hoạt…). */
+  refresh: () => Promise<void>
+  /** Đặt người dùng từ phản hồi API trả về Me (ví dụ /auth/activate). */
+  setMe: (me: Me | null) => void
 }
 
 export const AuthContext = createContext<AuthState | null>(null)

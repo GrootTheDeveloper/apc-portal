@@ -6,6 +6,7 @@ import { pillClass } from '../../../components/buttonClass'
 import { PageHero } from '../../../components/PageHero'
 import { NewsCard } from '../../../components/NewsCard'
 import { Pagination } from '../../../components/Pagination'
+import { SearchBox } from '../../../components/SearchBox'
 import { useApi } from '../../../hooks/useApi'
 import type { Page } from '../../../lib/api'
 import { NEWS_CATEGORIES, type NewsItem } from '../../../lib/content'
@@ -84,6 +85,8 @@ export function NewsListPage() {
               </button>
             ))}
           </div>
+
+          <SearchBox />
 
           <AsyncState
             loading={loading}

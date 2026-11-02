@@ -18,8 +18,6 @@ import {
   SubmitApplicationSchema,
   UpdateRecruitmentRoundSchema,
 } from './validation.js'
-
-
 /**
  * 1. API CÔNG KHAI
  */

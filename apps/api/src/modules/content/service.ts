@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db } from '../../db/client.js'
 import { notFound } from '../../lib/errors.js'
 import { pageArgs, pageQuery, toPage } from '../../lib/pagination.js'
+import { eventListSelect, publicVisible } from '../events/service.js'
 
 // ─── SCHEMA VALIDATION ───────────────────────────────────────────────────────
 
@@ -18,6 +19,8 @@ export const newsListQuery = pageQuery.extend({
 export const projectListQuery = pageQuery.extend({
   pageSize: z.coerce.number().int().min(1).max(100).default(12),
 })
+
+export const publicSearchQuery = z.object({ q: z.string().trim().max(100).default('') })
 
 /** Mới công bố trước; cùng thời điểm thì theo id để phân trang không lặp/sót mục. */
 const newestFirst = [{ publishedAt: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }] as const
@@ -97,4 +100,37 @@ export async function getPublishedProjectBySlug(slug: string) {
   const project = await db.project.findFirst({ where: { slug, status: 'PUBLISHED' }, select: projectSelect })
   if (!project) throw notFound('Không tìm thấy dự án.')
   return project
+}
+
+/** Prisma translates `contains` to SQL LIKE; quote LIKE metacharacters as literals. */
+function escapeLikeQuery(value: string) {
+  return value.replace(/[\\%_]/g, (character) => `\\${character}`)
+}
+
+/** Tìm nội dung theo tiêu đề, chỉ trong các nhóm đang công khai. */
+export async function searchPublicContent(rawQuery: unknown) {
+  const { q } = publicSearchQuery.parse(rawQuery)
+  const titleFilter = q ? { title: { contains: escapeLikeQuery(q), mode: 'insensitive' as const } } : {}
+  const [news, events, projects] = await Promise.all([
+    db.post.findMany({
+      where: { ...publicPost, ...titleFilter },
+      orderBy: [...newestFirst],
+      take: 10,
+      select: newsListSelect,
+    }),
+    db.event.findMany({
+      where: { ...publicVisible, ...titleFilter },
+      orderBy: [{ startAt: 'desc' }, { id: 'desc' }],
+      take: 10,
+      select: eventListSelect,
+    }),
+    db.project.findMany({
+      where: { status: 'PUBLISHED', ...titleFilter },
+      orderBy: [...newestFirst],
+      take: 10,
+      select: projectSelect,
+    }),
+  ])
+
+  return { news, events, projects }
 }

@@ -21,8 +21,7 @@ export async function recruitmentRoutes(app: FastifyInstance) {
     const { slug } = request.params as { slug: string }
     return getPublicRecruitmentRoundBySlug(slug)
   })
-  
-    // Nộp đơn ứng tuyển đợt tuyển công khai (R3, FLOW-04)
+  // Nộp đơn ứng tuyển đợt tuyển công khai (R3, FLOW-04)
   app.post(
     '/public/recruitment-rounds/:slug/applications',
     { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
