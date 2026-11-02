@@ -791,11 +791,8 @@ export async function submitApplication(
 export async function lookupApplication(input: unknown) {
   const { email, code } = LookupApplicationSchema.parse(input)
 
-  const app = await db.membershipApplication.findFirst({
-    where: {
-      profileCode: code.trim(),
-      applicantEmail: { equals: email.trim(), mode: 'insensitive' },
-    },
+  const app = await db.membershipApplication.findUnique({
+    where: { profileCode: code },
     include: {
       recruitmentRound: {
         select: {
@@ -813,7 +810,7 @@ export async function lookupApplication(input: unknown) {
   })
 
   // Sai email hoặc sai mã trả cùng một thông báo chung (FLOW-05)
-  if (!app) {
+  if (!app || app.applicantEmail.toLowerCase() !== email.toLowerCase()) {
     throw notFound('Không tìm thấy hồ sơ với thông tin đã cung cấp.')
   }
 
@@ -837,11 +834,8 @@ export async function lookupApplication(input: unknown) {
 export async function withdrawApplication(request: FastifyRequest, input: unknown) {
   const { email, code } = WithdrawApplicationSchema.parse(input)
 
-  const app = await db.membershipApplication.findFirst({
-    where: {
-      profileCode: code.trim(),
-      applicantEmail: { equals: email.trim(), mode: 'insensitive' },
-    },
+  const app = await db.membershipApplication.findUnique({
+    where: { profileCode: code },
     select: {
       id: true,
       profileCode: true,
@@ -851,7 +845,7 @@ export async function withdrawApplication(request: FastifyRequest, input: unknow
     },
   })
 
-  if (!app) {
+  if (!app || app.applicantEmail.toLowerCase() !== email.toLowerCase()) {
     throw notFound('Không tìm thấy hồ sơ với thông tin đã cung cấp.')
   }
 
