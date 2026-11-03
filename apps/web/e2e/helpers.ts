@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 // Mật khẩu mặc định và secret TOTP mẫu cho môi trường dev/test
 export const SEED_PASSWORD = process.env.SEED_PASSWORD || 'ApcPortal@2026';
