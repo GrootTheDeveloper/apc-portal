@@ -4,11 +4,11 @@ import { newsCategoryStyle, type NewsItem } from '../lib/content'
 import { formatDate } from '../lib/format'
 
 /** Card bài viết: ảnh bìa (chưa có thì mảng màu theo chuyên mục), chuyên mục, ngày, tiêu đề, tóm tắt. */
-export function NewsCard({ item }: { item: NewsItem }) {
+export function NewsCard({ item, linkState }: { item: NewsItem; linkState?: { from: string } }) {
   const style = newsCategoryStyle(item.category)
 
   return (
-    <Link to={`/news/${item.slug}`} className="group flex min-w-0 flex-col">
+    <Link to={`/news/${item.slug}`} state={linkState} className="group flex min-w-0 flex-col">
       {item.thumbnailUrl ? (
         <div className="photo aspect-[16/10] bg-soft">
           <img alt="" className="h-full" loading="lazy" src={item.thumbnailUrl} />

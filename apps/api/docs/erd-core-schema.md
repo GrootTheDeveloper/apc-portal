@@ -11,6 +11,10 @@ Chỉ có tên bảng và quan hệ, để nhìn nhanh bảng nào nối với b
 ```mermaid
 erDiagram
   users }o--|o departments : "department"
+  role_decisions }o--|| users : "user"
+  role_decisions }o--|o user_roles : "userRole"
+  role_decisions }o--|| users : "decidedBy"
+  role_decisions }o--|o users : "executedBy"
   user_roles }o--|| users : "user"
   user_roles }o--|o departments : "department"
   user_roles }o--|o users : "grantedBy"
@@ -21,6 +25,9 @@ erDiagram
   posts }o--|o users : "publishedBy"
   events }o--|o departments : "department"
   events }o--|| users : "createdBy"
+  events }o--|o users : "attendanceFinalizedBy"
+  event_registrations }o--|| events : "event"
+  event_registrations }o--|o users : "user"
   projects }o--|o departments : "department"
   projects }o--|| users : "createdBy"
   recruitment_rounds }o--|| users : "createdBy"
@@ -77,6 +84,23 @@ erDiagram
     Json interestAreas "tùy chọn"
     String departmentId FK "tùy chọn. Ban đang hoạt động; khác phạm vi quản lý trong user_roles"
     MemberStatus memberStatus "ACTIVE / PAUSED / LEFT. MEM-11: độc lập AccountStatus, trừ LEFT kéo theo INACTIVE"
+    DateTime deactivatedAt "tùy chọn. A5: lúc chuyển INACTIVE; B7 dùng để tính hạn lưu giữ dữ liệu"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  role_decisions {
+    String id PK
+    RoleDecisionAction action "GRANT / REVOKE"
+    Role role "MEMBER / DEPARTMENT_MANAGER / BOARD / TECH_ADMIN. hiện chỉ dùng cho TECH_ADMIN"
+    String userId FK
+    String userRoleId FK "tùy chọn. REVOKE: dòng user_roles bị thu hồi; GRANT: dòng được tạo khi thực hiện"
+    DateTime expiresAt "tùy chọn. GRANT: ngày hết hạn của vai trò, không muộn hơn SiteSetting.termEndsAt (RP-03)"
+    String reason
+    RoleDecisionStatus status "PENDING / EXECUTED / CANCELLED"
+    String decidedById FK
+    String executedById FK "tùy chọn"
+    DateTime executedAt "tùy chọn"
+    DateTime cancelledAt "tùy chọn"
     DateTime createdAt
     DateTime updatedAt
   }
@@ -92,6 +116,7 @@ erDiagram
     String grantedById FK "tùy chọn. null khi tạo bằng bootstrap (RP-15)"
     String revokedById FK "tùy chọn"
     DateTime revokedAt "tùy chọn"
+    String revokeReason "tùy chọn. A6: lý do thu hồi (lý do cấp nằm ở `reason`)"
     DateTime createdAt
     DateTime updatedAt
   }
@@ -133,14 +158,36 @@ erDiagram
     String coverImageUrl "tùy chọn"
     String eventType "Loại/chuyên mục: Workshop, Training, Contest..."
     EventStatus status "DRAFT / PUBLISHED / CANCELLED / ENDED / ARCHIVED"
+    EventAudience audience "EVT-02; departmentId bên dưới là ban quản lý, không phải đối tượng"
     String departmentId FK "tùy chọn"
     String contactPoint "tùy chọn"
     String createdById FK
     String location "tùy chọn"
+    String onlineUrl "tùy chọn. Link trực tuyến khi không dùng địa điểm; chỉ nhận http/https (FLOW-18)"
     DateTime startAt
     DateTime endAt
+    DateTime registrationOpensAt "tùy chọn"
+    DateTime registrationClosesAt "tùy chọn"
+    Int capacity "tùy chọn. null = không giới hạn"
+    Boolean allowGuestRegistration "Người ngoài APC đăng ký được; chỉ áp dụng khi audience = PUBLIC"
+    String cancelReason "tùy chọn"
+    DateTime attendanceFinalizedAt "tùy chọn"
+    String attendanceFinalizedById FK "tùy chọn"
     DateTime createdAt
     DateTime updatedAt
+  }
+  event_registrations {
+    String id PK
+    String eventId FK
+    String userId FK "tùy chọn"
+    String guestFullName "tùy chọn"
+    String guestEmail "tùy chọn"
+    String guestStudentId "tùy chọn"
+    String registrationCode UK
+    EventRegistrationStatus status "REGISTERED / CANCELLED"
+    EventAttendanceStatus attendanceStatus "NOT_MARKED / PRESENT / EXCUSED / ABSENT"
+    DateTime registeredAt
+    DateTime cancelledAt "tùy chọn"
   }
   projects {
     String id PK
@@ -163,9 +210,12 @@ erDiagram
     String title
     String slug UK
     String description
+    String audience
+    String requirements
     RecruitmentRoundStatus status "DRAFT / OPEN / CLOSED / ARCHIVED"
     DateTime opensAt
     DateTime closesAt
+    Json questions
     String createdById FK
     DateTime createdAt
     DateTime updatedAt
@@ -173,6 +223,7 @@ erDiagram
   membership_applications {
     String id PK
     String profileCode UK "Mã tra cứu công khai CSPRNG (REC-06)"
+    String idempotencyKey UK "tùy chọn. Khóa chống gửi lặp (FLOW-04, STATE-01)"
     String recruitmentRoundId FK
     String applicantName
     String applicantEmail
@@ -254,6 +305,10 @@ erDiagram
   }
 
   users }o--|o departments : "department"
+  role_decisions }o--|| users : "user"
+  role_decisions }o--|o user_roles : "userRole"
+  role_decisions }o--|| users : "decidedBy"
+  role_decisions }o--|o users : "executedBy"
   user_roles }o--|| users : "user"
   user_roles }o--|o departments : "department"
   user_roles }o--|o users : "grantedBy"
@@ -264,6 +319,9 @@ erDiagram
   posts }o--|o users : "publishedBy"
   events }o--|o departments : "department"
   events }o--|| users : "createdBy"
+  events }o--|o users : "attendanceFinalizedBy"
+  event_registrations }o--|| events : "event"
+  event_registrations }o--|o users : "user"
   projects }o--|o departments : "department"
   projects }o--|| users : "createdBy"
   recruitment_rounds }o--|| users : "createdBy"
@@ -289,6 +347,9 @@ erDiagram
 | `ApplicationStatus` | `NEW`, `REVIEWING`, `INTERVIEW`, `ACCEPTED`, `REJECTED`, `WITHDRAWN` |
 | `RoleAssignmentStatus` | `PENDING`, `ACTIVE`, `EXPIRED`, `REVOKED` |
 | `EventStatus` | `DRAFT`, `PUBLISHED`, `CANCELLED`, `ENDED`, `ARCHIVED` |
+| `EventAudience` |  |
+| `EventRegistrationStatus` | `REGISTERED`, `CANCELLED` |
+| `EventAttendanceStatus` | `NOT_MARKED`, `PRESENT`, `EXCUSED`, `ABSENT` |
 | `RecruitmentRoundStatus` | `DRAFT`, `OPEN`, `CLOSED`, `ARCHIVED` |
 | `DeliveryStatus` | `PENDING`, `SENDING`, `RETRY`, `SENT`, `FAILED` |
 | `AuditActorType` | `USER`, `SERVICE` |
@@ -299,3 +360,5 @@ erDiagram
 | `FilePurpose` |  |
 | `FileVisibility` | `PUBLIC`, `INTERNAL` |
 | `FileScanStatus` | `PENDING`, `CLEAN`, `REJECTED` |
+| `RoleDecisionAction` | `GRANT`, `REVOKE` |
+| `RoleDecisionStatus` | `PENDING`, `EXECUTED`, `CANCELLED` |

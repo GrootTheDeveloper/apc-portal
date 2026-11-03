@@ -14,6 +14,8 @@ export type Me = {
   departmentId: string | null
   roles: RoleGrant[]
   mustChangePassword: boolean
+  /** Bước 2 lớp còn thiếu: `setup` → /account/setup-two-factor, `verify` → /account/two-factor. */
+  twoFactor: 'setup' | 'verify' | null
 }
 
 /** Vai trò được vào khu /admin (sitemap PAGE-MGT-01). */
@@ -25,4 +27,43 @@ export function hasRole(user: Me | null, role: Role): boolean {
 
 export function hasAnyRole(user: Me | null, roles: readonly Role[]): boolean {
   return roles.some((role) => hasRole(user, role))
+}
+
+// Các "cửa" trong chuỗi kiểm tra của route guard (Sitemap mục 6.2, 11.1).
+export const ACTIVATE_PATH = '/account/activate'
+export const TWO_FACTOR_SETUP_PATH = '/account/setup-two-factor'
+export const TWO_FACTOR_VERIFY_PATH = '/account/two-factor'
+
+/** Tài khoản phải đổi mật khẩu tạm trước khi dùng bất kỳ trang nào khác (FLOW-09). */
+export function needsActivation(user: Me): boolean {
+  return user.status === 'PENDING_ACTIVATION' || user.mustChangePassword
+}
+
+export type GuardOptions = {
+  /** ai được mở trang; thiếu vai trò thì 403 */
+  roles?: readonly Role[] | undefined
+  /** trang này là một "cửa" trong chuỗi kiểm tra: bỏ qua các bước từ cửa đó trở đi */
+  gate?: 'activation' | 'two-factor' | undefined
+}
+
+export type GuardResult =
+  | { action: 'login' }
+  | { action: 'redirect'; to: string }
+  | { action: 'forbidden' }
+  | { action: 'allow' }
+
+/**
+ * Thứ tự kiểm tra route theo Sitemap mục 11.1 (hàm thuần, có unit test):
+ * phiên → trạng thái tài khoản / phải đổi mật khẩu → xác thực 2 lớp → vai trò.
+ * Bước phạm vi (dữ liệu ban khác) do API trả 404 và trang hiện <NotFound />.
+ */
+export function guardRedirect(user: Me | null, { roles, gate }: GuardOptions = {}): GuardResult {
+  if (!user) return { action: 'login' }
+  if (gate === 'activation') return { action: 'allow' }
+  if (needsActivation(user)) return { action: 'redirect', to: ACTIVATE_PATH }
+  if (gate === 'two-factor') return { action: 'allow' }
+  if (user.twoFactor === 'setup') return { action: 'redirect', to: TWO_FACTOR_SETUP_PATH }
+  if (user.twoFactor === 'verify') return { action: 'redirect', to: TWO_FACTOR_VERIFY_PATH }
+  if (roles && !hasAnyRole(user, roles)) return { action: 'forbidden' }
+  return { action: 'allow' }
 }
