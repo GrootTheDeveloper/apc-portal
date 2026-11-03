@@ -58,7 +58,7 @@ function FilterSelect({
   )
 }
 
-/** PAGE-MGT-POST-01 — danh sách bài viết quản trị (C3): lọc trạng thái, phạm vi, chuyên mục, ban; phân trang. */
+/** PAGE-MGT-CMS-01 — danh sách bài viết quản trị (C3): lọc trạng thái, phạm vi, chuyên mục, ban; phân trang. */
 export function AdminPostListPage() {
   const { user } = useAuth()
   const board = hasRole(user, 'BOARD')

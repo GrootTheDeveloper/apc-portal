@@ -76,3 +76,65 @@ export const fileSrc = (fileId: string | null) => (fileId ? `/api/public/files/$
 /** Tên ban cho bài viết; bài không thuộc ban nào (BOARD tạo) là bài toàn CLB. */
 export const departmentLabel = (departments: { id: string; name: string }[], departmentId: string | null) =>
   departmentId === null ? 'Toàn CLB' : (departments.find((department) => department.id === departmentId)?.name ?? 'Ban đã ngừng hoạt động')
+
+// Form và body gửi lên API tách khỏi PostForm.tsx để file đó chỉ export component (fast-refresh của oxlint).
+
+export type PostFormValues = {
+  title: string
+  summary: string
+  content: string
+  category: string
+  scope: ContentScope
+  /** fileId ảnh bìa trả về từ `POST /portal/files`; `null` là không có ảnh. */
+  thumbnailUrl: string | null
+  metaTitle: string
+  metaDescription: string
+}
+
+/** Giá trị khởi tạo của form: từ bài đang sửa, hoặc rỗng cho bài mới. */
+export function initialPostValues(post?: AdminPostDetail | null): PostFormValues {
+  return {
+    title: post?.title ?? '',
+    summary: post?.summary ?? '',
+    content: post?.content ?? '',
+    category: post?.category ?? '',
+    scope: post?.scope ?? 'PUBLIC',
+    thumbnailUrl: post?.thumbnailUrl ?? null,
+    metaTitle: post?.metaTitle ?? '',
+    metaDescription: post?.metaDescription ?? '',
+  }
+}
+
+/** Body `POST /admin/content/posts` — trường optional để trống thì bỏ hẳn (schema là `.optional()`, gửi null sẽ 422). */
+export function createPayload(values: PostFormValues) {
+  const metaTitle = values.metaTitle.trim()
+  const metaDescription = values.metaDescription.trim()
+  return {
+    title: values.title.trim(),
+    summary: values.summary.trim(),
+    content: values.content,
+    category: values.category,
+    scope: values.scope,
+    ...(values.thumbnailUrl ? { thumbnailUrl: values.thumbnailUrl } : {}),
+    ...(metaTitle ? { metaTitle } : {}),
+    ...(metaDescription ? { metaDescription } : {}),
+  }
+}
+
+/**
+ * Body `PATCH /admin/content/posts/:id` — `updatedAt` của lần đọc gần nhất để server kiểm tra xung đột (OCC).
+ * Trường optional để trống gửi `null` (schema là `.nullable()`) để xóa ảnh và xóa thẻ SEO.
+ */
+export function updatePayload(values: PostFormValues, updatedAt: string) {
+  return {
+    title: values.title.trim(),
+    summary: values.summary.trim(),
+    content: values.content,
+    category: values.category,
+    scope: values.scope,
+    thumbnailUrl: values.thumbnailUrl,
+    metaTitle: values.metaTitle.trim() || null,
+    metaDescription: values.metaDescription.trim() || null,
+    updatedAt,
+  }
+}
