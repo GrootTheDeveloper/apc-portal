@@ -38,6 +38,8 @@ erDiagram
   notification_deliveries }o--|o departments : "department"
   audit_logs }o--|o users : "actor"
   stored_files }o--|| users : "uploadedBy"
+  export_files }o--|| users : "createdBy"
+  export_files }o--|| users : "downloader"
 ```
 
 ## Chi tiết từng bảng
@@ -303,6 +305,18 @@ erDiagram
     DateTime createdAt
     DateTime updatedAt
   }
+  export_files {
+    String id PK
+    String createdById FK
+    String downloaderId FK
+    String kind
+    String filename
+    String storageKey UK
+    ExportFileStatus status "CREATING / READY / EXPIRED"
+    DateTime expiresAt
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
   users }o--|o departments : "department"
   role_decisions }o--|| users : "user"
@@ -332,6 +346,8 @@ erDiagram
   notification_deliveries }o--|o departments : "department"
   audit_logs }o--|o users : "actor"
   stored_files }o--|| users : "uploadedBy"
+  export_files }o--|| users : "createdBy"
+  export_files }o--|| users : "downloader"
 ```
 
 ## Giá trị trạng thái (enum)
@@ -360,5 +376,6 @@ erDiagram
 | `FilePurpose` |  |
 | `FileVisibility` | `PUBLIC`, `INTERNAL` |
 | `FileScanStatus` | `PENDING`, `CLEAN`, `REJECTED` |
+| `ExportFileStatus` | `CREATING`, `READY`, `EXPIRED` |
 | `RoleDecisionAction` | `GRANT`, `REVOKE` |
 | `RoleDecisionStatus` | `PENDING`, `EXECUTED`, `CANCELLED` |
