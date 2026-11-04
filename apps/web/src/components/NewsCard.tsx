@@ -11,7 +11,8 @@ export function NewsCard({ item, linkState }: { item: NewsItem; linkState?: { fr
     <Link to={`/news/${item.slug}`} state={linkState} className="group flex min-w-0 flex-col">
       {item.thumbnailUrl ? (
         <div className="photo aspect-[16/10] bg-soft">
-          <img alt="" className="h-full" loading="lazy" src={item.thumbnailUrl} />
+          {/* Map fileId từ D2 thành URL public để hiển thị ảnh đúng */}
+          <img alt="" className="h-full" loading="lazy" src={`/api/public/files/${item.thumbnailUrl}`} />
         </div>
       ) : (
         <div className={`grid aspect-[16/10] place-items-center rounded-[20px] ${style.field}`}>
