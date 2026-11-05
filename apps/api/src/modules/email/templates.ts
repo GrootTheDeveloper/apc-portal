@@ -116,6 +116,44 @@ export const EMAIL_TEMPLATES = {
     }
   },
 
+  /**
+   * [E4 tạm trước khi O2 merge] Email báo hủy sự kiện cho người còn đăng ký (NTF-01, EVT-09);
+   * refId là id sự kiện. Mỗi người nhận một dòng NotificationDelivery riêng, cùng refId.
+   */
+  EVENT_CANCELLED: async (eventId) => {
+    const event = await db.event.findUnique({
+      where: { id: eventId },
+      select: { title: true, startAt: true, location: true, onlineUrl: true, cancelReason: true },
+    })
+    if (!event) return null
+    // Giờ Việt Nam (BR-14): dùng nguồn định dạng chung formatVnDateTime (lib/vnTime), như các mẫu của E3.
+    const when = formatVnDateTime(event.startAt)
+    const onlineUrl = safeHttpUrl(event.onlineUrl)
+    const place = event.location ?? (onlineUrl ? `${onlineUrl} (trực tuyến)` : 'sẽ được thông báo sau')
+    const reason = event.cancelReason ?? ''
+    const body = [
+      `Sự kiện "${event.title}" đã bị hủy.`,
+      `Thời gian dự kiến: ${when}.`,
+      reason ? `Lý do: ${reason}` : null,
+      `Đăng ký của bạn không cần thao tác gì thêm; dữ liệu đăng ký vẫn được lưu lại.`,
+    ]
+      .filter((line) => line !== null)
+      .join('\n')
+    const html = [
+      `<p>Sự kiện <strong>${escapeHtml(event.title)}</strong> đã bị hủy.</p>`,
+      `<p>Thời gian dự kiến: ${escapeHtml(when)}. Địa điểm: ${escapeHtml(place)}.</p>`,
+      reason ? `<p>Lý do: ${escapeHtml(reason)}</p>` : null,
+      `<p>Đăng ký của bạn không cần thao tác gì thêm; dữ liệu đăng ký vẫn được lưu lại.</p>`,
+    ]
+      .filter((line) => line !== null)
+      .join('')
+    return {
+      subject: `APC Portal: sự kiện "${event.title}" đã bị hủy`,
+      text: body,
+      html,
+    }
+  },
+
   /** Email xác nhận nộp đơn tuyển thành viên (R3, NTF-01) */
   APPLICATION_SUBMITTED: async (applicationId) => {
     const app = await db.membershipApplication.findUnique({

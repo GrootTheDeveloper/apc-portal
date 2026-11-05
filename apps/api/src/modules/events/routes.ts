@@ -1,12 +1,27 @@
 import type { FastifyInstance } from 'fastify'
 
 import type { AppConfig } from '../../config.js'
+import { db } from '../../db/client.js'
 import {
   createBodyEmailRateLimitKey,
   createLookupAttemptLimiter,
   createSourceIpLimiter,
 } from '../../lib/rateLimit.js'
-import { cancelGuestRegistration, getPublicEventBySlug, listPublicEvents, lookupGuestRegistration, registerGuest } from './service.js'
+import { requireRole, requireScope } from '../auth/rbac.js'
+import {
+  archiveEvent,
+  cancelEvent,
+  cancelGuestRegistration,
+  createEvent,
+  getAdminEvent,
+  getPublicEventBySlug,
+  listAdminEvents,
+  listPublicEvents,
+  lookupGuestRegistration,
+  publishEvent,
+  registerGuest,
+  updateEvent,
+} from './service.js'
 
 export function eventsRoutes(config: AppConfig) {
   return async function registerEventsRoutes(app: FastifyInstance) {
@@ -86,5 +101,55 @@ export function eventsRoutes(config: AppConfig) {
       { preHandler: [limitPerSourceIp, guestAttempts.limit] },
       guestAttempts.wrap(async (request) => cancelGuestRegistration(request.body)),
     )
+
+    // ─── QUẢN TRỊ (E4) ─────────────────────────────────────────────────────
+    // Vai trò theo docs/02 §8.3: DEPARTMENT_MANAGER làm được với sự kiện ban mình (requireScope → 404
+    // nếu mở sự kiện ban khác), BOARD làm được với tất cả. Riêng công bố CLUB/PUBLIC chặn thêm ở service.
+
+    /** Phạm vi ban của sự kiện theo id trên URL: không tồn tại và ngoài phạm vi ban cùng trả 404 (docs/02 mục 12). */
+    const loadEventScope = ({ id }: { id: string }) =>
+      db.event.findUnique({ where: { id }, select: { departmentId: true } })
+    const adminPreHandler = [requireRole('DEPARTMENT_MANAGER', 'BOARD'), requireScope(loadEventScope)]
+
+    /** Danh sách sự kiện cho trang quản trị. Query: page, pageSize, status, audience, departmentId. */
+    app.get('/admin/events', { preHandler: requireRole('DEPARTMENT_MANAGER', 'BOARD') }, async (request) =>
+      listAdminEvents(request, request.query),
+    )
+
+    /** Tạo sự kiện mới ở trạng thái DRAFT; quản lý ban tự gán ban mình, BOARD chọn được ban khác (ORG-06). */
+    app.post('/admin/events', { preHandler: requireRole('DEPARTMENT_MANAGER', 'BOARD') }, async (request, reply) => {
+      const event = await createEvent(request, request.body)
+      return reply.code(201).send(event)
+    })
+
+    /** Chi tiết sự kiện cho trang quản trị, kèm `registeredCount` (FLOW-15). */
+    app.get('/admin/events/:id', { preHandler: adminPreHandler }, async (request) => {
+      const { id } = request.params as { id: string }
+      return getAdminEvent(id)
+    })
+
+    /** Sửa nội dung sự kiện; chỉ DRAFT và PUBLISHED sửa được (sai trạng thái trả 409). */
+    app.patch('/admin/events/:id', { preHandler: adminPreHandler }, async (request) => {
+      const { id } = request.params as { id: string }
+      return updateEvent(request, id, request.body)
+    })
+
+    /** Công bố (DRAFT → PUBLISHED); sai bước trả 409, sai đối tượng với quản lý ban trả 403. */
+    app.post('/admin/events/:id/publish', { preHandler: adminPreHandler }, async (request) => {
+      const { id } = request.params as { id: string }
+      return publishEvent(request, id)
+    })
+
+    /** Hủy (PUBLISHED → CANCELLED) với lý do bắt buộc trong body; giữ đăng ký và gửi email báo hủy (EVT-09). */
+    app.post('/admin/events/:id/cancel', { preHandler: adminPreHandler }, async (request) => {
+      const { id } = request.params as { id: string }
+      return cancelEvent(request, id, request.body)
+    })
+
+    /** Lưu trữ (từ CANCELLED hoặc ENDED); PUBLISHED → ENDED do tác vụ nền 'event-end' làm, không có route. */
+    app.post('/admin/events/:id/archive', { preHandler: adminPreHandler }, async (request) => {
+      const { id } = request.params as { id: string }
+      return archiveEvent(request, id)
+    })
   }
 }
