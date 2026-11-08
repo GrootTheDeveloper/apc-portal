@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { DEFAULT_AFTER_LOGIN, loginUrl, safeReturnTo } from './returnTo'
+import { DEFAULT_AFTER_LOGIN, loginUrl, safeReturnTo as check } from './returnTo'
+
+// Route giả thay cho cây route thật (isAppPath trong src/routes.tsx có test riêng).
+const KNOWN = new Set(['/', '/admin', '/portal', '/news', '/portal/account/security'])
+const safeReturnTo = (value: string | null | undefined) => check(value, (pathname) => KNOWN.has(pathname))
 
 describe('safeReturnTo', () => {
   it('keeps internal paths with their query string', () => {
     expect(safeReturnTo('/admin')).toBe('/admin')
     expect(safeReturnTo('/portal')).toBe('/portal')
-    expect(safeReturnTo('/portal/profile')).toBe('/portal/profile')
-    expect(safeReturnTo('/portal/activity-history')).toBe('/portal/activity-history')
-    expect(safeReturnTo('/portal/account/roles')).toBe('/portal/account/roles')
     expect(safeReturnTo('/news?page=2')).toBe('/news?page=2')
   })
 

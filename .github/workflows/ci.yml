@@ -52,3 +52,61 @@ jobs:
 
       - name: Verify repository
         run: pnpm check
+
+  # Test giao diện tự động (Q2): DB trống → migrate → seed D1 → Playwright tự bật API và web.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: apc
+          POSTGRES_PASSWORD: apc_ci_only
+          POSTGRES_DB: apc_portal
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U apc"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://apc:apc_ci_only@localhost:5432/apc_portal
+      SEED_PASSWORD: e2e_ci_only
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Migrate and seed
+        run: |
+          pnpm --filter @apc/api db:deploy
+          pnpm --filter @apc/api db:seed
+
+      - name: Install Chromium
+        run: pnpm --filter @apc/web exec playwright install --with-deps chromium
+
+      - name: Run Playwright
+        run: pnpm --filter @apc/web test:e2e
+
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7

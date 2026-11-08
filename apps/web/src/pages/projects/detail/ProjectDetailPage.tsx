@@ -1,175 +1,105 @@
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
 import { Breadcrumb } from '../../../components/Breadcrumb'
-import { useMockApi } from '../../../hooks/useMockApi'
+import { buttonClass } from '../../../components/buttonClass'
+import { PageHero } from '../../../components/PageHero'
+import { Seo } from '../../../components/Seo'
+import { useApi } from '../../../hooks/useApi'
+import { safeHttpUrl, type ProjectItem } from '../../../lib/content'
 import { NotFound } from '../../NotFound'
-import { getProjectDetail, type ProjectItem, type ProjectType } from '../list/mock'
 
-function getTypeColorClass(type: ProjectType): string {
-  switch (type) {
-    case 'Nền tảng':
-      return 'text-apc-red'
-    case 'Công cụ':
-      return 'text-apc-blue'
-    case 'Sản phẩm':
-      return 'text-apc-gold'
-    default:
-      return 'text-apc-blue'
-  }
-}
-
-/** Trang chi tiết dự án */
+/** Trang chi tiết dự án. Loại dự án và thành viên tham gia thêm ở C4. */
 export function ProjectDetailPage() {
   const { slug } = useParams<{ slug: string }>()
+  const location = useLocation()
+  const backTo = (location.state as { from?: string } | null)?.from ?? '/projects'
+  const { data: item, loading, error, reload } = useApi<ProjectItem>(slug ? `/public/projects/${slug}` : null)
 
-  const { data, loading, error, reload } = useMockApi<ProjectItem | null>(
-    () => (slug ? getProjectDetail(slug) : Promise.resolve(null)),
-    [slug],
-  )
-
-  if (!slug) {
+  // Dự án không tồn tại hoặc chưa công bố trả 404
+  if (!slug || error?.status === 404) {
     return <NotFound />
   }
 
-  // data là null nghĩa là slug hợp lệ nhưng không tìm thấy dự án.
-  if (!loading && !error && data === null) {
-    return <NotFound />
-  }
-
-  // Alias để dùng tên quen thuộc trong JSX bên dưới.
-  const item = data
-
-  const typeColorClass = item ? getTypeColorClass(item.type) : 'text-apc-blue'
+  const productUrl = safeHttpUrl(item?.projectUrl)
+  const sourceUrl = safeHttpUrl(item?.sourceUrl)
+  const technologies = item?.technologies ?? []
 
   return (
-    <main className="w-full min-h-[60vh] py-12 px-gutter bg-white">
-      <div className="max-w-5xl mx-auto fade-up w-full">
-        <AsyncState
-          loading={loading}
-          error={error}
-          empty={false}
-          onRetry={reload}
-        >
-          {item && (
-            <article className="flex flex-col gap-8">
-              {/* Breadcrumb */}
-              <Breadcrumb
-                items={[
-                  { label: 'Trang chủ', to: '/' },
-                  { label: 'Dự án', to: '/projects' },
-                  { label: item.name },
-                ]}
-              />
-
-              {/* Header dự án */}
-              <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 border-b border-outline-variant/20 pb-6">
-                <div>
-                  <span className={`${typeColorClass} text-xs font-bold uppercase tracking-wider block mb-2`}>
-                    {item.type}
-                  </span>
-                  <h1 className="font-headline-md text-3xl sm:text-4xl lg:text-5xl font-bold text-on-surface leading-tight">
-                    {item.name}
-                  </h1>
-                </div>
-
-                {/* Các nút liên kết sản phẩm / mã nguồn */}
-                <div className="flex flex-wrap items-center gap-3">
-                  {item.productUrl && (
-                    <a
-                      href={item.productUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-apc bg-apc-red text-white font-medium hover:bg-[#a0220b] transition-colors shadow-sm text-sm"
-                    >
-                      Trải nghiệm ngay <span className="material-symbols-outlined text-sm">open_in_new</span>
+    <main>
+      <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
+        {item && (
+          <article>
+            <Seo title={item.title} description={item.description} path={`/projects/${slug}`} imageUrl={item.thumbnailUrl} />
+            <PageHero
+              top={
+                <Breadcrumb
+                  items={[
+                    { label: 'trang chủ', to: '/' },
+                    { label: 'dự án', to: backTo },
+                    { label: item.title },
+                  ]}
+                />
+              }
+              compact
+              comment="dự án"
+              title={item.title}
+              lede={item.description}
+            >
+              {(productUrl || sourceUrl) && (
+                <div className="mt-8 flex flex-wrap gap-4">
+                  {productUrl && (
+                    <a href={productUrl} target="_blank" rel="noopener noreferrer" className={buttonClass('primary')}>
+                      Dùng thử ↗<span className="sr-only"> (mở tab mới)</span>
                     </a>
                   )}
-                  {item.sourceUrl && (
-                    <a
-                      href={item.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-apc bg-white text-on-surface border border-outline-variant/30 hover:bg-surface-container-low transition-colors shadow-sm font-medium text-sm"
-                    >
-                      Mã nguồn <span className="material-symbols-outlined text-sm">code</span>
+                  {sourceUrl && (
+                    <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className={buttonClass('light')}>
+                      Mã nguồn ↗<span className="sr-only"> (mở tab mới)</span>
                     </a>
                   )}
                 </div>
-              </div>
-
-              {/* Ảnh dự án */}
-              {item.imageUrl ? (
-                <div className="w-full aspect-[16/9] max-h-[460px] rounded-2xl overflow-hidden shadow-sm border border-outline-variant/20">
-                  <img alt={item.name} className="w-full h-full object-cover" src={item.imageUrl} />
-                </div>
-              ) : (
-                <div
-                  className={`w-full aspect-[16/9] max-h-[460px] rounded-2xl flex items-center justify-center bg-gradient-to-br ${item.coverClass || 'from-apc-blue/15 to-surface-container-high'} border border-outline-variant/20 shadow-sm`}
-                >
-                  <span className="material-symbols-outlined text-7xl text-apc-blue/50">rocket_launch</span>
-                </div>
               )}
+            </PageHero>
 
-              {/* Mô tả dự án */}
-              <section className="bg-surface-container-low/40 rounded-2xl p-6 sm:p-8 border border-outline-variant/20">
-                <h2 className="text-xl font-bold text-on-surface mb-3">Mô tả dự án</h2>
-                <p className="text-on-surface-variant leading-relaxed text-base sm:text-lg">{item.description}</p>
-              </section>
-
-              {/* Công nghệ */}
-              {item.technologies && item.technologies.length > 0 && (
-                <section className="bg-white rounded-2xl p-6 sm:p-8 border border-outline-variant/20">
-                  <h2 className="text-xl font-bold text-on-surface mb-4">Công nghệ sử dụng</h2>
-                  <div className="flex flex-wrap gap-2">
-                    {item.technologies.map((tech) => (
-                      <span
-                        key={tech}
-                        className="px-3.5 py-1.5 bg-surface-container-highest text-on-surface-variant rounded-full text-sm font-medium"
-                      >
-                        {tech}
-                      </span>
-                    ))}
+            <section className="px-4 py-[clamp(40px,7vh,80px)] md:px-8">
+              <div className="mx-auto w-full max-w-container-max">
+                {item.thumbnailUrl ? (
+                  <div data-rv className="photo aspect-[16/9] bg-soft">
+                    <img alt={`Ảnh chụp ${item.title}`} className="h-full" src={item.thumbnailUrl} />
                   </div>
-                </section>
-              )}
-
-              {/* Thành viên */}
-              {item.members && item.members.length > 0 && (
-                <section className="bg-white rounded-2xl p-6 sm:p-8 border border-outline-variant/20">
-                  <h2 className="text-xl font-bold text-on-surface mb-4">Thành viên tham gia</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {item.members.map((member) => (
-                      <div
-                        key={member.name}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-surface-container-low border border-outline-variant/10"
-                      >
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-apc-blue text-white shrink-0">
-                          {member.initials}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-bold text-on-surface text-sm truncate">{member.name}</p>
-                          <p className="text-on-surface-variant text-xs truncate">{member.role}</p>
-                        </div>
-                      </div>
-                    ))}
+                ) : (
+                  <div data-rv className="rounded-[20px] bg-ink p-6 font-code text-[16px] font-bold text-paper/70 md:p-10">
+                    <span className="text-apc-gold-soft">apc@umt</span>:~$ cd {item.slug}/ &amp;&amp; ls
+                    <br />
+                    <span className="text-paper">ảnh chụp sản phẩm sẽ có khi dự án lên bản demo</span>
                   </div>
-                </section>
-              )}
+                )}
 
-              {/* Quay lại */}
-              <div className="pt-4 flex justify-between items-center">
+                {technologies.length > 0 && (
+                  <div className="mt-[clamp(40px,7vh,72px)] max-w-[760px]">
+                    <h2 className="border-b-2 border-ink pb-3 font-display text-[28px] font-extrabold leading-none">Công nghệ</h2>
+                    <ul className="mt-5 flex flex-wrap gap-2">
+                      {technologies.map((tech) => (
+                        <li key={tech} className="rounded-lg bg-soft px-3 py-1.5 font-code text-[15px] font-bold">
+                          {tech}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 <Link
-                  to="/projects"
-                  className="text-apc-blue font-medium flex items-center gap-2 hover:underline text-sm sm:text-base"
+                  to={backTo}
+                  className="mt-12 inline-flex min-h-12 items-center text-[17px] font-extrabold text-apc-red underline decoration-2 underline-offset-4"
                 >
-                  <span className="material-symbols-outlined text-sm">arrow_back</span> Về danh sách dự án
+                  ← Về danh sách dự án
                 </Link>
               </div>
-            </article>
-          )}
-        </AsyncState>
-      </div>
+            </section>
+          </article>
+        )}
+      </AsyncState>
     </main>
   )
 }

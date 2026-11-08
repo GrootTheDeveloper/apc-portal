@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../hooks/useAuth'
-import { useScrolled } from '../hooks/useScrolled'
+import { useNavScroll } from '../hooks/useNavScroll'
 import { Button } from '../components/Button'
 import { ADMIN_ROLES, hasAnyRole } from '../lib/auth'
 
@@ -19,9 +19,11 @@ const NAV_LINKS = [
   { label: 'UMTOJ', href: UMTOJ_URL, external: true },
 ] as const
 
-const linkBase = 'font-nav-link text-nav-link transition-colors flex items-center gap-1'
-const linkIdle = `${linkBase} text-on-surface-variant hover:text-primary`
-const linkActive = 'font-nav-link text-nav-link text-primary border-b-2 border-primary pb-1'
+// Gạch chân ba màu logo chạy ra khi rê chuột, giữ nguyên ở trang đang mở.
+const linkBase =
+  "relative flex min-h-11 items-center gap-1 px-2 text-[16px] font-extrabold transition-colors after:absolute after:inset-x-2 after:bottom-1 after:h-[3px] after:origin-left after:scale-x-0 after:rounded-full after:bg-[linear-gradient(90deg,#C23B22_0_33%,#F0A202_33%_66%,#1568C9_66%)] after:transition-transform after:duration-300 after:content-[''] hover:after:scale-x-100 max-xl:min-h-14 max-xl:px-0 max-xl:font-display max-xl:text-[26px] max-xl:font-bold max-xl:after:inset-x-0"
+const linkIdle = `${linkBase} text-ink hover:text-apc-red`
+const linkActive = `${linkBase} text-apc-red after:scale-x-100`
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   return NAV_LINKS.map((link) =>
@@ -44,7 +46,9 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
       >
         {link.label}
         {'external' in link && link.external && (
-          <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+          <span aria-hidden className="text-[14px]">
+            ↗
+          </span>
         )}
       </a>
     ),
@@ -55,7 +59,7 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
 function AccountActions({ onNavigate, mobile = false }: { onNavigate?: () => void; mobile?: boolean }) {
   const { status, user, logout } = useAuth()
   const navigate = useNavigate()
-  const size = mobile ? 'w-full px-6 py-2 shadow-none' : 'px-6 py-2 shadow-none'
+  const size = mobile ? 'w-full' : 'px-6'
   const go = (to: string) => {
     onNavigate?.()
     navigate(to)
@@ -95,26 +99,26 @@ function AccountActions({ onNavigate, mobile = false }: { onNavigate?: () => voi
 }
 
 export function Navbar() {
-  const scrolled = useScrolled(20)
+  const { scrolled, down } = useNavScroll()
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
 
   return (
     <nav
-      className={`bg-surface-container-lowest full-width top-0 sticky z-50 border-b border-outline-variant transition-all duration-300${scrolled ? ' nav-scrolled' : ''}`}
+      className={`site-nav sticky top-0 z-50 bg-paper${scrolled ? ' nav-scrolled' : ''}${down && !menuOpen ? ' nav-up' : ''}`}
     >
-      <div className="flex justify-between items-center w-full px-gutter py-4 max-w-container-max mx-auto">
-        <Link className="flex items-center gap-2" to="/" onClick={closeMenu}>
-          <img alt="APC Logo" className="h-10 w-auto object-contain" src="/assets/home/00-apc-logo.png" />
+      <div className="mx-auto flex h-[72px] w-full max-w-container-max items-center justify-between gap-6 px-4 md:px-8">
+        <Link className="flex shrink-0 items-center" to="/" onClick={closeMenu}>
+          <img alt="APC - Applied Programming Club" className="h-11 w-auto object-contain" src="/assets/home/00-apc-logo.png" />
         </Link>
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden items-center gap-1 xl:flex">
           <NavItems />
         </div>
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden items-center gap-2 xl:flex">
           <AccountActions />
         </div>
         <button
-          className="md:hidden text-on-surface"
+          className="grid h-12 w-12 place-items-center rounded-xl bg-apc-red text-paper shadow-[0_4px_0_#9A2A16] active:translate-y-1 active:shadow-none xl:hidden"
           aria-label={menuOpen ? 'Đóng menu' : 'Mở menu'}
           aria-expanded={menuOpen}
           aria-controls="mobile-menu"
@@ -124,9 +128,9 @@ export function Navbar() {
         </button>
       </div>
       {menuOpen && (
-        <div id="mobile-menu" className="md:hidden flex flex-col items-start gap-4 px-gutter pb-6">
+        <div id="mobile-menu" className="flex flex-col items-start bg-paper px-4 pb-6 md:px-8 xl:hidden">
           <NavItems onNavigate={closeMenu} />
-          <div className="flex w-full flex-col gap-3">
+          <div className="mt-4 flex w-full flex-col gap-3">
             <AccountActions onNavigate={closeMenu} mobile />
           </div>
         </div>

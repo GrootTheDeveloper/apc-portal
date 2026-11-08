@@ -1,35 +1,132 @@
-/* Mỗi section chiếm trọn chiều cao viewport và căn giữa nội dung theo chiều dọc,
-   giống section "Cùng học...". Dùng min-height nên section nào cao hơn màn hình
-   vẫn nở ra bình thường, không bị cắt nội dung. */
-main > section {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+/* Vật liệu riêng của trang chủ. Chất liệu dùng chung (ảnh xếp lớp, chuyển động) ở src/index.css. */
+
+/* máy tính: mỗi phần cao đúng một màn hình và cuộn luôn hít trọn vào một phần (bật bằng class snap-home trên <html>).
+   Phần nào lỡ cao hơn màn hình thì trình duyệt vẫn cho cuộn tự do bên trong phần đó. */
+@media (min-width: 1024px) and (min-height: 640px) {
+  html.snap-home { scroll-snap-type: y mandatory; }
+  .snap-home main > section { scroll-snap-align: start; scroll-snap-stop: always; }
+  /* hero nằm dưới thanh nav: điểm hít là đầu trang để nav không che hero */
+  .snap-home main > section:first-child { scroll-margin-top: 72px; }
+  /* footer dính đáy nên trình duyệt tính sai điểm hít của nó; dùng mốc rỗng ở cuối trang thay thế */
+  .snap-home .snap-end { scroll-snap-align: end; }
+  .screen { min-height: 100svh; }
 }
 
-/* Mặc định nội dung hiện. Chỉ ẩn-để-animate khi hook đã gắn .reveal-on
-   (tức có JS và người dùng không bật giảm chuyển động). */
-.reveal-on .fade-up { opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease-out, transform 0.6s ease-out; }
-        .reveal-on .fade-up.visible { opacity: 1; transform: translateY(0); }
-        .nav-scrolled { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+/* ---------- hero: ảnh tràn, lớp phủ xanh than bên trái cho chữ ---------- */
+.hero-frame { position: relative; overflow: hidden; background: var(--ink); }
+.hero-frame > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 68% 40%; }
+.hero-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgb(8 31 61 / 0.85) 0%, rgb(8 31 61 / 0.62) 36%, rgb(8 31 61 / 0.12) 68%, rgb(8 31 61 / 0) 100%);
+}
+@media (max-width: 1023px) {
+  .hero-frame::after { background: none; }
+}
+@keyframes settle { from { scale: 1.08; } to { scale: 1; } }
+.hero-frame > img { animation: settle 1600ms var(--ease-out) both; }
 
-        @keyframes bgFade {
-            0% { opacity: 1; transform: scale(1); }
-            28% { opacity: 1; transform: scale(1.02); }
-            33% { opacity: 0; transform: scale(1.03); }
-            95% { opacity: 0; transform: scale(1); }
-            100% { opacity: 1; transform: scale(1); }
-        }
-        .hero-slider-img {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            opacity: 0;
-            animation: bgFade 15s infinite;
-        }
-        .hero-slider-img:nth-child(1) { animation-delay: 0s; }
-        .hero-slider-img:nth-child(2) { animation-delay: 5s; }
-        .hero-slider-img:nth-child(3) { animation-delay: 10s; }
+/* ---------- A·P·C: logo ráp từ ba mảnh khi cuộn tới, rê vào chữ nào thì các mảnh tạo nên chữ đó sáng ---------- */
+.mark-red { --fx: -6%; --fy: -24%; --fr: -14deg; --md: 150ms; }
+.mark-gold { --fx: -32%; --fy: 6%; --fr: 12deg; --md: 380ms; }
+.mark-blue { --fx: 26%; --fy: 22%; --fr: 18deg; --md: 610ms; }
+@keyframes assemble { from { opacity: 0; translate: var(--fx) var(--fy); rotate: var(--fr); } }
+.rv-on .values:not(.in) .mark-piece { opacity: 0; }
+.rv-on .values.in .mark-piece { animation: assemble 1100ms cubic-bezier(0.34, 1.4, 0.64, 1) var(--md) backwards; }
+.values:has(.value-row:hover) .mark-piece { opacity: 0.12; }
+/* A là ngọn lửa, P là ngọn lửa ghép vệt vàng, C là con sóng */
+.values:has(.value-a:hover) .mark-red,
+.values:has(.value-p:hover) :is(.mark-red, .mark-gold),
+.values:has(.value-c:hover) .mark-blue { opacity: 1; scale: 1.04; }
+.value-row .value-letter { transition: translate 420ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.value-row:hover .value-letter { translate: 10px 0; }
+
+/* ---------- hoạt động: bốn chặng, chặng đang chọn mở mô tả, thanh tiến trình chạy như CI rồi sang chặng sau ---------- */
+.stage-photo { opacity: 0; scale: 1.08; transition: opacity 900ms var(--ease-out), scale 1600ms var(--ease-out); }
+.stage-photo.is-on { opacity: 1; scale: 1; }
+.stage-row .stage-word { color: rgb(255 255 255 / 0.4); transition: color 300ms ease, translate 450ms var(--ease-out); }
+.stage-row:hover .stage-word { color: rgb(255 255 255 / 0.75); }
+.stage-row.is-on .stage-word { color: var(--gold); translate: 6px 0; }
+.stage-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 500ms var(--ease-out); }
+.stage-body.is-on { grid-template-rows: 1fr; }
+.stage-bar { transform: scaleX(0); transform-origin: left; }
+@keyframes stage-run { to { transform: scaleX(1); } }
+.in .stage-bar { animation: stage-run 6s linear forwards; }
+.stages:hover .stage-bar, .stages:focus-within .stage-bar { animation-play-state: paused; }
+
+/* ---------- sự kiện: bảng lịch, rê vào hàng thì màu quét ngang và ảnh bật ra ---------- */
+.agenda-row { position: relative; isolation: isolate; }
+.agenda-row::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--sweep, var(--red));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 450ms var(--ease-out);
+}
+.agenda-row:hover::before, .agenda-row:focus-within::before { transform: none; }
+.agenda-row:hover .agenda-ink, .agenda-row:focus-within .agenda-ink { color: var(--paper); }
+.agenda-row .agenda-ink { transition: color 250ms ease; }
+.agenda-photo {
+  left: var(--mx, 60%);
+  top: var(--my, 50%);
+  transform: translate(-50%, -115%);
+  opacity: 0;
+  scale: 0.85;
+  rotate: -6deg;
+  transition: opacity 300ms ease, scale 450ms var(--ease-out), rotate 450ms var(--ease-out), left 180ms var(--ease-out), top 180ms var(--ease-out);
+}
+.agenda-row:hover .agenda-photo { opacity: 1; scale: 1; rotate: 4deg; }
+.agenda-row .agenda-arrow { transition: translate 300ms var(--ease-out); }
+.agenda-row:hover .agenda-arrow { translate: 8px 0; }
+
+/* ---------- UMTOJ: nền xanh kẻ ô như trang sổ năm 1947 ---------- */
+.field-graph {
+  background-color: var(--blue);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Cpath d='M36 0H0v36' fill='none' stroke='%232A78D2' stroke-width='1.5'/%3E%3C/svg%3E");
+}
+.option-pill input { position: absolute; opacity: 0; pointer-events: none; }
+.option-pill { transition: background-color 160ms ease, color 160ms ease, transform 140ms var(--ease-out), box-shadow 140ms ease; }
+.option-pill:hover { transform: translateY(-2px); }
+.option-pill:has(input:checked) { background: var(--ink); color: var(--paper); box-shadow: 0 4px 0 var(--blue); }
+.option-pill:has(input:focus-visible) { outline: 3px solid var(--blue); outline-offset: 3px; }
+@keyframes pop { 0% { opacity: 0; scale: 0.3; } 60% { opacity: 1; scale: 1.15; } 100% { opacity: 1; scale: 1; } }
+.pop { animation: pop 460ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes shake { 20%, 60% { translate: -6px 0; } 40%, 80% { translate: 6px 0; } }
+.shake { animation: shake 360ms ease both; }
+
+/* ---------- dự án: chú thích dự án hiện mượt khi đổi tab (ảnh dùng chung .stage-photo với phần Hoạt động) ---------- */
+@keyframes fade-in { from { opacity: 0; translate: 0 8px; } }
+.fade-in { animation: fade-in 420ms var(--ease-out) both; }
+
+/* ---------- tin tức: git log, nhánh tự vẽ xuống khi cuộn tới, rê vào bài thì chấm nảy ---------- */
+.git-log::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  bottom: 10px;
+  width: 4px;
+  border-radius: 999px;
+  background: var(--ink);
+  transform-origin: top;
+  transition: transform 1400ms var(--ease-io) 150ms;
+}
+.rv-on section:not(.in) .git-log::before { transform: scaleY(0); }
+.git-dot { transition: scale 380ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.git-log li:hover .git-dot { scale: 1.35; }
+.git-arrow { opacity: 0; translate: -8px 0; transition: opacity 250ms ease, translate 300ms var(--ease-out); }
+.git-log li:hover .git-arrow { opacity: 1; translate: none; }
+
+/* ---------- gia nhập: số giây lật, đường lộ trình nét đứt, đoạn đã qua tô đỏ chạy xuống khi cuộn tới, logo APC ở bước hiện tại nhún nhẹ ---------- */
+@keyframes tick { from { opacity: 0; translate: 0 -40%; } to { opacity: 1; translate: none; } }
+.tick { animation: tick 380ms var(--ease-out) both; }
+.tl-line { background: repeating-linear-gradient(180deg, rgb(8 31 61 / 0.25) 0 8px, transparent 8px 15px); }
+.tl-done { transform-origin: top; transition: transform 900ms var(--ease-io) 450ms; }
+.rv-on section:not(.in) .tl-done { transform: scaleY(0); }
+@keyframes tl-bob { 50% { translate: 0 -3px; } }
+.tl-bob { animation: tl-bob 1.6s ease-in-out infinite; }

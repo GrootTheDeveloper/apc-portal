@@ -77,6 +77,27 @@ enum EventStatus {
   ARCHIVED
 }
 
+// Đối tượng tham gia sự kiện (EVT-02). Tách khỏi departmentId — departmentId luôn là ban QUẢN LÝ sự kiện.
+enum EventAudience {
+  PUBLIC // Công khai, người ngoài APC đăng ký được nếu allowGuestRegistration
+  CLUB // Nội bộ toàn CLB
+  DEPARTMENT // Nội bộ trong ban quản lý
+}
+
+// Trạng thái một lượt đăng ký sự kiện (E2). Hủy rồi đăng ký lại kích hoạt lại dòng cũ, không tạo dòng mới.
+enum EventRegistrationStatus {
+  REGISTERED
+  CANCELLED
+}
+
+// Kết quả điểm danh (FLOW-16); chốt điểm danh ở E6.
+enum EventAttendanceStatus {
+  NOT_MARKED
+  PRESENT
+  EXCUSED
+  ABSENT
+}
+
 enum RecruitmentRoundStatus {
   DRAFT
   OPEN
@@ -92,25 +113,97 @@ enum DeliveryStatus {
   FAILED
 }
 
+enum AuditActorType {
+  USER
+  SERVICE
+}
+
+enum AuditCategory {
+  BUSINESS
+  SECURITY
+  OPERATIONS
+}
+
+enum AuditResult {
+  SUCCESS
+  FAILURE
+}
+
+// Chủ thể của một lần đồng ý (B2)
+enum ConsentSubjectType {
+  APPLICATION
+  EVENT_REGISTRATION
+  USER
+}
+
+// Mục đích đồng ý (REC-04, EVT-14, MEM-12)
+enum ConsentPurpose {
+  RECRUITMENT_PROCESSING
+  EVENT_REGISTRATION
+  PUBLIC_NAME
+  PUBLIC_PHOTO
+  PUBLIC_PROFILE // thông tin cá nhân khác: kỹ năng, lĩnh vực quan tâm
+}
+
+// Mục đích tệp tải lên (D2)
+enum FilePurpose {
+  CONTENT_IMAGE // Ảnh bài viết, dự án, sự kiện
+  AVATAR // Ảnh đại diện — luôn INTERNAL (MEM-10)
+  DOCUMENT // Tài liệu nội bộ — chỉ tải qua thư viện tài liệu (D4)
+}
+
+// Server quyết định, không nhận từ client (D2)
+enum FileVisibility {
+  PUBLIC
+  INTERNAL
+}
+
+// Trạng thái quét mã độc (SEC-15, STATE-05). PENDING là vùng cách ly: không đường tải nào trả tệp chưa CLEAN.
+enum FileScanStatus {
+  PENDING
+  CLEAN
+  REJECTED
+}
+
 // MODELS — TỔ CHỨC
 
-model Department {
-  id          String           @id @default(cuid())
-  name        String
-  code        String           @unique
-  description String?
-  status      DepartmentStatus @default(ACTIVE)
-  order       Int              @default(0)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+// Thông tin CLB — singleton (1 dòng duy nhất, id = "singleton")
+// T2: SiteSetting.termEndsAt không trả ra /public/about; A6, A7 dùng để giới hạn ngày hết hạn vai trò đặc quyền (QĐ-6)
+model SiteSetting {
+  id String @id @default("singleton")
 
-  users        User[]
-  roles        UserRole[]
-  posts        Post[]
-  events       Event[]
-  projects     Project[]
-  applications MembershipApplication[]
-  deliveries   NotificationDelivery[]
+  // Thông tin CLB công khai (JSON) — trả ra GET /public/about
+  info Json // { name, description, mission, contactEmail, fanpage, officialLinks }
+
+  // Ngày kết thúc nhiệm kỳ Ban Chủ nhiệm hiện tại (RP-03, QĐ-6) — KHÔNG trả ra API công khai
+  termEndsAt DateTime?
+
+  updatedAt DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
+model Department {
+  id           String           @id @default(cuid())
+  name         String
+  code         String           @unique
+  description  String?
+  // Đầu mối liên hệ chung của ban: email ban, fanpage hoặc chức danh (ORG-02)
+  // KHÔNG phải tên, email, SĐT cá nhân (BR-20, DATA-03)
+  contactPoint String?
+  status       DepartmentStatus @default(ACTIVE)
+  order        Int              @default(0)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  users             User[]
+  roles             UserRole[]
+  posts             Post[]
+  events            Event[]
+  projects          Project[]
+  applications      MembershipApplication[]
+  deliveries        NotificationDelivery[]
+  recruitmentRounds RecruitmentRound[]
 
   @@map("departments")
 }
@@ -147,6 +240,7 @@ model User {
   departmentId String? // Ban đang hoạt động; khác phạm vi quản lý trong user_roles
   department   Department?  @relation(fields: [departmentId], references: [id])
   memberStatus MemberStatus @default(ACTIVE) // MEM-11: độc lập AccountStatus, trừ LEFT kéo theo INACTIVE
+  deactivatedAt DateTime? // A5: lúc chuyển INACTIVE; B7 dùng để tính hạn lưu giữ dữ liệu
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -154,12 +248,18 @@ model User {
   roles        UserRole[] @relation("RoleHolder")
   grantedRoles UserRole[] @relation("RoleGrantor")
   revokedRoles UserRole[] @relation("RoleRevoker")
+  roleDecisionsAbout    RoleDecision[] @relation("RoleDecisionTarget")
+  roleDecisionsMade     RoleDecision[] @relation("RoleDecisionDecider")
+  roleDecisionsExecuted RoleDecision[] @relation("RoleDecisionExecutor")
   sessions     Session[]
+  auditLogs    AuditLog[]
 
   authoredPosts  Post[] @relation("PostAuthor")
   publishedPosts Post[] @relation("PostPublisher")
 
   createdEvents Event[] @relation("EventCreator")
+  finalizedEventAttendance Event[] @relation("EventAttendanceFinalizer")
+  eventRegistrations EventRegistration[]
 
   createdRounds RecruitmentRound[]      @relation("RoundCreator")
   reviewedApps  MembershipApplication[] @relation("ReviewedBy")
@@ -167,7 +267,50 @@ model User {
   createdProjects          Project[]              @relation("ProjectCreator")
   convertedFromApplication MembershipApplication? @relation("ApplicationConversion")
 
+  uploadedFiles StoredFile[] @relation("FileUploader")
+
   @@map("users")
+}
+
+enum RoleDecisionAction {
+  GRANT
+  REVOKE
+}
+
+enum RoleDecisionStatus {
+  PENDING
+  EXECUTED
+  CANCELLED
+}
+
+// A6 — quyết định gán/thu hồi TECH_ADMIN theo quy trình DUAL (Vai trò & quyền §8.6, FLOW-20):
+// BOARD ghi quyết định → hiện ở /admin/access-control → một TECH_ADMIN khác đang hoạt động thực hiện.
+model RoleDecision {
+  id     String             @id @default(cuid())
+  action RoleDecisionAction
+  role   Role // hiện chỉ dùng cho TECH_ADMIN
+
+  userId String
+  user   User   @relation("RoleDecisionTarget", fields: [userId], references: [id])
+  userRoleId String? // REVOKE: dòng user_roles bị thu hồi; GRANT: dòng được tạo khi thực hiện
+  userRole   UserRole? @relation(fields: [userRoleId], references: [id])
+  expiresAt  DateTime? // GRANT: ngày hết hạn của vai trò, không muộn hơn SiteSetting.termEndsAt (RP-03)
+  reason     String
+
+  status       RoleDecisionStatus @default(PENDING)
+  decidedById  String
+  decidedBy    User      @relation("RoleDecisionDecider", fields: [decidedById], references: [id])
+  executedById String?
+  executedBy   User?     @relation("RoleDecisionExecutor", fields: [executedById], references: [id])
+  executedAt   DateTime?
+  cancelledAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([userId])
+  @@map("role_decisions")
 }
 
 // Gán vai trò quản lý/đặc quyền (docs/02 §9). Một người có thể có nhiều dòng,
@@ -191,6 +334,8 @@ model UserRole {
   revokedById String?
   revokedBy   User?     @relation("RoleRevoker", fields: [revokedById], references: [id])
   revokedAt   DateTime?
+  revokeReason String? // A6: lý do thu hồi (lý do cấp nằm ở `reason`)
+  decisions    RoleDecision[] // A6: quyết định DUAL tạo ra (GRANT) hoặc thu hồi (REVOKE) dòng này
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -250,17 +395,16 @@ model Post {
 }
 
 // MODELS — SỰ KIỆN
-//
-// Bảng đăng ký/điểm danh (EventRegistration) thêm ở việc E2 (docs/plan/E-su-kien.md).
 
 model Event {
-  id            String      @id @default(cuid())
+  id            String        @id @default(cuid())
   title         String
-  slug          String      @unique
+  slug          String        @unique
   description   String
   coverImageUrl String?
   eventType     String // Loại/chuyên mục: Workshop, Training, Contest...
-  status        EventStatus @default(DRAFT)
+  status        EventStatus   @default(DRAFT)
+  audience      EventAudience @default(PUBLIC) // EVT-02; departmentId bên dưới là ban quản lý, không phải đối tượng
 
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id])
@@ -269,15 +413,64 @@ model Event {
   createdById String
   createdBy   User    @relation("EventCreator", fields: [createdById], references: [id])
   location    String?
+  onlineUrl   String? // Link trực tuyến khi không dùng địa điểm; chỉ nhận http/https (FLOW-18)
 
   startAt DateTime
   endAt   DateTime
+
+  // Thời gian nhận đăng ký (BR-08); phía nào để trống là không giới hạn phía đó
+  registrationOpensAt  DateTime?
+  registrationClosesAt DateTime?
+  capacity             Int? // null = không giới hạn
+  allowGuestRegistration Boolean @default(false) // Người ngoài APC đăng ký được; chỉ áp dụng khi audience = PUBLIC
+
+  // EVT-09: bắt buộc khi hủy sự kiện (E4), hiển thị trên trang công khai
+  cancelReason String?
+
+  // Chốt điểm danh (E6): sau khi chốt chỉ BOARD sửa được, kèm lý do
+  attendanceFinalizedAt   DateTime?
+  attendanceFinalizedById String?
+  attendanceFinalizedBy   User? @relation("EventAttendanceFinalizer", fields: [attendanceFinalizedById], references: [id])
+
+  registrations EventRegistration[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([status])
   @@map("events")
+}
+
+// Một lượt đăng ký sự kiện (E2): hoặc thành viên (userId, E5) hoặc khách (họ tên, email, MSSV, E3).
+// Hủy rồi đăng ký lại kích hoạt lại dòng cũ (về REGISTERED), không tạo dòng mới — hai ràng buộc duy nhất
+// (sự kiện, email khách) và (sự kiện, userId) giữ chỗ của dòng cũ; Postgres coi NULL là phân biệt nên
+// dòng khách (userId null) và dòng thành viên (guestEmail null) cùng tồn tại trong một bảng.
+// Mã đăng ký sinh bằng publicCode() lúc tạo (EVT-10); không ghi mã vào log hay audit (OPS-11, SEC-09).
+model EventRegistration {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  // Thông tin khách; thành viên lấy từ User, không lưu trùng
+  guestFullName  String?
+  guestEmail     String?
+  guestStudentId String?
+
+  registrationCode String @unique
+
+  status           EventRegistrationStatus @default(REGISTERED)
+  attendanceStatus EventAttendanceStatus   @default(NOT_MARKED)
+
+  registeredAt DateTime  @default(now())
+  cancelledAt  DateTime?
+
+  @@unique([eventId, guestEmail])
+  @@unique([eventId, userId])
+  @@index([eventId, status])
+  @@map("event_registrations")
 }
 
 // MODELS — DỰ ÁN
@@ -313,13 +506,16 @@ model Project {
 // ConsentRecord thêm ở việc B2 (docs/plan/B-bao-mat.md), dùng chung cho R3 và E3.
 
 model RecruitmentRound {
-  id          String                 @id @default(cuid())
-  title       String
-  slug        String                 @unique
-  description String
-  status      RecruitmentRoundStatus @default(DRAFT)
-  opensAt     DateTime
-  closesAt    DateTime
+  id           String                 @id @default(cuid())
+  title        String
+  slug         String                 @unique
+  description  String
+  audience     String                 @default("")
+  requirements String                 @default("")
+  status       RecruitmentRoundStatus @default(DRAFT)
+  opensAt      DateTime
+  closesAt     DateTime
+  questions    Json                   @default("[]")
 
   createdById String
   createdBy   User   @relation("RoundCreator", fields: [createdById], references: [id])
@@ -327,6 +523,7 @@ model RecruitmentRound {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  departments  Department[]
   applications MembershipApplication[]
 
   @@map("recruitment_rounds")
@@ -335,6 +532,7 @@ model RecruitmentRound {
 model MembershipApplication {
   id                 String           @id @default(cuid())
   profileCode        String           @unique // Mã tra cứu công khai CSPRNG (REC-06)
+  idempotencyKey     String?          @unique // Khóa chống gửi lặp (FLOW-04, STATE-01)
   recruitmentRoundId String
   recruitmentRound   RecruitmentRound @relation(fields: [recruitmentRoundId], references: [id])
 
@@ -396,4 +594,78 @@ model NotificationDelivery {
   @@index([refType, refId])
   @@index([departmentId])
   @@map("notification_deliveries")
+}
+
+// MODELS — KIỂM TOÁN (AUDIT - B1)
+
+model AuditLog {
+  id          String         @id @default(cuid())
+  actorType   AuditActorType @default(USER)
+  actorId     String?
+  actor       User?          @relation(fields: [actorId], references: [id])
+  serviceName String?
+  actorRole   Role?
+  action      String
+  targetType  String
+  targetId    String?
+  category    AuditCategory
+  result      AuditResult
+  reason      String?
+  incidentId  String?
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime       @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// MODELS — QUYỀN RIÊNG TƯ (B2)
+
+// Mỗi lần đồng ý một dòng; thu hồi thì ghi revokedAt, không xóa dòng (DATA-07).
+// Không lưu email/IP/trình duyệt: chủ thể là hồ sơ ứng tuyển, đăng ký sự kiện hoặc tài khoản đã có sẵn dữ liệu đó.
+model ConsentRecord {
+  id            String             @id @default(cuid())
+  subjectType   ConsentSubjectType
+  subjectId     String
+  purpose       ConsentPurpose
+  // Đối tượng áp dụng, vd. một dự án cụ thể (MEM-12). Để trống là áp dụng chung.
+  targetType    String?
+  targetId      String?
+  policyVersion String
+  grantedAt     DateTime           @default(now())
+  revokedAt     DateTime?
+
+  @@index([subjectType, subjectId, purpose])
+  @@map("consent_records")
+}
+
+// MODELS — TỆP (D2)
+
+// Một tệp trong kho S3. Khóa kho ngẫu nhiên, không dùng tên gốc; không bao giờ trả khóa/URL kho ra API.
+// Tệp REJECTED đã bị xóa khỏi kho nhưng giữ dòng làm dấu vết bảo mật.
+model StoredFile {
+  id           String         @id @default(cuid())
+  storageKey   String         @unique
+  originalName String
+  mimeType     String // Loại xác định từ nội dung tệp, không theo đuôi file/header
+  size         Int // byte
+  purpose      FilePurpose
+  visibility   FileVisibility @default(INTERNAL)
+  scanStatus   FileScanStatus @default(PENDING)
+  scannedAt    DateTime?
+
+  uploadedById String
+  uploadedBy   User   @relation("FileUploader", fields: [uploadedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([scanStatus, createdAt])
+  @@index([uploadedById])
+  @@map("stored_files")
 }

@@ -1,43 +1,32 @@
-import { useRef } from 'react'
+import { useEffect } from 'react'
 
-import { useScrollReveal } from './hooks/useScrollReveal'
 import { HeroSection } from './sections/HeroSection'
 import { ValuesSection } from './sections/ValuesSection'
 import { ActivitiesSection } from './sections/ActivitiesSection'
-import { ProjectsSection } from './sections/ProjectsSection'
 import { EventsSection } from './sections/EventsSection'
+import { JudgeSection } from './sections/JudgeSection'
+import { ProjectsSection } from './sections/ProjectsSection'
 import { NewsSection } from './sections/NewsSection'
-import { PartnersSection } from './sections/PartnersSection'
-import { HostSection } from './sections/HostSection'
 import { JoinSection } from './sections/JoinSection'
-import { SectionSeam } from './sections/SectionSeam'
 import './home.css'
 
 export function HomePage() {
-  const rootRef = useRef<HTMLDivElement>(null)
-  useScrollReveal(rootRef)
+  // Trang chủ: mỗi phần vừa một màn hình và cuộn luôn hít trọn vào một phần (CSS trong home.css, chỉ áp dụng màn rộng).
+  useEffect(() => {
+    document.documentElement.classList.add('snap-home')
+    return () => document.documentElement.classList.remove('snap-home')
+  }, [])
 
   return (
-    <div ref={rootRef}>
-      <main>
-        <HeroSection />
-        <SectionSeam thin />
-        <ValuesSection />
-        <SectionSeam thin />
-        <ActivitiesSection />
-        <SectionSeam thin />
-        <ProjectsSection />
-        <SectionSeam thin />
-        <EventsSection />
-        <SectionSeam thin />
-        <NewsSection />
-        <SectionSeam thin />
-        <PartnersSection />
-        <SectionSeam thin />
-        <HostSection />
-        <SectionSeam thin />
-        <JoinSection />
-      </main>
-    </div>
+    <main>
+      <HeroSection />
+      <ValuesSection />
+      <ActivitiesSection />
+      <EventsSection />
+      <JudgeSection />
+      <ProjectsSection />
+      <NewsSection />
+      <JoinSection />
+    </main>
   )
 }

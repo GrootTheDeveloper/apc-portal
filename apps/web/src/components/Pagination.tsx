@@ -4,56 +4,38 @@ type PaginationProps = {
   onPageChange: (page: number) => void
 }
 
-/** Component phân trang danh sách */
+const KEY = 'grid h-11 min-w-11 place-items-center rounded-xl px-3 font-code text-[15px] font-bold transition-[transform,box-shadow,color] duration-150'
+const IDLE = `${KEY} bg-paper text-ink shadow-[inset_0_0_0_2px_#081F3D,0_4px_0_#081F3D] hover:-translate-y-0.5 hover:text-apc-red active:translate-y-1 active:shadow-[inset_0_0_0_2px_#081F3D,0_0_0_#081F3D] disabled:pointer-events-none disabled:opacity-30`
+
+/** Phân trang kiểu phím bàn phím (cùng họ với buttonClass); trang hiện tại là phím đã nhấn, nền xanh than. */
 export function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
   if (totalPages <= 1) return null
-
-  // Tạo mảng số trang hiển thị
-  const pages: number[] = []
-  for (let i = 1; i <= totalPages; i++) {
-    pages.push(i)
-  }
+  const pages = Array.from({ length: totalPages }, (_, index) => index + 1)
 
   return (
-    <nav aria-label="Phân trang" className="flex items-center gap-1 sm:gap-2">
-      <button
-        type="button"
-        disabled={currentPage <= 1}
-        onClick={() => onPageChange(currentPage - 1)}
-        className="flex h-10 w-10 items-center justify-center rounded-lg border border-outline-variant/30 text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface disabled:opacity-40 disabled:pointer-events-none"
-        aria-label="Trang trước"
-      >
-        <span className="material-symbols-outlined text-sm">chevron_left</span>
+    <nav aria-label="Phân trang" className="flex flex-wrap items-center justify-center gap-2">
+      <button type="button" disabled={currentPage <= 1} onClick={() => onPageChange(currentPage - 1)} className={IDLE} aria-label="Trang trước">
+        ←
       </button>
-
-      {pages.map((page) => {
-        const isActive = page === currentPage
-
-        return (
-          <button
-            key={page}
-            type="button"
-            onClick={() => onPageChange(page)}
-            className={`flex h-10 w-10 items-center justify-center rounded-lg text-sm font-medium transition-colors ${
-              isActive
-                ? 'bg-apc-blue text-white shadow-sm'
-                : 'border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
-            }`}
-            aria-current={isActive ? 'page' : undefined}
-          >
+      {pages.map((page) =>
+        page === currentPage ? (
+          <span key={page} aria-current="page" className={`${KEY} translate-y-1 bg-ink text-paper`}>
+            {page}
+          </span>
+        ) : (
+          <button key={page} type="button" onClick={() => onPageChange(page)} className={IDLE}>
             {page}
           </button>
-        )
-      })}
-
+        ),
+      )}
       <button
         type="button"
         disabled={currentPage >= totalPages}
         onClick={() => onPageChange(currentPage + 1)}
-        className="flex h-10 w-10 items-center justify-center rounded-lg border border-outline-variant/30 text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface disabled:opacity-40 disabled:pointer-events-none"
+        className={IDLE}
         aria-label="Trang sau"
       >
-        <span className="material-symbols-outlined text-sm">chevron_right</span>
+        →
       </button>
     </nav>
   )

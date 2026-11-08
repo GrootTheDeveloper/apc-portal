@@ -48,17 +48,22 @@ Route `/` do `apps/web/src/pages/home/HomePage.tsx` dựng, tách thành compone
 
 ```text
 apps/web/src/
-├─ components/            # Dùng chung mọi trang: Button, Eyebrow, AsyncState (4 trạng thái)
-├─ layouts/               # RootLayout.tsx, Navbar.tsx, SiteFooter.tsx
-├─ hooks/                 # useApi (tải dữ liệu cho trang), useScrolled (đổ bóng nav)
-├─ lib/                   # api.ts (gọi API qua /api), format.ts (ngày giờ Việt Nam)
+├─ index.css              # Token màu, .photo, .mark-stack, hiệu ứng hiện dần, giảm chuyển động
+├─ components/            # Dùng chung mọi trang: Button + buttonClass/pillClass, Eyebrow, PageHero,
+│                         # Breadcrumb, Pagination, AsyncState (4 trạng thái), StatusScreen,
+│                         # EventCard, NewsCard, ProjectCard
+├─ layouts/               # RootLayout.tsx, Navbar.tsx, SiteFooter.tsx (footer kéo rèm)
+├─ hooks/                 # useApi (tải dữ liệu cho trang), useReveal (hiện dần khi cuộn),
+│                         # useNavScroll (nav ẩn khi cuộn xuống)
+├─ lib/                   # api.ts (gọi API qua /api), format.ts (ngày giờ Việt Nam), eventVisual.ts
 └─ pages/home/
-   ├─ HomePage.tsx        # Các section của trang chủ
-   ├─ home.css            # CSS cục bộ: chiều cao section, fade-up, slider nền
-   ├─ hooks/useScrollReveal.ts
-   └─ sections/           # HeroSection, ValuesSection, ActivitiesSection, ProjectsSection,
-                          # EventsSection, NewsSection, PartnersSection, HostSection, JoinSection
+   ├─ HomePage.tsx        # Các section của trang chủ, bật cuộn hít (snap-home)
+   ├─ home.css            # CSS cục bộ: cuộn hít, ghép logo, accordion, lịch, timeline
+   └─ sections/           # HeroSection, ValuesSection, ActivitiesSection, EventsSection,
+                          # JudgeSection, ProjectsSection, NewsSection, JoinSection
 ```
+
+Quy tắc thị giác (màu, chữ, nút, chuyển động) ghi ở `DESIGN.md`.
 
 Phía API, phần dùng chung nằm ở `apps/api/src/`: `db/client.ts` (Prisma client), `lib/errors.ts` (lỗi `{ error, message }`), `lib/password.ts` (Argon2id), `lib/pagination.ts` (phân trang), `lib/ids.ts` (mã tra cứu, slug).
 

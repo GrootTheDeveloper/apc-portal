@@ -13,6 +13,26 @@ const environmentSchema = z.object({
   SMTP_USER: z.string().default(''),
   SMTP_PASSWORD: z.string().default(''),
   SMTP_FROM: z.string().default(''),
+  // Kho tệp qua S3 API (docs/06 §5): local là SeaweedFS, production là Cloudflare R2 (S3_REGION=auto).
+  S3_ENDPOINT: z.url().default('http://localhost:9000'),
+  S3_ACCESS_KEY: z.string().default('apc_local'),
+  S3_SECRET_KEY: z.string().default('apc_local_only'),
+  S3_BUCKET: z.string().default('apc-portal'),
+  S3_REGION: z.string().default('auto'),
+  // Quét mã độc tệp tải lên (SEC-15): `clamav` gửi tới clamd, `skip` coi mọi tệp là sạch (chỉ local/CI).
+  FILE_SCAN_MODE: z.enum(['clamav', 'skip']).default('skip'),
+  CLAMAV_HOST: z.string().default('127.0.0.1'),
+  CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
+  // Ngưỡng chặn dò mã của khách (SEC-05, cùng quy tắc R4): sai email/mã quá N lần trong 15 phút
+  // thì chặn 15 phút (429). Nâng số này khi chạy e2e để luồng test không dính 429.
+  LOOKUP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  // RP-06, RP-07: không khóa/ngừng hoạt động/thu hồi làm số BOARD hoặc TECH_ADMIN đang hoạt động dưới 2.
+  // Chỉ bật sau khi production phát hành (giai đoạn bootstrap trước đó được ngoại lệ, RP-15). A5, A6.
+  ENFORCE_PRIVILEGED_MINIMUM: z.stringbool().default(false),
+}).refine((env) => env.NODE_ENV !== 'production' || env.FILE_SCAN_MODE === 'clamav', {
+  // API không khởi động ở production khi chưa bật quét mã độc (D2).
+  message: 'Production bắt buộc FILE_SCAN_MODE=clamav.',
+  path: ['FILE_SCAN_MODE'],
 })
 
 export type AppConfig = z.infer<typeof environmentSchema>

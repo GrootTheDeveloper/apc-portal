@@ -1,18 +1,21 @@
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
-import { Button } from '../components/Button'
-import { Eyebrow } from '../components/Eyebrow'
+import { buttonClass } from '../components/buttonClass'
+import { StatusScreen } from '../components/StatusScreen'
 
-export function NotFound() {
-  const navigate = useNavigate()
+/** PAGE-SYS-02. Dữ liệu ngoài phạm vi ban cũng hiện trang này (API trả 404). `compact` khi nằm trong khung portal/quản trị. */
+export function NotFound({ compact = false, home = '/' }: { compact?: boolean; home?: string }) {
   return (
-    <main className="mx-auto flex min-h-[60vh] max-w-container-max flex-col items-center justify-center px-gutter py-24 text-center">
-      <Eyebrow>404</Eyebrow>
-      <h1 className="mt-4 text-3xl font-bold text-on-surface md:text-4xl">Không tìm thấy trang</h1>
-      <p className="mt-3 text-on-surface-variant">Đường dẫn không tồn tại hoặc đã được chuyển đi.</p>
-      <Button className="mt-6" onClick={() => navigate('/')}>
-        Về trang chủ
-      </Button>
-    </main>
+    <StatusScreen
+      compact={compact}
+      code="404"
+      title="Không tìm thấy trang"
+      text="Đường dẫn không tồn tại hoặc đã được chuyển đi."
+      action={
+        <Link className={buttonClass()} to={home}>
+          {home === '/' ? 'Về trang chủ' : 'Về trang đầu khu này'}
+        </Link>
+      }
+    />
   )
 }
