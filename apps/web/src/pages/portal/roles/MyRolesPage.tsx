@@ -1,8 +1,6 @@
 import { AsyncState } from '../../../components/AsyncState'
-import { Eyebrow } from '../../../components/Eyebrow'
 import { useApi } from '../../../hooks/useApi'
 import { formatDate } from '../../../lib/format'
-import { PortalNav } from '../PortalNav'
 
 type RoleItem = {
   id: string
@@ -30,10 +28,10 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
 }
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
-  ACTIVE: { label: 'Đang hiệu lực', className: 'bg-green-100 text-green-800 border-green-200' },
-  PENDING: { label: 'Chờ kích hoạt', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-  EXPIRED: { label: 'Đã hết hạn', className: 'bg-surface-container-high text-on-surface-variant border-outline-variant' },
-  REVOKED: { label: 'Đã thu hồi', className: 'bg-red-100 text-red-800 border-red-200' },
+  ACTIVE: { label: 'Đang hiệu lực', className: 'bg-apc-blue-pale text-apc-blue' },
+  PENDING: { label: 'Chờ kích hoạt', className: 'bg-muted/10 text-muted' },
+  EXPIRED: { label: 'Đã hết hạn', className: 'bg-paper shadow-[inset_0_0_0_1px_#081F3D] text-ink' },
+  REVOKED: { label: 'Đã thu hồi', className: 'bg-apc-red/10 text-apc-red' },
 }
 
 function getExpiryWarning(expiresAt: string | null, status: string): { warning: boolean; text?: string } {
@@ -56,24 +54,20 @@ export function MyRolesPage() {
   const { data: roles, loading, error, reload } = useApi<RoleItem[]>('/portal/me/roles')
 
   return (
-    <main className="mx-auto max-w-container-max px-gutter py-8">
-      <PortalNav
-        breadcrumbs={[
-          { label: 'Trang chủ', to: '/' },
-          { label: 'Portal', to: '/portal' },
-          { label: 'Vai trò của tôi', to: '/portal/account/roles' },
-        ]}
-      />
-
-      <div className="mb-6">
-        <Eyebrow>Phân quyền & Phạm vi</Eyebrow>
-        <h1 className="mt-2 text-2xl font-bold text-on-surface sm:text-3xl">Vai trò & Phạm vi của tôi</h1>
-        <p className="mt-1 text-sm text-on-surface-variant">
+    <main>
+      <div>
+        <span className="font-code text-xs font-bold uppercase tracking-wider text-muted">
+          Phân quyền & Phạm vi
+        </span>
+        <h1 className="mt-2 font-display text-[clamp(28px,3.5vw,48px)] font-extrabold leading-tight tracking-[-0.03em] text-ink">
+          Vai trò & Phạm vi của tôi
+        </h1>
+        <p className="mt-2 text-[17px] leading-relaxed text-muted">
           Danh sách các vai trò quản lý và vai trò nền được cấp cho tài khoản của bạn theo từng nhiệm kỳ hoặc ban chuyên môn.
         </p>
       </div>
 
-      <div className="rounded-apc border border-outline-variant bg-surface-container-lowest p-6">
+      <div className="mt-8 rounded-2xl bg-paper p-6 shadow-[inset_0_0_0_2px_#081F3D]">
         <AsyncState
           loading={loading}
           error={error}
@@ -82,66 +76,73 @@ export function MyRolesPage() {
           onRetry={reload}
         >
           {roles && (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2">
               {roles.map((role) => {
                 const statusBadge = STATUS_BADGES[role.status] ?? {
                   label: role.status,
-                  className: 'bg-surface-container-high text-on-surface-variant border-outline-variant',
+                  className: 'bg-soft text-ink',
                 }
                 const expiry = getExpiryWarning(role.expiresAt, role.status)
 
                 return (
                   <div
                     key={role.id}
-                    className="flex flex-col justify-between rounded-apc border border-outline-variant bg-surface p-5 transition-shadow hover:shadow-sm"
+                    className="flex flex-col justify-between rounded-2xl bg-paper p-6 shadow-[inset_0_0_0_2px_#081F3D]"
                   >
                     <div>
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <div className="flex items-center gap-2">
-                            <h2 className="text-base font-bold text-on-surface">{ROLE_NAMES[role.role] ?? role.role}</h2>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="font-display text-xl font-bold text-ink">
+                              {ROLE_NAMES[role.role] ?? role.role}
+                            </h2>
                             {role.isBaseRole && (
-                              <span className="rounded bg-apc-blue/10 px-2 py-0.5 text-[11px] font-medium text-apc-blue">
+                              <span className="rounded-full bg-soft px-2.5 py-0.5 font-code text-[11px] font-bold text-ink">
                                 Vai trò nền
                               </span>
                             )}
                           </div>
                           {role.department && (
-                            <p className="mt-1 text-xs font-medium text-apc-blue">
-                              Phạm vi: {role.department.name} ({role.department.code})
+                            <p className="mt-1 font-body text-sm font-bold text-apc-blue">
+                              {role.department.name} ({role.department.code})
                             </p>
                           )}
                         </div>
-                        <span
-                          className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusBadge.className}`}
-                        >
-                          {statusBadge.label}
-                        </span>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`inline-flex rounded-full px-3 py-1 font-code text-xs font-bold ${statusBadge.className}`}
+                          >
+                            {statusBadge.label}
+                          </span>
+                          {expiry.warning && (
+                            <span className="inline-flex rounded-full border-2 border-apc-red bg-apc-red/10 px-3 py-1 font-code text-xs font-bold text-apc-red">
+                              {expiry.text}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
-                      <p className="mt-3 text-xs text-on-surface-variant leading-relaxed">
-                        {ROLE_DESCRIPTIONS[role.role] ?? 'Quyền hạn trong hệ thống.'}
+                      <p className="mt-3 text-sm text-muted">
+                        {ROLE_DESCRIPTIONS[role.role] ?? 'Vai trò trong tổ chức APC.'}
                       </p>
                     </div>
 
-                    <div className="mt-4 border-t border-outline-variant pt-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-on-surface-variant">
-                        <span>Hiệu lực từ: {formatDate(role.startsAt)}</span>
+                    <div className="mt-6 border-t-2 border-ink/10 pt-4 font-code text-xs text-muted">
+                      <div className="flex flex-wrap justify-between gap-2">
                         <span>
-                          {role.expiresAt ? `Hết hạn: ${formatDate(role.expiresAt)}` : 'Không thời hạn'}
+                          Hiệu lực từ: <strong className="text-ink">{formatDate(role.startsAt)}</strong>
+                        </span>
+                        <span>
+                          {role.expiresAt ? (
+                            <>
+                              Hết hạn: <strong className="text-ink">{formatDate(role.expiresAt)}</strong>
+                            </>
+                          ) : (
+                            <span className="text-muted">Không thời hạn</span>
+                          )}
                         </span>
                       </div>
-
-                      {/* Nhãn cảnh báo nếu sắp hết hạn trong 30 ngày (T3 requirement) */}
-                      {expiry.warning && (
-                        <div
-                          role="alert"
-                          className="mt-3 flex items-center gap-2 rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs text-amber-800"
-                        >
-                          <span className="material-symbols-outlined text-[16px] text-amber-600">warning</span>
-                          <span className="font-medium">{expiry.text}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 )

@@ -1,176 +1,210 @@
 import { Link } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
-import { Button } from '../../../components/Button'
-import { Eyebrow } from '../../../components/Eyebrow'
+import { buttonClass } from '../../../components/buttonClass'
 import { useApi } from '../../../hooks/useApi'
 import { useAuth } from '../../../hooks/useAuth'
 import { formatDate } from '../../../lib/format'
-import { PortalNav } from '../PortalNav'
+
+type PublicEventsResponse = {
+  items: Array<{
+    id: string
+    title: string
+    slug: string
+    eventType: string
+    startAt: string
+    endAt: string
+    location?: string | null
+    onlineUrl?: string | null
+  }>
+  total: number
+}
 
 type ActivityResponse = {
   items: Array<{
     id: string
-    eventTitle: string
+    registrationCode: string
+    status: 'REGISTERED' | 'CANCELLED'
+    attendanceStatus: 'NOT_MARKED' | 'PRESENT' | 'EXCUSED' | 'ABSENT'
     registeredAt: string
-    attended?: boolean
-    status?: string
+    cancelledAt: string | null
+    event: {
+      id: string
+      title: string
+      slug: string
+      startAt: string
+      endAt: string
+      location?: string | null
+      onlineUrl?: string | null
+    }
   }>
   total: number
+}
+
+const ATTENDANCE_BADGES: Record<string, { label: string; className: string }> = {
+  PRESENT: { label: 'Có mặt', className: 'bg-apc-blue-pale text-apc-blue' },
+  EXCUSED: { label: 'Có phép', className: 'bg-muted/10 text-muted' },
+  ABSENT: { label: 'Vắng mặt', className: 'bg-apc-red/10 text-apc-red' },
+  NOT_MARKED: { label: 'Chưa điểm danh', className: 'bg-paper shadow-[inset_0_0_0_1px_#081F3D] text-ink' },
 }
 
 export function PortalDashboard() {
   const { user } = useAuth()
 
-  // STATE-12: Mỗi khối gọi API riêng, lỗi khối nào hiện nút Thử lại ở khối đó, không ảnh hưởng khối khác
-  const activityApi = useApi<ActivityResponse>('/portal/me/activity')
+  // STATE-12: Mỗi khối gọi API riêng, lỗi khối nào hiện nút Thử lại ở khối đó
+  const eventsApi = useApi<PublicEventsResponse>('/public/events?upcoming=1&pageSize=4')
+  const activityApi = useApi<ActivityResponse>('/portal/me/activity?page=1&pageSize=4')
 
   return (
-    <main className="mx-auto max-w-container-max px-gutter py-8">
-      <PortalNav breadcrumbs={[{ label: 'Trang chủ', to: '/' }, { label: 'Portal', to: '/portal' }]} />
-
-      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+    <main>
+      <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
         <div>
-          <Eyebrow>Trang thành viên</Eyebrow>
-          <h1 className="mt-2 text-2xl font-bold text-on-surface sm:text-3xl">
+          <span className="font-code text-xs font-bold uppercase tracking-wider text-muted">
+            Trang thành viên
+          </span>
+          <h1 className="mt-2 font-display text-[clamp(28px,3.5vw,48px)] font-extrabold leading-tight tracking-[-0.03em] text-ink">
             Xin chào, {user?.fullName ?? 'Thành viên'}!
           </h1>
-          <p className="mt-1 text-sm text-on-surface-variant">
-            Chào mừng bạn đến với APC Portal. Quản lý hồ sơ, theo dõi hoạt động và vai trò của bạn tại đây.
+          <p className="mt-2 text-[17px] leading-relaxed text-muted">
+            Quản lý hồ sơ, theo dõi hoạt động sự kiện và vai trò của bạn tại APC Portal.
           </p>
         </div>
-        <div className="flex gap-3">
-          <Link to="/portal/profile">
-            <Button variant="outline" className="px-5 py-2.5 text-sm">
-              Chỉnh sửa hồ sơ
-            </Button>
+        <div>
+          <Link to="/portal/profile" className={buttonClass('outline')}>
+            Chỉnh sửa hồ sơ
           </Link>
         </div>
       </div>
 
       {/* Lối tắt nhanh */}
-      <div className="mb-8 grid gap-4 sm:grid-cols-3">
+      <section aria-label="Lối tắt nhanh" className="mt-8 grid gap-4 sm:grid-cols-3">
         <Link
           to="/portal/profile"
-          className="rounded-apc border border-outline-variant bg-surface-container-lowest p-5 transition-colors hover:border-apc-blue hover:shadow-sm"
+          className="flex flex-col gap-1 rounded-2xl bg-paper p-5 shadow-[inset_0_0_0_2px_#081F3D,0_4px_0_#081F3D] transition-[transform,color] duration-150 hover:-translate-y-0.5 hover:text-apc-red active:translate-y-1 active:shadow-[inset_0_0_0_2px_#081F3D,0_0_0_#081F3D]"
         >
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-2xl text-apc-blue">badge</span>
-            <div>
-              <h2 className="font-semibold text-on-surface">Hồ sơ cá nhân</h2>
-              <p className="text-xs text-on-surface-variant">Xem và cập nhật thông tin</p>
-            </div>
-          </div>
+          <span className="font-display text-lg font-bold">Hồ sơ cá nhân</span>
+          <span className="text-sm text-muted">Xem và cập nhật thông tin cá nhân</span>
         </Link>
         <Link
           to="/portal/activity-history"
-          className="rounded-apc border border-outline-variant bg-surface-container-lowest p-5 transition-colors hover:border-apc-blue hover:shadow-sm"
+          className="flex flex-col gap-1 rounded-2xl bg-paper p-5 shadow-[inset_0_0_0_2px_#081F3D,0_4px_0_#081F3D] transition-[transform,color] duration-150 hover:-translate-y-0.5 hover:text-apc-red active:translate-y-1 active:shadow-[inset_0_0_0_2px_#081F3D,0_0_0_#081F3D]"
         >
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-2xl text-apc-blue">event_available</span>
-            <div>
-              <h2 className="font-semibold text-on-surface">Lịch sử hoạt động</h2>
-              <p className="text-xs text-on-surface-variant">Sự kiện đã đăng ký và điểm danh</p>
-            </div>
-          </div>
+          <span className="font-display text-lg font-bold">Lịch sử hoạt động</span>
+          <span className="text-sm text-muted">Sự kiện đã tham gia và điểm danh</span>
         </Link>
         <Link
           to="/portal/account/roles"
-          className="rounded-apc border border-outline-variant bg-surface-container-lowest p-5 transition-colors hover:border-apc-blue hover:shadow-sm"
+          className="flex flex-col gap-1 rounded-2xl bg-paper p-5 shadow-[inset_0_0_0_2px_#081F3D,0_4px_0_#081F3D] transition-[transform,color] duration-150 hover:-translate-y-0.5 hover:text-apc-red active:translate-y-1 active:shadow-[inset_0_0_0_2px_#081F3D,0_0_0_#081F3D]"
         >
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-2xl text-apc-blue">verified_user</span>
-            <div>
-              <h2 className="font-semibold text-on-surface">Vai trò & Phạm vi</h2>
-              <p className="text-xs text-on-surface-variant">Xem các quyền hạn trong CLB</p>
-            </div>
-          </div>
+          <span className="font-display text-lg font-bold">Vai trò & Phạm vi</span>
+          <span className="text-sm text-muted">Xem quyền hạn trong nhiệm kỳ</span>
         </Link>
-      </div>
+      </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Khối Sự kiện & Đăng ký gần đây (STATE-12: độc lập lỗi) */}
+      {/* Hai khối dữ liệu riêng biệt: Sự kiện sắp tới & Đăng ký của tôi (STATE-12) */}
+      <div className="mt-8 grid gap-8 lg:grid-cols-2">
+        {/* Khối Sự kiện sắp tới */}
         <section
           aria-labelledby="events-heading"
-          className="rounded-apc border border-outline-variant bg-surface-container-lowest p-6"
+          className="rounded-2xl bg-paper p-6 shadow-[inset_0_0_0_2px_#081F3D]"
         >
-          <div className="mb-4 flex items-center justify-between">
-            <h2 id="events-heading" className="text-lg font-bold text-on-surface">
-              Sự kiện & Đăng ký gần đây
+          <div className="flex items-center justify-between border-b-2 border-ink/10 pb-4">
+            <h2 id="events-heading" className="font-display text-xl font-bold text-ink">
+              Sự kiện sắp tới
             </h2>
-            <Link to="/portal/activity-history" className="text-xs text-apc-blue hover:underline">
-              Xem tất cả
+            <Link to="/portal/events" className="text-sm font-bold text-apc-blue hover:underline">
+              Xem tất cả →
             </Link>
           </div>
 
-          <AsyncState
-            loading={activityApi.loading}
-            error={activityApi.error}
-            empty={!activityApi.data || activityApi.data.items.length === 0}
-            emptyText="Bạn chưa có đăng ký sự kiện nào gần đây."
-            onRetry={activityApi.reload}
-          >
-            <ul className="divide-y divide-outline-variant">
-              {activityApi.data?.items.map((item) => (
-                <li key={item.id} className="py-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-on-surface">{item.eventTitle}</p>
-                      <p className="text-xs text-on-surface-variant">
-                        Đăng ký ngày: {formatDate(item.registeredAt)}
-                      </p>
-                    </div>
-                    {item.attended !== undefined && (
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          item.attended
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-surface-container-high text-on-surface-variant'
-                        }`}
-                      >
-                        {item.attended ? 'Đã điểm danh' : 'Chưa điểm danh'}
-                      </span>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </AsyncState>
-        </section>
-
-        {/* Khối Thông báo nội bộ (Chờ việc C5 merge, STATE-12) */}
-        <section
-          aria-labelledby="notices-heading"
-          className="rounded-apc border border-outline-variant bg-surface-container-lowest p-6"
-        >
-          <div className="mb-4 flex items-center justify-between">
-            <h2 id="notices-heading" className="text-lg font-bold text-on-surface">
-              Thông báo mới
-            </h2>
-            <span className="text-xs text-on-surface-variant">Cập nhật nội bộ</span>
-          </div>
-          <div className="rounded-apc border border-dashed border-outline-variant p-8 text-center text-on-surface-variant">
-            <span className="material-symbols-outlined text-3xl text-outline">campaign</span>
-            <p className="mt-2 text-sm">Chưa có thông báo nội bộ mới.</p>
-            <p className="mt-1 text-xs text-outline">Thông báo từ Ban Chủ nhiệm sẽ xuất hiện tại đây.</p>
+          <div className="mt-4">
+            <AsyncState
+              loading={eventsApi.loading}
+              error={eventsApi.error}
+              empty={!eventsApi.data || eventsApi.data.items.length === 0}
+              emptyText="Hiện chưa có sự kiện nào sắp diễn ra."
+              onRetry={eventsApi.reload}
+            >
+              {eventsApi.data && (
+                <ul className="divide-y divide-ink/10">
+                  {eventsApi.data.items.map((event) => (
+                    <li key={event.id} className="py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-bold text-ink">{event.title}</p>
+                          <p className="mt-1 text-sm text-muted">
+                            {formatDate(event.startAt)} • {event.location || event.onlineUrl || 'Chưa cập nhật địa điểm'}
+                          </p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-soft px-3 py-1 font-code text-xs font-bold text-ink">
+                          {event.eventType}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </AsyncState>
           </div>
         </section>
 
-        {/* Khối Tài liệu mới (Chờ việc D4 merge, STATE-12) */}
+        {/* Khối Đăng ký của tôi */}
         <section
-          aria-labelledby="docs-heading"
-          className="rounded-apc border border-outline-variant bg-surface-container-lowest p-6 lg:col-span-2"
+          aria-labelledby="activity-heading"
+          className="rounded-2xl bg-paper p-6 shadow-[inset_0_0_0_2px_#081F3D]"
         >
-          <div className="mb-4 flex items-center justify-between">
-            <h2 id="docs-heading" className="text-lg font-bold text-on-surface">
-              Tài liệu nội bộ mới
+          <div className="flex items-center justify-between border-b-2 border-ink/10 pb-4">
+            <h2 id="activity-heading" className="font-display text-xl font-bold text-ink">
+              Đăng ký gần đây của tôi
             </h2>
-            <span className="text-xs text-on-surface-variant">Tài nguyên học tập & quy trình</span>
+            <Link
+              to="/portal/activity-history"
+              className="text-sm font-bold text-apc-blue hover:underline"
+            >
+              Xem tất cả →
+            </Link>
           </div>
-          <div className="rounded-apc border border-dashed border-outline-variant p-8 text-center text-on-surface-variant">
-            <span className="material-symbols-outlined text-3xl text-outline">folder_shared</span>
-            <p className="mt-2 text-sm">Chưa có tài liệu mới được phân quyền.</p>
-            <p className="mt-1 text-xs text-outline">Tài liệu chuyên môn sẽ được cấp quyền theo ban sinh hoạt.</p>
+
+          <div className="mt-4">
+            <AsyncState
+              loading={activityApi.loading}
+              error={activityApi.error}
+              empty={!activityApi.data || activityApi.data.items.length === 0}
+              emptyText="Bạn chưa đăng ký tham gia sự kiện nào."
+              onRetry={activityApi.reload}
+            >
+              {activityApi.data && (
+                <ul className="divide-y divide-ink/10">
+                  {activityApi.data.items.map((item) => {
+                    const badge =
+                      item.status === 'CANCELLED'
+                        ? { label: 'Đã hủy', className: 'bg-apc-red/10 text-apc-red' }
+                        : ATTENDANCE_BADGES[item.attendanceStatus] ?? {
+                            label: item.attendanceStatus,
+                            className: 'bg-soft text-ink',
+                          }
+
+                    return (
+                      <li key={item.id} className="py-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-bold text-ink">{item.event.title}</p>
+                            <p className="mt-1 text-sm text-muted">
+                              Đăng ký: {formatDate(item.registeredAt)}
+                            </p>
+                          </div>
+                          <span
+                            className={`shrink-0 rounded-full px-3 py-1 font-code text-xs font-bold ${badge.className}`}
+                          >
+                            {badge.label}
+                          </span>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </AsyncState>
           </div>
         </section>
       </div>
