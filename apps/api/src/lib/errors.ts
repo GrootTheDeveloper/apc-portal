@@ -10,6 +10,7 @@ export class AppError extends Error {
     readonly statusCode: 401 | 403 | 404 | 409 | 422 | 429,
     readonly code: string,
     message: string,
+    readonly details?: Record<string, unknown>,
   ) {
     super(message)
   }
@@ -20,8 +21,8 @@ export const unauthenticated = (message = 'Bạn cần đăng nhập để tiế
 export const forbidden = (message = 'Bạn không có quyền thực hiện thao tác này.') =>
   new AppError(403, 'forbidden', message)
 export const notFound = (message = 'Không tìm thấy dữ liệu.') => new AppError(404, 'not_found', message)
-export const conflict = (message = 'Dữ liệu đã thay đổi hoặc bị trùng. Vui lòng tải lại.') =>
-  new AppError(409, 'conflict', message)
+export const conflict = (message = 'Dữ liệu đã thay đổi hoặc bị trùng. Vui lòng tải lại.', details?: Record<string, unknown>) =>
+  new AppError(409, 'conflict', message, details)
 export const rateLimited = (message = 'Bạn thao tác quá nhanh. Vui lòng thử lại sau.') =>
   new AppError(429, 'rate_limited', message)
 
@@ -30,7 +31,7 @@ export function registerErrorHandler(app: FastifyInstance) {
 
   app.setErrorHandler((error: FastifyError, request, reply) => {
     if (error instanceof AppError) {
-      return reply.code(error.statusCode).send({ error: error.code, message: error.message })
+      return reply.code(error.statusCode).send({ error: error.code, message: error.message, ...error.details })
     }
     if (error instanceof ZodError || error.statusCode === 400) {
       const issues = error instanceof ZodError ? error.issues : []

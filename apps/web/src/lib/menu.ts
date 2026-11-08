@@ -181,9 +181,53 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
   {
     label: 'Tổ chức',
     items: [
-      { label: 'Thông tin APC', to: '/admin/organization/profile', roles: BOARD },
-      { label: 'Ban chuyên môn', to: '/admin/organization/departments', roles: BOARD },
-      { label: 'Nội dung nổi bật', to: '/admin/organization/featured-content', roles: BOARD },
+      {
+        label: 'Thông tin APC',
+        to: '/admin/organization/profile',
+        roles: BOARD,
+        page: () =>
+          import('../pages/admin/organization/profile/AdminOrganizationProfilePage').then((m) => ({
+            Component: m.AdminOrganizationProfilePage,
+          })),
+      },
+      {
+        label: 'Ban chuyên môn',
+        to: '/admin/organization/departments',
+        roles: BOARD,
+        page: () =>
+          import('../pages/admin/organization/departments/AdminDepartmentsListPage').then((m) => ({
+            Component: m.AdminDepartmentsListPage,
+          })),
+        children: [
+          {
+            label: 'Tạo Ban chuyên môn',
+            to: '/admin/organization/departments/new',
+            roles: BOARD,
+            page: () =>
+              import('../pages/admin/organization/departments/AdminDepartmentEditPage').then((m) => ({
+                Component: m.AdminDepartmentEditPage,
+              })),
+          },
+          {
+            label: 'Chỉnh sửa Ban chuyên môn',
+            to: '/admin/organization/departments/:id',
+            roles: BOARD,
+            page: () =>
+              import('../pages/admin/organization/departments/AdminDepartmentEditPage').then((m) => ({
+                Component: m.AdminDepartmentEditPage,
+              })),
+          },
+        ],
+      },
+      {
+        label: 'Nội dung nổi bật',
+        to: '/admin/organization/featured-content',
+        roles: BOARD,
+        page: () =>
+          import('../pages/admin/organization/featured/AdminFeaturedContentPage').then((m) => ({
+            Component: m.AdminFeaturedContentPage,
+          })),
+      },
     ],
   },
   {
