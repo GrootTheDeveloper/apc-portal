@@ -266,6 +266,8 @@ model User {
   createdProjects          Project[]              @relation("ProjectCreator")
   convertedFromApplication MembershipApplication? @relation("ApplicationConversion")
 
+  statusHistories ApplicationStatusHistory[]
+
   uploadedFiles StoredFile[] @relation("FileUploader")
 
   @@map("users")
@@ -558,6 +560,8 @@ model MembershipApplication {
   convertedUser   User?     @relation("ApplicationConversion", fields: [convertedUserId], references: [id])
   convertedAt     DateTime?
 
+  statusHistories ApplicationStatusHistory[]
+
   submittedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -566,6 +570,23 @@ model MembershipApplication {
   @@index([applicantEmail])
   @@index([recruitmentRoundId])
   @@map("membership_applications")
+}
+
+// R5 — Lịch sử trạng thái hồ sơ (FLOW-07 bước 6)
+model ApplicationStatusHistory {
+  id            String                @id @default(cuid())
+  applicationId String
+  application   MembershipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  fromStatus    ApplicationStatus
+  toStatus      ApplicationStatus
+  reason        String? // Bắt buộc khi Ban Chủ nhiệm rút đơn thay ứng viên
+  changedById   String
+  changedBy     User                  @relation(fields: [changedById], references: [id])
+  changedAt     DateTime              @default(now())
+
+  @@index([applicationId])
+  @@index([changedAt])
+  @@map("application_status_histories")
 }
 
 // MODELS — EMAIL (O1)

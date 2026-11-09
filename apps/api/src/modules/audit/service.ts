@@ -37,6 +37,7 @@ export const AUDIT_ACTIONS = {
   RECRUITMENT_ARCHIVE_ROUND: 'recruitment.archive_round',
   RECRUITMENT_AUTO_CLOSE: 'recruitment.auto_close',
   APPLICATION_STATUS_CHANGE: 'application.status_change',
+  APPLICATION_REVIEW: 'application.review',
   RECRUITMENT_FINALIZE: 'recruitment.finalize',
   APPLICATION_CONVERT_USER: 'application.convert_user',
   RECRUITMENT_EXPORT: 'recruitment.export',
