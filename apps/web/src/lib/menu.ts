@@ -119,6 +119,24 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
             roles: MANAGER_OR_BOARD,
             page: () => import('../pages/admin/recruitment/AdminRecruitmentPreviewPage').then((m) => ({ Component: m.AdminRecruitmentPreviewPage })),
           },
+          {
+            label: 'Danh sách hồ sơ ứng tuyển',
+            to: '/admin/recruitment/:id/applications',
+            roles: MANAGER_OR_BOARD,
+            page: () =>
+              import('../pages/admin/recruitment/applications/AdminApplicationListPage').then((m) => ({
+                Component: m.AdminApplicationListPage,
+              })),
+          },
+          {
+            label: 'Chi tiết hồ sơ ứng tuyển',
+            to: '/admin/recruitment/:id/applications/:applicationId',
+            roles: MANAGER_OR_BOARD,
+            page: () =>
+              import('../pages/admin/recruitment/applications/AdminApplicationDetailPage').then((m) => ({
+                Component: m.AdminApplicationDetailPage,
+              })),
+          },
         ],
       },
     ],

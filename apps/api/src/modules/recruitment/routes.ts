@@ -8,14 +8,19 @@ import {
   createSourceIpLimiter,
 } from '../../lib/rateLimit.js'
 import {
+  changeApplicationStatus,
   changeRecruitmentRoundStatus,
   createRecruitmentRound,
+  exportApplicationsCsv,
+  getAdminApplicationById,
   getAdminRecruitmentRoundById,
   getPublicRecruitmentRoundBySlug,
+  listAdminApplications,
   listAdminRecruitmentRounds,
   listPublicRecruitmentRounds,
   lookupApplication,
   submitApplication,
+  updateApplicationReview,
   updateRecruitmentRound,
   withdrawApplication,
 } from './service.js'
@@ -154,6 +159,88 @@ export function recruitmentRoutes(config: AppConfig) {
     async (request) => {
       const { id } = request.params as { id: string }
       return changeRecruitmentRoundStatus(request, id, request.body)
+    },
+  )
+
+  // ─── ADMIN APPLICATION ROUTES (R5) ──────────────────────────────────────────
+
+  // Danh sách hồ sơ đợt tuyển (PAGE-MGT-REC-06, FLOW-07)
+  app.get(
+    '/admin/recruitment/:id/applications',
+    { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
+    async (request) => {
+      const { id } = request.params as { id: string }
+      const user = currentUser(request)
+      return listAdminApplications(user, id, request.query)
+    },
+  )
+
+  // Xuất CSV danh sách hồ sơ (REC-11)
+  app.post(
+    '/admin/recruitment/:id/applications/export',
+    { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
+    async (request) => {
+      const { id } = request.params as { id: string }
+      const user = currentUser(request)
+      return exportApplicationsCsv(request, id, request.body ?? request.query, user)
+    },
+  )
+
+  app.get(
+    '/admin/recruitment/:id/applications/export',
+    { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string }
+      const user = currentUser(request)
+      const result = await exportApplicationsCsv(request, id, request.query, user)
+      return reply
+        .type('text/csv; charset=utf-8')
+        .header('Content-Disposition', `attachment; filename="${result.filename}"`)
+        .send(result.csv)
+    },
+  )
+
+  // Chi tiết hồ sơ ứng tuyển (PAGE-MGT-REC-07, FLOW-07)
+  app.get(
+    '/admin/recruitment/:id/applications/:applicationId',
+    { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
+    async (request) => {
+      const { id, applicationId } = request.params as { id: string; applicationId: string }
+      const user = currentUser(request)
+      return getAdminApplicationById(user, id, applicationId)
+    },
+  )
+
+  // Cập nhật đánh giá & ghi chú nội bộ (REC-10)
+  app.patch(
+    '/admin/recruitment/:id/applications/:applicationId/review',
+    { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
+    async (request) => {
+      const { id, applicationId } = request.params as { id: string; applicationId: string }
+      const user = currentUser(request)
+      return updateApplicationReview(request, id, applicationId, request.body, user)
+    },
+  )
+
+  // Alias cập nhật ghi chú nội bộ không kèm đuôi /review
+  app.patch(
+    '/admin/recruitment/:id/applications/:applicationId',
+    { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
+    async (request) => {
+      const { id, applicationId } = request.params as { id: string; applicationId: string }
+      const user = currentUser(request)
+      return updateApplicationReview(request, id, applicationId, request.body, user)
+    },
+  )
+
+  // Chuyển trạng thái hồ sơ ứng tuyển (REC-08, BR-16, STATE-09)
+  app.post(
+    '/admin/recruitment/:id/applications/:applicationId/status',
+    { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
+    async (request) => {
+      const { id, applicationId } = request.params as { id: string; applicationId: string }
+      const user = currentUser(request)
+      return changeApplicationStatus(request, id, applicationId, request.body, user)
     },
   )
   }
