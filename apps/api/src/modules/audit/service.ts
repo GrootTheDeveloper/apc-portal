@@ -37,6 +37,7 @@ export const AUDIT_ACTIONS = {
   RECRUITMENT_ARCHIVE_ROUND: 'recruitment.archive_round',
   RECRUITMENT_AUTO_CLOSE: 'recruitment.auto_close',
   APPLICATION_STATUS_CHANGE: 'application.status_change',
+  APPLICATION_REVIEW: 'application.review',
   RECRUITMENT_FINALIZE: 'recruitment.finalize',
   APPLICATION_CONVERT_USER: 'application.convert_user',
   RECRUITMENT_EXPORT: 'recruitment.export',
@@ -51,6 +52,7 @@ export const AUDIT_ACTIONS = {
   MEMBER_UPDATE_MANAGED: 'member.update_managed_data',
   // Sự kiện
   EVENT_PUBLISH: 'event.publish',
+  EVENT_UNPUBLISH: 'event.unpublish', // E4: hạ sự kiện khỏi PUBLIC qua PATCH (gửi email báo hủy cho người còn đăng ký)
   EVENT_END: 'event.end', // Tác vụ nền event-end (E2) chuyển PUBLISHED quá endAt sang ENDED
   EVENT_CANCEL: 'event.cancel',
   EVENT_ARCHIVE: 'event.archive', // E4: lưu trữ sự kiện từ CANCELLED/ENDED (docs/01 §9.2)

@@ -12,12 +12,14 @@ const safeHttpUrl = (value: string | null) => (value && /^https?:\/\//.test(valu
 
 // Đọc cấu hình đúng một lần khi nạp module (server.ts đã nạp .env trước khi import app);
 // không gọi loadConfig() lại trong từng lần render email.
-const REGISTRATION_LOOKUP_URL = `${loadConfig().WEB_URL.replace(/\/+$/, '')}/events/registration-lookup`
-const APPLICATION_LOOKUP_URL = `${loadConfig().WEB_URL.replace(/\/+$/, '')}/recruitment/application-lookup`
+const WEB_BASE_URL = loadConfig().WEB_URL.replace(/\/+$/, '')
+const REGISTRATION_LOOKUP_URL = `${WEB_BASE_URL}/events/registration-lookup`
+const PORTAL_EVENT_URL_BASE = `${WEB_BASE_URL}/portal/events`
+const APPLICATION_LOOKUP_URL = `${WEB_BASE_URL}/recruitment/application-lookup`
 /**
  * Tham chiếu đăng ký của khách đọc theo refId của email; mã đăng ký chỉ lấy ở đây,
- * không truyền qua hàng đợi (FLOW-26, OPS-11). Email tạm của E3 chỉ dành cho khách —
- * E5 (thành viên) sẽ nối mẫu riêng. O2 thay bằng khung email chung sau khi merge.
+ * không truyền qua hàng đợi (FLOW-26, OPS-11). Email tạm của E3 chỉ dành cho khách;
+ * thành viên (E5) nối mẫu riêng bên dưới. O2 thay bằng khung email chung sau khi merge.
  */
 async function guestRegistrationEmailData(refId: string) {
   const registration = await db.eventRegistration.findUnique({
@@ -33,6 +35,25 @@ async function guestRegistrationEmailData(refId: string) {
   // Email tạm của E3 chỉ dành cho khách; dòng thành viên (E5) guestFullName rỗng → trả null.
   if (!registration || registration.guestFullName === null) return null
   return { ...registration, guestFullName: registration.guestFullName }
+}
+
+/**
+ * Dữ liệu email của thành viên (E5): đọc theo refId, chỉ dùng cho dòng có userId — dòng khách trả null.
+ * Thành viên không cần mã đăng ký (không tra cứu bằng mã như khách): quản lý đăng ký ngay trong portal,
+ * nên email chỉ dẫn tới trang sự kiện thay vì trang tra cứu.
+ */
+async function memberRegistrationEmailData(refId: string) {
+  const registration = await db.eventRegistration.findUnique({
+    where: { id: refId },
+    select: {
+      user: { select: { fullName: true } },
+      event: {
+        select: { id: true, title: true, status: true, startAt: true, endAt: true, location: true, onlineUrl: true },
+      },
+    },
+  })
+  if (!registration || registration.user === null) return null
+  return { fullName: registration.user.fullName, event: registration.event }
 }
 
 export const APPLICATION_STATUS_LABELS: Record<string, string> = {
@@ -98,6 +119,66 @@ export const EMAIL_TEMPLATES = {
       `<p>Bạn đã hủy đăng ký sự kiện <strong>${escapeHtml(title)}</strong> (diễn ra lúc ${escapeHtml(time)}).</p>`,
       event.status === 'PUBLISHED'
         ? '<p>Muốn tham gia lại, hãy đăng ký lại trên trang sự kiện trước khi hết hạn.</p>'
+        : '<p>Vui lòng theo dõi thông báo của CLB APC.</p>',
+      '<p><small>Email gửi tự động, vui lòng không trả lời.</small></p>',
+    ].join('\n')
+    return { subject, text, html }
+  },
+
+  /**
+   * [E5 tạm trước khi O2 merge] Xác nhận đăng ký sự kiện của thành viên (NTF-01); refId là id EventRegistration.
+   * Không kèm mã đăng ký: thành viên quản lý đăng ký ngay trong portal, không tra cứu bằng mã như khách.
+   */
+  EVENT_REGISTRATION_CONFIRMED_MEMBER: async (refId) => {
+    const data = await memberRegistrationEmailData(refId)
+    if (!data) return null
+    const { fullName, event } = data
+    const title = event.title
+    const time = `${formatVnDateTime(event.startAt)} – ${formatVnDateTime(event.endAt)}`
+    const onlineUrl = safeHttpUrl(event.onlineUrl)
+    const place = event.location ?? (onlineUrl ? `${onlineUrl} (trực tuyến)` : 'Trực tuyến')
+    const portalUrl = `${PORTAL_EVENT_URL_BASE}/${event.id}`
+    const subject = `Xác nhận đăng ký sự kiện: ${title}`
+    const text = [
+      `Xin chào ${fullName},`,
+      `Bạn đã đăng ký thành công sự kiện "${title}" của CLB APC.`,
+      `Thời gian: ${time}`,
+      `Địa điểm: ${place}`,
+      `Xem chi tiết hoặc hủy đăng ký (trước khi hết hạn) trong portal tại: ${portalUrl}`,
+      'Email gửi tự động, vui lòng không trả lời.',
+    ].join('\n')
+    const html = [
+      `<p>Xin chào ${escapeHtml(fullName)},</p>`,
+      `<p>Bạn đã đăng ký thành công sự kiện <strong>${escapeHtml(title)}</strong> của CLB APC.</p>`,
+      `<p>Thời gian: ${escapeHtml(time)}<br>Địa điểm: ${escapeHtml(place)}</p>`,
+      `<p>Xem chi tiết hoặc hủy đăng ký (trước khi hết hạn) trong <a href="${escapeHtml(portalUrl)}">portal của CLB APC</a>.</p>`,
+      '<p><small>Email gửi tự động, vui lòng không trả lời.</small></p>',
+    ].join('\n')
+    return { subject, text, html }
+  },
+
+  /** [E5 tạm trước khi O2 merge] Xác nhận hủy đăng ký sự kiện của thành viên (AC-09); refId là id EventRegistration. */
+  EVENT_REGISTRATION_CANCELLED_MEMBER: async (refId) => {
+    const data = await memberRegistrationEmailData(refId)
+    if (!data) return null
+    const { fullName, event } = data
+    const title = event.title
+    const time = formatVnDateTime(event.startAt)
+    const portalUrl = `${PORTAL_EVENT_URL_BASE}/${event.id}`
+    const subject = `Đã hủy đăng ký sự kiện: ${title}`
+    const text = [
+      `Xin chào ${fullName},`,
+      `Bạn đã hủy đăng ký sự kiện "${title}" (diễn ra lúc ${time}).`,
+      event.status === 'PUBLISHED'
+        ? `Muốn tham gia lại, hãy đăng ký lại trong portal trước khi hết hạn: ${portalUrl}`
+        : 'Vui lòng theo dõi thông báo của CLB APC.',
+      'Email gửi tự động, vui lòng không trả lời.',
+    ].join('\n')
+    const html = [
+      `<p>Xin chào ${escapeHtml(fullName)},</p>`,
+      `<p>Bạn đã hủy đăng ký sự kiện <strong>${escapeHtml(title)}</strong> (diễn ra lúc ${escapeHtml(time)}).</p>`,
+      event.status === 'PUBLISHED'
+        ? `<p>Muốn tham gia lại, hãy <a href="${escapeHtml(portalUrl)}">đăng ký lại trong portal</a> trước khi hết hạn.</p>`
         : '<p>Vui lòng theo dõi thông báo của CLB APC.</p>',
       '<p><small>Email gửi tự động, vui lòng không trả lời.</small></p>',
     ].join('\n')
