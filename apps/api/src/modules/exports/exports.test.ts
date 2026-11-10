@@ -129,6 +129,62 @@ describe('D6 protected exports', () => {
     expect(audit.metadata).toMatchObject({ kind: 'member', rowCount: 1 })
   })
 
+  it('giao file yêu cầu dữ liệu cho người khác tải: người đó phải ACTIVE, người tạo không tải thay được', async () => {
+    const created = await create({
+      kind: 'data_request',
+      filename: 'du-lieu-ca-nhan.csv',
+      rows: [{ field: 'email', value: 'member@test.local', balance: -5 }],
+      downloaderId: users.member.id,
+    })
+    expect(created.statusCode).toBe(201)
+    const { id } = created.json<{ id: string }>()
+
+    expect((await download(id, 'board')).statusCode).toBe(404)
+    const downloaded = await download(id, 'member')
+    expect(downloaded.statusCode).toBe(200)
+    // Số âm không bị biến thành chuỗi '-5.
+    expect(downloaded.body).toContain(',-5')
+    expect(downloaded.body).not.toContain("'-5")
+    expect(
+      await db.auditLog.findFirst({
+        where: { targetType: 'EXPORT_FILE', targetId: id, action: 'export.download', actorId: users.member.id },
+      }),
+    ).not.toBeNull()
+
+    const inactive = await db.user.create({
+      data: {
+        username: `exports-inactive-${tag}`,
+        email: `exports-inactive-${tag}@test.local`,
+        passwordHash: 'not-used',
+        fullName: 'Exports inactive',
+        status: 'INACTIVE',
+        mustChangePassword: false,
+      },
+    })
+    userIds.push(inactive.id)
+    for (const downloaderId of [inactive.id, randomUUID()]) {
+      const denied = await create({ kind: 'data_request', filename: 'x.csv', rows: [], downloaderId })
+      expect(denied.statusCode).toBe(422)
+      expect(denied.json().issues[0].path).toEqual(['downloaderId'])
+    }
+    const wrongKind = await create({ kind: 'member', filename: 'x.csv', rows: [], downloaderId: users.member.id })
+    expect(wrongKind.statusCode).toBe(422)
+  })
+
+  it('người tạo bị thu vai trò sau khi tạo thì không tải được nữa', async () => {
+    const created = await create({ kind: 'member', filename: 'thanh-vien.csv', rows: [{ name: 'An' }] })
+    expect(created.statusCode).toBe(201)
+    const { id } = created.json<{ id: string }>()
+    const roles = users.board.roles
+    users.board.roles = roles.filter((grant) => grant.role !== 'BOARD')
+    try {
+      expect((await download(id, 'board')).statusCode).toBe(404)
+    } finally {
+      users.board.roles = roles
+    }
+    expect((await download(id, 'board')).statusCode).toBe(200)
+  })
+
   it('từ chối tạo file nếu người gọi không có quyền export loại đó', async () => {
     const before = await db.exportFile.count()
     const response = await create(
