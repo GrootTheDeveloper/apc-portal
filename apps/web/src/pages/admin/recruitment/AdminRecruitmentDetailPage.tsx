@@ -120,6 +120,11 @@ export function AdminRecruitmentDetailPage() {
 
               {/* Action buttons */}
               <div className="flex flex-wrap items-center gap-3">
+                <Link to={`/admin/recruitment/${round.id}/applications`} className={buttonClass('primary')}>
+                  <span className="material-symbols-outlined text-lg">folder_shared</span>
+                  Xem hồ sơ ứng tuyển
+                </Link>
+
                 <Link to={`/admin/recruitment/${round.id}/preview`} className={buttonClass('outline')}>
                     <span className="material-symbols-outlined text-lg">visibility</span>
                     Xem trước giao diện
@@ -195,9 +200,12 @@ export function AdminRecruitmentDetailPage() {
                   </span>
                   <span className="text-xs text-on-surface-variant">hồ sơ đã nộp</span>
                 </div>
-                  <p className="mt-3 text-xs text-muted">
-                    (Tính năng duyệt hồ sơ sẽ mở ở đợt R5)
-                  </p>
+                <Link
+                  to={`/admin/recruitment/${round.id}/applications`}
+                  className="mt-3 inline-flex items-center gap-1 font-bold text-apc-blue hover:underline text-xs"
+                >
+                  Xem danh sách hồ sơ &rarr;
+                </Link>
               </div>
 
               <div className="rounded-apc border border-outline-variant bg-surface-container-lowest p-6 shadow-sm">
