@@ -30,7 +30,13 @@ export function ProjectDetailPage() {
       <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
         {item && (
           <article>
-            <Seo title={item.title} description={item.description} path={`/projects/${slug}`} imageUrl={item.thumbnailUrl} />
+            {/* Map fileId từ D2 thành URL public để hiển thị ảnh đúng */}
+            <Seo
+              title={item.title}
+              description={item.description}
+              path={`/projects/${slug}`}
+              imageUrl={item.thumbnailUrl ? `/api/public/files/${item.thumbnailUrl}` : null}
+            />
             <PageHero
               top={
                 <Breadcrumb
@@ -66,7 +72,8 @@ export function ProjectDetailPage() {
               <div className="mx-auto w-full max-w-container-max">
                 {item.thumbnailUrl ? (
                   <div data-rv className="photo aspect-[16/9] bg-soft">
-                    <img alt={`Ảnh chụp ${item.title}`} className="h-full" src={item.thumbnailUrl} />
+                    {/* Map fileId từ D2 thành URL public để hiển thị ảnh đúng */}
+                    <img alt={`Ảnh chụp ${item.title}`} className="h-full" src={`/api/public/files/${item.thumbnailUrl}`} />
                   </div>
                 ) : (
                   <div data-rv className="rounded-[20px] bg-ink p-6 font-code text-[16px] font-bold text-paper/70 md:p-10">
