@@ -189,7 +189,34 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
   { label: 'Sự kiện', items: [{ label: 'Sự kiện', to: '/admin/events', roles: MANAGER_OR_BOARD }] },
   {
     label: 'Bài viết và thông báo',
-    items: [{ label: 'Bài viết và thông báo', to: '/admin/content/posts', roles: MANAGER_OR_BOARD }],
+    items: [
+      {
+        label: 'Bài viết và thông báo',
+        to: '/admin/content/posts',
+        roles: MANAGER_OR_BOARD,
+        page: () => import('../pages/admin/content/AdminPostListPage').then((m) => ({ Component: m.AdminPostListPage })),
+        children: [
+          {
+            label: 'Viết bài mới',
+            to: '/admin/content/posts/new',
+            roles: MANAGER_OR_BOARD,
+            page: () => import('../pages/admin/content/AdminPostCreatePage').then((m) => ({ Component: m.AdminPostCreatePage })),
+          },
+          {
+            label: 'Sửa bài viết',
+            to: '/admin/content/posts/:id',
+            roles: MANAGER_OR_BOARD,
+            page: () => import('../pages/admin/content/AdminPostEditPage').then((m) => ({ Component: m.AdminPostEditPage })),
+          },
+          {
+            label: 'Xem trước bài viết',
+            to: '/admin/content/posts/:id/preview',
+            roles: MANAGER_OR_BOARD,
+            page: () => import('../pages/admin/content/AdminPostPreviewPage').then((m) => ({ Component: m.AdminPostPreviewPage })),
+          },
+        ],
+      },
+    ],
   },
   {
     label: 'Dự án và sản phẩm',
