@@ -45,6 +45,8 @@ export const AUDIT_ACTIONS = {
   // Thành viên
   MEMBER_IMPORT: 'member.import',
   MEMBER_EXPORT: 'member.export',
+  EXPORT_EXPIRE: 'export.expire',
+  EXPORT_DOWNLOAD: 'export.download',
   MEMBER_CHANGE_DEPARTMENT: 'member.change_department',
   MEMBER_CHANGE_ROLE: 'member.change_role',
   MEMBER_CHANGE_STATUS: 'member.change_status',
