@@ -214,6 +214,7 @@ model User {
   id           String        @id @default(cuid())
   username     String        @unique // Tên đăng nhập (AUTH-02, BR-02)
   email        String        @unique
+  contactEmail String?       // Email liên hệ tùy chọn (QĐ-8, MEM-03)
   passwordHash String // Băm Argon2id (SEC-02)
   status       AccountStatus @default(PENDING_ACTIVATION)
 
