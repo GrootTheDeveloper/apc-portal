@@ -17,6 +17,7 @@ import { eventsRoutes } from './modules/events/routes.js'
 import { filesRoutes } from './modules/files/routes.js'
 import { createScanner } from './modules/files/scan.js'
 import { createS3Storage, type FileStorage } from './modules/files/storage.js'
+import { organizationRoutes } from './modules/organization/routes.js'
 import { recruitmentRoutes } from './modules/recruitment/routes.js'
 
 /** Phụ thuộc thay được khi test (vd kho tệp trong bộ nhớ: `createMemoryStorage()`). */
@@ -42,6 +43,7 @@ export function buildApp(config: AppConfig, deps: AppDeps = {}) {
   app.register(adminPostsRoutes())
   app.register(eventsRoutes(config))
   app.register(aboutRoutes)
+  app.register(organizationRoutes)
   app.register(filesRoutes({ storage, scanner: createScanner(config) }))
 
   app.register(recruitmentRoutes(config))

@@ -712,6 +712,15 @@ export async function submitApplication(
         },
       })
       if (existingApp) {
+        if (idempotencyKey && existingApp.idempotencyKey === idempotencyKey) {
+          return {
+            profileCode: existingApp.profileCode,
+            applicantName: existingApp.applicantName,
+            applicantEmail: existingApp.applicantEmail,
+            roundTitle: round.title,
+            submittedAt: existingApp.submittedAt.toISOString(),
+          }
+        }
         throw conflict('Không thể nộp đơn với thông tin này. Nếu đã nộp, vui lòng dùng trang tra cứu.')
       }
 
@@ -764,18 +773,21 @@ export async function submitApplication(
   } catch (error: any) {
     if (error?.code === 'P2002') {
       if (idempotencyKey) {
-        const existing = await db.membershipApplication.findUnique({
-          where: { idempotencyKey },
-          include: { recruitmentRound: true },
-        })
-        if (existing && existing.recruitmentRoundId === initialRound.id) {
-          return {
-            profileCode: existing.profileCode,
-            applicantName: existing.applicantName,
-            applicantEmail: existing.applicantEmail,
-            roundTitle: existing.recruitmentRound.title,
-            submittedAt: existing.submittedAt.toISOString(),
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const existing = await db.membershipApplication.findUnique({
+            where: { idempotencyKey },
+            include: { recruitmentRound: true },
+          })
+          if (existing && existing.recruitmentRoundId === initialRound.id) {
+            return {
+              profileCode: existing.profileCode,
+              applicantName: existing.applicantName,
+              applicantEmail: existing.applicantEmail,
+              roundTitle: existing.recruitmentRound.title,
+              submittedAt: existing.submittedAt.toISOString(),
+            }
           }
+          await new Promise((resolve) => setTimeout(resolve, 50))
         }
       }
       throw conflict('Không thể nộp đơn với thông tin này. Nếu đã nộp, vui lòng dùng trang tra cứu.')
