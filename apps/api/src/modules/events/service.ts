@@ -29,6 +29,18 @@ export const eventListQuery = pageQuery.extend({
     .transform((value) => value === '1' || value === 'true'),
 })
 
+export type EventListQuery = z.infer<typeof eventListQuery>
+export type PortalEventListQuery = z.infer<typeof portalEventListQuery>
+
+/** Cấu phần chung của hai loại query trên mà các hàm liệt kê dùng (E2, E5). */
+type EventPageQuery = Pick<EventListQuery, 'page' | 'pageSize' | 'type' | 'month'>
+
+/** Query params cho danh sách sự kiện của thành viên (E5): như danh sách công khai, không có ?upcoming (không dùng ở portal). */
+export const portalEventListQuery = pageQuery.extend({
+  type: z.string().trim().min(1).max(50).optional(),
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'month phải có dạng YYYY-MM.').optional(),
+})
+
 // ─── TRUY VẤN CHUNG ──────────────────────────────────────────────────────────
 
 /** Sự kiện công khai: đã công bố, đã hủy hoặc đã kết thúc. Nháp, lưu trữ, nội bộ coi như không tồn tại (docs/02 §12). */
@@ -80,64 +92,62 @@ const typeFilter = (type?: string) => (type ? { eventType: type } : {})
 
 // ─── DANH SÁCH ───────────────────────────────────────────────────────────────
 
-/** Danh sách sự kiện công khai, phân trang. Chế độ ?month= (lịch), ?upcoming=1 (trang chủ) hoặc mặc định xếp upcoming trước. */
-export async function listPublicEvents(rawQuery: unknown) {
-  const query = eventListQuery.parse(rawQuery)
-
-  // Lịch tháng: mọi sự kiện bắt đầu trong tháng (theo ngày Việt Nam), xếp theo giờ bắt đầu.
-  if (query.month) {
-    const window = monthWindowUtc(query.month)
-    const where: Prisma.EventWhereInput = {
-      ...publicVisible,
-      startAt: { gte: window.start, lt: window.end },
-      ...typeFilter(query.type),
-    }
-    const [items, total] = await db.$transaction([
-      db.event.findMany({ where, orderBy: [{ startAt: 'asc' }, { id: 'asc' }], select: eventListSelect, ...pageArgs(query) }),
-      db.event.count({ where }),
-    ])
-    return toPage(items, total, query)
+/**
+ * Danh sách trong tháng (?month=): mọi sự kiện nhìn được bắt đầu trong tháng, xếp theo giờ bắt đầu —
+ * dùng cho chế độ lịch (PUB-04). Dùng chung cho trang công khai (E2) và portal thành viên (E5),
+ * chỉ khác bộ lọc nhìn được và các trường trả ra.
+ */
+async function listEventsInMonth<S extends Prisma.EventSelect>(
+  query: EventPageQuery,
+  month: string,
+  visible: Prisma.EventWhereInput,
+  select: S,
+) {
+  const window = monthWindowUtc(month)
+  const where: Prisma.EventWhereInput = {
+    ...visible,
+    startAt: { gte: window.start, lt: window.end },
+    ...typeFilter(query.type),
   }
+  const [items, total] = await db.$transaction([
+    db.event.findMany({ where, orderBy: [{ startAt: 'asc' }, { id: 'asc' }], select, ...pageArgs(query) }),
+    db.event.count({ where }),
+  ])
+  return toPage(items, total, query)
+}
 
-  // Khối trang chủ: chỉ sự kiện còn sắp diễn ra (FLOW-01), gần nhất trước.
-  if (query.upcoming) {
-    const where: Prisma.EventWhereInput = {
-      ...publicVisible,
-      status: 'PUBLISHED',
-      endAt: { gte: new Date() },
-      ...typeFilter(query.type),
-    }
-    const [items, total] = await db.$transaction([
-      db.event.findMany({ where, orderBy: [{ startAt: 'asc' }, { id: 'asc' }], select: eventListSelect, ...pageArgs(query) }),
-      db.event.count({ where }),
-    ])
-    return toPage(items, total, query)
-  }
-
-  // Mặc định như trang đã hứa ở E1: sắp diễn ra (gần nhất trước) → đã hủy → đã kết thúc (mới nhất trước).
-  // PUBLISHED đã qua endAt chưa kịp chuyển ENDED bởi tác vụ event-end cũng tính như đã kết thúc.
+/**
+ * Danh sách mặc định như trang đã hứa ở E1: sắp diễn ra (gần nhất trước) → đã hủy → đã kết thúc
+ * (mới nhất trước). PUBLISHED đã qua endAt chưa kịp chuyển ENDED bởi tác vụ event-end cũng tính
+ * như đã kết thúc. Dùng chung cho trang công khai (E2) và portal thành viên (E5).
+ */
+async function listEventsUpcomingFirst<S extends Prisma.EventSelect>(
+  query: EventPageQuery,
+  visible: Prisma.EventWhereInput,
+  select: S,
+) {
   const now = new Date()
+  // Điều kiện từng nhóm GỘP bằng AND với bộ lọc nhìn được: spread đè tên khóa sẽ làm mất `OR` của
+  // bộ lọc nhìn được (vd. portal E5 diễn đạt phạm vi xem bằng OR) và ÂM THẦM MỞ rộng phạm vi nhóm.
   const groups: { where: Prisma.EventWhereInput; direction: 'asc' | 'desc' }[] = [
     {
-      where: { ...publicVisible, status: 'PUBLISHED', endAt: { gte: now }, ...typeFilter(query.type) },
+      where: { AND: [visible, { status: 'PUBLISHED', endAt: { gte: now } }, typeFilter(query.type)] },
       direction: 'asc',
     },
     {
-      where: { ...publicVisible, status: 'CANCELLED', ...typeFilter(query.type) },
+      where: { AND: [visible, { status: 'CANCELLED' }, typeFilter(query.type)] },
       direction: 'desc',
     },
     {
       where: {
-        ...publicVisible,
-        OR: [{ status: 'ENDED' }, { status: 'PUBLISHED', endAt: { lt: now } }],
-        ...typeFilter(query.type),
+        AND: [visible, { OR: [{ status: 'ENDED' }, { status: 'PUBLISHED', endAt: { lt: now } }] }, typeFilter(query.type)],
       },
       direction: 'desc',
     },
   ]
 
   // Đếm và lấy dòng PHẢI thấy cùng một ảnh chụp dữ liệu: cửa sổ từng nhóm trên trang tính theo số
-  // đếm, nên chèn/xóa sự kiện PUBLIC xen vào giữa lúc đếm và lúc lấy (test chạy song song, hoặc người
+  // đếm, nên chèn/xóa sự kiện xen vào giữa lúc đếm và lúc lấy (test chạy song song, hoặc người
   // dùng tạo sự kiện thật) làm cửa sổ lệch và ÂM THẦM RƠI sự kiện khỏi trang. RepeatableRead chốt
   // ảnh chụp từ câu lệnh đầu tiên cho cả transaction, chèn/xóa cùng lúc không còn ảnh hưởng.
   return db.$transaction(
@@ -159,7 +169,7 @@ export async function listPublicEvents(rawQuery: unknown) {
             orderBy: [{ startAt: group.direction }, { id: group.direction }],
             skip: overlapStart,
             take: overlapEnd - overlapStart,
-            select: eventListSelect,
+            select,
           })
         }),
       )
@@ -168,6 +178,31 @@ export async function listPublicEvents(rawQuery: unknown) {
     },
     { isolationLevel: 'RepeatableRead' },
   )
+}
+
+/** Danh sách sự kiện công khai, phân trang. Chế độ ?month= (lịch), ?upcoming=1 (trang chủ) hoặc mặc định xếp upcoming trước. */
+export async function listPublicEvents(rawQuery: unknown) {
+  const query = eventListQuery.parse(rawQuery)
+
+  // Lịch tháng: mọi sự kiện bắt đầu trong tháng (theo ngày Việt Nam), xếp theo giờ bắt đầu.
+  if (query.month) return listEventsInMonth(query, query.month, publicVisible, eventListSelect)
+
+  // Khối trang chủ: chỉ sự kiện còn sắp diễn ra (FLOW-01), gần nhất trước.
+  if (query.upcoming) {
+    const where: Prisma.EventWhereInput = {
+      ...publicVisible,
+      status: 'PUBLISHED',
+      endAt: { gte: new Date() },
+      ...typeFilter(query.type),
+    }
+    const [items, total] = await db.$transaction([
+      db.event.findMany({ where, orderBy: [{ startAt: 'asc' }, { id: 'asc' }], select: eventListSelect, ...pageArgs(query) }),
+      db.event.count({ where }),
+    ])
+    return toPage(items, total, query)
+  }
+
+  return listEventsUpcomingFirst(query, publicVisible, eventListSelect)
 }
 
 // ─── CHI TIẾT ────────────────────────────────────────────────────────────────
@@ -224,11 +259,13 @@ type RegistrationWindow = {
 
 // Giờ Việt Nam = UTC + 7h cố định (BR-14): định dạng qua formatVnDateTime (lib/vnTime).
 
-/** Sự kiện có nhận đăng ký của khách không? Không đạt thì 409 kèm lý do rõ ràng (FLOW-14). */
-function ensureEventAcceptsGuests(event: RegistrationWindow, now = new Date()) {
+/**
+ * Sự kiện có nhận đăng ký không (BR-08): đúng trạng thái, trong cửa sổ đăng ký, chưa qua thời điểm
+ * diễn ra. Dùng chung cho khách (E3) và thành viên (E5); không đạt thì 409 kèm lý do rõ ràng (FLOW-14).
+ */
+function ensureEventOpenForRegistration(event: RegistrationWindow, now = new Date()) {
   if (event.status === 'CANCELLED') throw conflict('Sự kiện đã bị hủy, không nhận đăng ký.')
   if (event.status !== 'PUBLISHED') throw conflict('Sự kiện đã kết thúc, không nhận đăng ký.')
-  if (!event.allowGuestRegistration) throw conflict('Sự kiện này không nhận đăng ký của khách ngoài APC.')
   if (event.registrationOpensAt && now < event.registrationOpensAt) {
     throw conflict(`Sự kiện chưa mở đăng ký. Nhận đăng ký từ ${formatVnDateTime(event.registrationOpensAt)}.`)
   }
@@ -238,6 +275,12 @@ function ensureEventAcceptsGuests(event: RegistrationWindow, now = new Date()) {
   // PUBLISHED đã qua thời điểm diễn ra (tác vụ event-end chưa kịp chuyển trạng thái) cũng hết nhận đăng ký,
   // kể cả khi registrationClosesAt để trống (BR-08); cùng phép so sánh với tác vụ event-end (endAt < now).
   if (event.endAt < now) throw conflict('Sự kiện đã diễn ra, không nhận đăng ký.')
+}
+
+/** Sự kiện có nhận đăng ký của khách không? Cộng thêm điều kiện cho phép khách ngoài điều kiện chung. */
+function ensureEventAcceptsGuests(event: RegistrationWindow, now = new Date()) {
+  ensureEventOpenForRegistration(event, now)
+  if (!event.allowGuestRegistration) throw conflict('Sự kiện này không nhận đăng ký của khách ngoài APC.')
 }
 
 const eventWindowSelect = {
@@ -433,6 +476,286 @@ export async function cancelGuestRegistration(rawInput: unknown) {
       refId: registration.id,
     })
     return toGuestSummary(updated)
+  })
+}
+
+// ─── PORTAL: SỰ KIỆN CỦA THÀNH VIÊN (E5) ────────────────────────────────────
+
+/**
+ * Thông báo 404 của portal: không tồn tại và ngoài phạm vi được xem cùng một câu, để không lộ dữ liệu
+ * người dùng không được biết là có tồn tại (docs/02 mục 12.4).
+ */
+export const PORTAL_EVENT_NOT_FOUND_MESSAGE = 'Không tìm thấy sự kiện hoặc bạn không được xem sự kiện này.'
+
+/**
+ * Sự kiện thành viên được xem (E5): `PUBLIC` và `CLUB` cho mọi thành viên, `DEPARTMENT` chỉ khi người
+ * dùng thuộc ban quản lý sự kiện. Lọc ngay trong truy vấn (docs/02 mục 12.2); nháp và lưu trữ coi như
+ * không tồn tại. `user.departmentId` là ban của thành viên (RP-01); BOARD không thuộc ban nào nên không
+ * thấy sự kiện nội bộ ban khác ở portal — muốn quản lý thì dùng trang quản trị.
+ */
+function memberVisibleWhere(user: AuthUser): Prisma.EventWhereInput {
+  return {
+    status: { in: ['PUBLISHED', 'CANCELLED', 'ENDED'] },
+    OR: [
+      { audience: 'PUBLIC' },
+      { audience: 'CLUB' },
+      // Sự kiện nội bộ trong ban: ban quản lý trùng ban của thành viên thì được xem
+      ...(user.departmentId ? [{ audience: 'DEPARTMENT' as const, departmentId: user.departmentId }] : []),
+    ],
+  }
+}
+
+/** Danh sách sự kiện cho thành viên: thêm id (đích link), đối tượng, ban tổ chức và trạng thái đăng ký của chính người xem. */
+function portalEventListSelect(userId: string) {
+  return {
+    id: true,
+    slug: true,
+    title: true,
+    coverImageUrl: true,
+    eventType: true,
+    status: true,
+    audience: true,
+    department: { select: { name: true } },
+    startAt: true,
+    endAt: true,
+    location: true,
+    onlineUrl: true,
+    // Đăng ký hiện có của chính người xem (FLOW-14); ràng buộc duy nhất (sự kiện, userId) cho tối đa một dòng
+    registrations: { where: { userId }, select: { status: true } },
+  } satisfies Prisma.EventSelect
+}
+
+type PortalEventListRow = Prisma.EventGetPayload<{ select: ReturnType<typeof portalEventListSelect> }>
+
+function toPortalEventListItem(row: PortalEventListRow) {
+  const { department, registrations, ...event } = row
+  return {
+    ...event,
+    departmentName: department?.name ?? null,
+    myRegistrationStatus: registrations[0]?.status ?? null,
+  }
+}
+
+/** Danh sách sự kiện cho thành viên (PAGE-MEM-04): sự kiện công khai cộng nội bộ người đó được xem, chế độ lịch như E1. */
+export async function listPortalEvents(request: FastifyRequest, rawQuery: unknown) {
+  const user = currentUser(request)
+  const query = portalEventListQuery.parse(rawQuery)
+  const visible = memberVisibleWhere(user)
+  const select = portalEventListSelect(user.id)
+
+  const result = query.month
+    ? await listEventsInMonth(query, query.month, visible, select)
+    : await listEventsUpcomingFirst(query, visible, select)
+  return { ...result, items: result.items.map(toPortalEventListItem) }
+}
+
+/** Chi tiết sự kiện cho thành viên (PAGE-MEM-05): như trang công khai cộng số chỗ đã đăng ký và đăng ký của chính người xem (BR-09). */
+function portalEventDetailSelect(userId: string) {
+  return {
+    id: true,
+    slug: true,
+    title: true,
+    description: true,
+    coverImageUrl: true,
+    eventType: true,
+    status: true,
+    audience: true,
+    department: { select: { name: true } },
+    contactPoint: true,
+    location: true,
+    onlineUrl: true,
+    startAt: true,
+    endAt: true,
+    registrationOpensAt: true,
+    registrationClosesAt: true,
+    capacity: true,
+    allowGuestRegistration: true,
+    cancelReason: true,
+    _count: { select: { registrations: { where: { status: 'REGISTERED' } } } },
+    registrations: { where: { userId }, select: { status: true, registeredAt: true, cancelledAt: true } },
+  } satisfies Prisma.EventSelect
+}
+
+type PortalEventDetailRow = Prisma.EventGetPayload<{ select: ReturnType<typeof portalEventDetailSelect> }>
+
+function toPortalEventDetail(event: PortalEventDetailRow) {
+  const { department, registrations, _count, ...rest } = event
+  return {
+    ...rest,
+    departmentName: department?.name ?? null,
+    registeredCount: _count.registrations,
+    myRegistration: registrations[0] ?? null,
+  }
+}
+
+export async function getPortalEvent(request: FastifyRequest, eventId: string) {
+  const user = currentUser(request)
+  const event = await db.event.findFirst({
+    where: { id: eventId, ...memberVisibleWhere(user) },
+    select: portalEventDetailSelect(user.id),
+  })
+  if (!event) throw notFound(PORTAL_EVENT_NOT_FOUND_MESSAGE)
+  return toPortalEventDetail(event)
+}
+
+/** Kết quả đăng ký của thành viên: `alreadyRegistered` để web hiện đúng trạng thái đã có mà không tạo lượt mới (FLOW-14). */
+export type MemberRegistrationResult = {
+  status: 'REGISTERED'
+  alreadyRegistered: boolean
+  registeredAt: Date
+  cancelledAt: Date | null
+}
+
+/**
+ * Thành viên đăng ký sự kiện (E5, FLOW-14 luồng 1): đăng ký gắn tài khoản (userId), không cần nhập lại
+ * thông tin. Cùng các kiểm tra với khách (E3): đúng trạng thái, trong cửa sổ đăng ký, còn chỗ — riêng
+ * `allowGuestRegistration` KHÔNG áp dụng cho thành viên (EVT-02: nó chỉ chặn khách ngoài APC).
+ * Đã đăng ký thì trả lại trạng thái hiện tại, không tạo bản ghi hay email mới (idempotent, QĐ-1).
+ */
+export async function registerMember(request: FastifyRequest, eventId: string): Promise<MemberRegistrationResult> {
+  const user = currentUser(request)
+  const event = await db.event.findFirst({
+    where: { id: eventId, ...memberVisibleWhere(user) },
+    select: { id: true, ...eventWindowSelect },
+  })
+  if (!event) throw notFound(PORTAL_EVENT_NOT_FOUND_MESSAGE)
+  ensureEventOpenForRegistration(event)
+
+  try {
+    return await db.$transaction(async (tx) => {
+      // Khóa dòng sự kiện như lúc khách đăng ký: đăng ký/hủy song song được xử lý tuần tự rồi mới đếm chỗ (BR-08).
+      const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM events WHERE id = ${event.id} FOR UPDATE`
+      if (locked.length === 0) throw notFound(PORTAL_EVENT_NOT_FOUND_MESSAGE)
+
+      // Đọc lại sau khi có khóa: ban quản trị có thể vừa hủy/đổi thời gian trong lúc người dùng mở trang.
+      const fresh = await tx.event.findUnique({ where: { id: event.id }, select: eventWindowSelect })
+      if (!fresh) throw notFound(PORTAL_EVENT_NOT_FOUND_MESSAGE)
+      ensureEventOpenForRegistration(fresh)
+
+      const registeredCount = await tx.eventRegistration.count({ where: { eventId: event.id, status: 'REGISTERED' } })
+      const existing = await tx.eventRegistration.findUnique({
+        where: { eventId_userId: { eventId: event.id, userId: user.id } },
+      })
+
+      // Idempotent: còn đăng ký hiệu lực thì trả lại trạng thái, không tạo bản ghi hay email mới (FLOW-14).
+      if (existing && existing.status === 'REGISTERED') {
+        return {
+          status: 'REGISTERED',
+          alreadyRegistered: true,
+          registeredAt: existing.registeredAt,
+          cancelledAt: existing.cancelledAt,
+        }
+      }
+      if (fresh.capacity !== null && registeredCount >= fresh.capacity) throw conflict('Sự kiện đã hết chỗ.')
+
+      let registrationId: string
+      let registeredAt: Date
+      if (existing) {
+        // Từng hủy rồi đăng ký lại: kích hoạt lại dòng cũ như khách (E3) và cấp mã mới — mã cũ đã nằm trong email cũ.
+        const updated = await tx.eventRegistration.update({
+          where: { id: existing.id },
+          data: { status: 'REGISTERED', cancelledAt: null, registeredAt: new Date(), registrationCode: publicCode() },
+        })
+        registrationId = updated.id
+        registeredAt = updated.registeredAt
+      } else {
+        const created = await tx.eventRegistration.create({
+          data: { eventId: event.id, userId: user.id, registrationCode: publicCode() },
+        })
+        registrationId = created.id
+        registeredAt = created.registeredAt
+      }
+
+      // Email xác nhận xếp hàng trong cùng transaction (NTF-01); SMTP lỗi thì thử lại, đăng ký vẫn giữ (BR-17).
+      const recipient = await tx.user.findUniqueOrThrow({ where: { id: user.id }, select: { email: true } })
+      await enqueueEmail(tx, {
+        type: 'EVENT_REGISTRATION_CONFIRMED_MEMBER',
+        to: recipient.email,
+        refType: 'EVENT_REGISTRATION',
+        refId: registrationId,
+      })
+
+      return { status: 'REGISTERED', alreadyRegistered: false, registeredAt, cancelledAt: null }
+    })
+  } catch (error) {
+    // Hai request cùng người gửi song song: ràng buộc duy nhất (sự kiện, userId) chặn — request thắng
+    // tạo đăng ký, request còn lại đọc lại dòng đã có và trả trạng thái như lượt idempotent.
+    if ((error as { code?: string }).code === 'P2002') {
+      const existing = await db.eventRegistration.findUnique({
+        where: { eventId_userId: { eventId, userId: user.id } },
+      })
+      if (existing && existing.status === 'REGISTERED') {
+        return {
+          status: 'REGISTERED',
+          alreadyRegistered: true,
+          registeredAt: existing.registeredAt,
+          cancelledAt: existing.cancelledAt,
+        }
+      }
+    }
+    throw error
+  }
+}
+
+/** Kết quả hủy đăng ký của thành viên (AC-09): trả về để web hiển thị ngay, không phải tải lại trang. */
+export type MemberCancellationResult = {
+  status: 'CANCELLED'
+  cancelledAt: Date
+}
+
+/**
+ * Thành viên hủy đăng ký (E5, FLOW-14 bước 5, AC-09): chỉ được hủy đến hết `registrationClosesAt`
+ * (hoặc đến hết thời gian diễn ra nếu không đặt hạn riêng — cùng phép kiểm với khách, BR-08). Hủy
+ * xong chỗ được trả lại (đếm chỗ chỉ tính REGISTERED) và email xác nhận hủy xếp hàng trong cùng
+ * transaction (BR-17).
+ */
+export async function cancelMemberRegistration(request: FastifyRequest, eventId: string): Promise<MemberCancellationResult> {
+  const user = currentUser(request)
+
+  return db.$transaction(async (tx) => {
+    // Kiểm phạm vi xem trước: sự kiện không tồn tại hoặc ngoài phạm vi cùng trả 404 (docs/02 mục 12.4).
+    const visible = await tx.event.findFirst({ where: { id: eventId, ...memberVisibleWhere(user) }, select: { id: true } })
+    if (!visible) throw notFound(PORTAL_EVENT_NOT_FOUND_MESSAGE)
+
+    // Cùng khóa sự kiện với lúc đăng ký: hủy và đăng ký mới không giành chỗ của nhau.
+    await tx.$queryRaw`SELECT id FROM events WHERE id = ${eventId} FOR UPDATE`
+
+    const event = await tx.event.findUnique({
+      where: { id: eventId },
+      select: { status: true, endAt: true, registrationClosesAt: true },
+    })
+    if (!event) throw notFound(PORTAL_EVENT_NOT_FOUND_MESSAGE)
+
+    const registration = await tx.eventRegistration.findUnique({
+      where: { eventId_userId: { eventId, userId: user.id } },
+    })
+    if (!registration || registration.status === 'CANCELLED') throw conflict('Bạn chưa đăng ký sự kiện này.')
+
+    // Cùng phép kiểm thời hạn hủy với khách (BR-08, FLOW-14).
+    if (event.status !== 'PUBLISHED') throw conflict('Sự kiện đã kết thúc hoặc bị hủy, không thể hủy đăng ký.')
+    if (event.endAt < new Date()) throw conflict('Sự kiện đã diễn ra, không thể hủy đăng ký.')
+    if (event.registrationClosesAt && event.registrationClosesAt < new Date()) {
+      throw conflict('Đã hết thời hạn hủy đăng ký. Vui lòng liên hệ CLB APC.')
+    }
+
+    // updateMany kèm điều kiện trạng thái: hai lượt hủy song song chỉ một lượt thắng.
+    const cancelledAt = new Date()
+    const { count } = await tx.eventRegistration.updateMany({
+      where: { id: registration.id, status: 'REGISTERED' },
+      data: { status: 'CANCELLED', cancelledAt },
+    })
+    if (count === 0) throw conflict('Đăng ký này đã được hủy trước đó.')
+
+    // Email xếp hàng sau cùng: SMTP lỗi không mất lượt hủy (BR-17).
+    const recipient = await tx.user.findUniqueOrThrow({ where: { id: user.id }, select: { email: true } })
+    await enqueueEmail(tx, {
+      type: 'EVENT_REGISTRATION_CANCELLED_MEMBER',
+      to: recipient.email,
+      refType: 'EVENT_REGISTRATION',
+      refId: registration.id,
+    })
+
+    return { status: 'CANCELLED', cancelledAt }
   })
 }
 

@@ -49,7 +49,21 @@ export const PORTAL_MENU: readonly MenuGroup[] = [
         page: () => import('../pages/portal/home/PortalHomePage').then((m) => ({ Component: m.PortalHomePage })),
       },
       { label: 'Thông báo', to: '/portal/announcements', roles: MEMBER },
-      { label: 'Sự kiện', to: '/portal/events', roles: MEMBER },
+      {
+        label: 'Sự kiện',
+        to: '/portal/events',
+        roles: MEMBER,
+        page: () => import('../pages/portal/events/list/PortalEventsListPage').then((m) => ({ Component: m.PortalEventsListPage })),
+        children: [
+          {
+            label: 'Chi tiết sự kiện',
+            to: '/portal/events/:id',
+            roles: MEMBER,
+            page: () =>
+              import('../pages/portal/events/detail/PortalEventDetailPage').then((m) => ({ Component: m.PortalEventDetailPage })),
+          },
+        ],
+      },
       { label: 'Tài liệu', to: '/portal/documents', roles: MEMBER },
       { label: 'Thành viên', to: '/portal/members', roles: MEMBER },
     ],

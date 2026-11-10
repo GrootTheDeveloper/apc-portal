@@ -16,10 +16,12 @@ type EventCardProps = {
   status?: EventCardStatus
   /** Gắn ngữ cảnh danh sách để nút về từ chi tiết giữ nguyên bộ lọc (Sitemap §15.3). */
   linkState?: { from: string }
+  /** Đích liên kết: mặc định trang công khai theo slug; portal trỏ tới /portal/events/:id (sự kiện nội bộ không có trang công khai). */
+  to?: string
 }
 
 /** Card sự kiện: ảnh bo góc có ô ngày, bên dưới là loại, tên và giờ. */
-export function EventCard({ slug, title, eventType, startAt, endAt, location, onlineUrl, coverImageUrl, status, linkState }: EventCardProps) {
+export function EventCard({ slug, title, eventType, startAt, endAt, location, onlineUrl, coverImageUrl, status, linkState, to }: EventCardProps) {
   const start = vnParts(startAt)
   const end = vnParts(endAt)
   const sameDay = start.year === end.year && start.month === end.month && start.day === end.day
@@ -28,7 +30,7 @@ export function EventCard({ slug, title, eventType, startAt, endAt, location, on
   const statusStyle = status && status !== 'PUBLISHED' ? EVENT_STATUS_STYLES[status] : undefined
 
   return (
-    <Link to={`/events/${slug}`} state={linkState} className="group flex min-w-0 flex-col">
+    <Link to={to ?? `/events/${slug}`} state={linkState} className="group flex min-w-0 flex-col">
       <div className="photo relative aspect-[4/3] bg-soft">
         <img
           alt=""
