@@ -7,6 +7,7 @@ import {
   createAdminProject,
   getAdminProject,
   listAdminProjects,
+  listProjectMemberOptions,
   updateAdminProject,
 } from './admin-projects.service.js'
 
@@ -28,6 +29,17 @@ export function adminProjectsRoutes() {
         const user = currentUser(request)
         return listAdminProjects(user, request.query)
       },
+    )
+
+    // ── GET /admin/content/projects/member-options ────────────────────────────
+    /**
+     * Danh sách thành viên ACTIVE cho ô chọn thành viên trong form dự án (chỉ id + fullName).
+     * Đăng ký TRƯỚC /admin/content/projects/:id để Fastify không khớp nhầm :id = 'member-options'.
+     */
+    app.get(
+      '/admin/content/projects/member-options',
+      { preHandler: requireManager },
+      async () => listProjectMemberOptions(),
     )
 
     // ── GET /admin/content/projects/:id ────────────────────────────────────────

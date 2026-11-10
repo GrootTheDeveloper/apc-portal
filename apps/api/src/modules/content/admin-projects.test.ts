@@ -175,6 +175,40 @@ afterAll(async () => {
   await db.$disconnect()
 })
 
+// ─── GET /admin/content/projects/member-options ───────────────────────────────
+
+describe('GET /admin/content/projects/member-options', () => {
+  it('401 khi không đăng nhập', async () => {
+    const res = await req('GET', '/admin/content/projects/member-options', null)
+    expect(res.statusCode).toBe(401)
+    expect(res.json().error).toBe('unauthenticated')
+  })
+
+  it('403 khi MEMBER thường gọi', async () => {
+    const res = await req('GET', '/admin/content/projects/member-options', 'member')
+    expect(res.statusCode).toBe(403)
+    expect(res.json().error).toBe('forbidden')
+  })
+
+  it('MANAGER gọi → 200, chỉ user ACTIVE, chỉ có id + fullName', async () => {
+    const activeA = await createUser('opt-a', dept1Id)
+    const activeB = await createUser('opt-b', dept1Id)
+    const pending = await createUser('opt-pending', dept1Id, 'PENDING_ACTIVATION')
+
+    const res = await req('GET', '/admin/content/projects/member-options', 'manager')
+    expect(res.statusCode).toBe(200)
+    const items = res.json() as { id: string; fullName: string }[]
+    const ids = items.map((i) => i.id)
+    expect(ids).toContain(activeA.id)
+    expect(ids).toContain(activeB.id)
+    expect(ids).not.toContain(pending.id)
+    // Không trả trường nhạy cảm ngoài id + fullName
+    for (const item of items) {
+      expect(Object.keys(item).sort()).toEqual(['fullName', 'id'])
+    }
+  })
+})
+
 // ─── GET /admin/content/projects ──────────────────────────────────────────────
 
 describe('GET /admin/content/projects', () => {

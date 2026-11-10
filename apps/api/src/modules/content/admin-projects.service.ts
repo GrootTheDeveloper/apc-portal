@@ -154,6 +154,15 @@ async function listProjectMembers(projectId: string) {
 
 // ─── SERVICE FUNCTIONS ────────────────────────────────────────────────────────
 
+/** Lựa chọn thành viên cho form dự án: chỉ id + tên, không trả trường nhạy cảm (email, studentId, ...). */
+export async function listProjectMemberOptions() {
+  return db.user.findMany({
+    where: { status: 'ACTIVE' },
+    orderBy: { fullName: 'asc' },
+    select: { id: true, fullName: true },
+  })
+}
+
 /** Danh sách dự án quản trị, lọc theo phạm vi ban của người gọi. */
 export async function listAdminProjects(user: AuthUser, rawQuery: unknown) {
   const query = adminProjectListQuery.parse(rawQuery)
