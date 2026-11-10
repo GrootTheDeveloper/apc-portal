@@ -5,10 +5,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
 import { loadConfig } from '../../config.js'
 import { db } from '../../db/client.js'
+import { PRIVACY_POLICY_VERSION } from '../consent/service.js'
+import { createMemoryStorage } from '../files/storage.js'
 
 // Test tích hợp với Postgres thật: tự tạo dữ liệu trong beforeAll, xóa sạch trong afterAll.
 const config = loadConfig({ NODE_ENV: 'test' })
-const app = buildApp(config)
+// Kho tệp trong bộ nhớ: route avatar đọc cùng storage mà test ghi (CI không có SeaweedFS)
+const { storage } = createMemoryStorage()
+const app = buildApp(config, { storage })
 
 // Tag ngẫu nhiên để tránh va chạm giữa các lần chạy test song song
 const tag = randomUUID().slice(0, 8)
@@ -17,6 +21,9 @@ const tag = randomUUID().slice(0, 8)
 const createdPostIds: string[] = []
 const createdProjectIds: string[] = []
 const createdEventIds: string[] = []
+const createdUserIds: string[] = []
+const createdConsentIds: string[] = []
+const createdFileIds: string[] = []
 
 // ─── HELPERS TẠO DỮ LIỆU TEST ─────────────────────────────────────────────
 
@@ -68,6 +75,7 @@ async function createProject(
   opts: {
     suffix?: string
     status?: 'PUBLISHED' | 'DRAFT' | 'ARCHIVED'
+    type?: 'PROJECT' | 'PRODUCT'
     createdById: string
   },
 ) {
@@ -77,6 +85,7 @@ async function createProject(
       title: `Dự án ${suffix}`,
       slug: `du-an-${suffix}-${tag}`,
       description: 'Mô tả dự án test.',
+      type: opts.type ?? 'PROJECT',
       status: opts.status ?? 'PUBLISHED',
       publishedAt: opts.status === 'PUBLISHED' ? new Date() : null,
       technologies: ['React', 'Node.js'],
@@ -85,6 +94,68 @@ async function createProject(
   })
   createdProjectIds.push(project.id)
   return project
+}
+
+/** Tạo thành viên ACTIVE tối giản (dùng cho ProjectMember và consent). */
+async function createMemberUser(suffix: string) {
+  const user = await db.user.create({
+    data: {
+      username: `member-content-${suffix}-${tag}`,
+      email: `member-content-${suffix}-${tag}@test.local`,
+      passwordHash: 'dummy-hash-not-used',
+      fullName: `Thành viên ${suffix}`,
+      mustChangePassword: false,
+      status: 'ACTIVE',
+    },
+  })
+  createdUserIds.push(user.id)
+  return user
+}
+
+/** Tạo tệp ảnh đại diện CLEAN trong kho nhớ + dòng stored_files tương ứng. */
+async function createStoredAvatar(uploadedById: string) {
+  const storageKey = `files/${randomUUID()}`
+  const content = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+  await storage.put(storageKey, content, 'image/png')
+  const file = await db.storedFile.create({
+    data: {
+      storageKey,
+      originalName: 'avatar.png',
+      mimeType: 'image/png',
+      size: content.length,
+      purpose: 'AVATAR',
+      visibility: 'INTERNAL',
+      scanStatus: 'CLEAN',
+      uploadedById,
+    },
+  })
+  createdFileIds.push(file.id)
+  return file
+}
+
+/** Cấp đồng ý công khai (tên/ảnh) cho một dự án cụ thể; trả dòng consent để test thu hồi. */
+async function grantProjectConsent(
+  userId: string,
+  projectId: string,
+  purpose: 'PUBLIC_NAME' | 'PUBLIC_PHOTO',
+) {
+  const consent = await db.consentRecord.create({
+    data: {
+      subjectType: 'USER',
+      subjectId: userId,
+      purpose,
+      targetType: 'PROJECT',
+      targetId: projectId,
+      policyVersion: PRIVACY_POLICY_VERSION,
+    },
+  })
+  createdConsentIds.push(consent.id)
+  return consent
+}
+
+/** Thêm thành viên vào dự án (bảng nối ProjectMember). */
+async function addProjectMember(projectId: string, userId: string) {
+  return db.projectMember.create({ data: { projectId, userId } })
 }
 
 async function createEvent(opts: { suffix: string; status?: 'PUBLISHED' | 'DRAFT' | 'ARCHIVED'; audience?: 'PUBLIC' | 'CLUB'; createdById: string }) {
@@ -116,11 +187,13 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  // Xóa theo thứ tự: dữ liệu phụ thuộc trước, sau đó user
+  // Xóa theo thứ tự phụ thuộc: consent → tệp (FK tới user) → dữ liệu nghiệp vụ → user
+  await db.consentRecord.deleteMany({ where: { id: { in: createdConsentIds } } })
+  await db.storedFile.deleteMany({ where: { id: { in: createdFileIds } } })
   await db.post.deleteMany({ where: { id: { in: createdPostIds } } })
   await db.project.deleteMany({ where: { id: { in: createdProjectIds } } })
   await db.event.deleteMany({ where: { id: { in: createdEventIds } } })
-  await db.user.deleteMany({ where: { id: authorId } })
+  await db.user.deleteMany({ where: { id: { in: [authorId, ...createdUserIds] } } })
   await app.close()
   await db.$disconnect()
 })
@@ -372,9 +445,38 @@ describe('GET /public/projects', () => {
     expect(slugs).not.toContain(`du-an-proj-draft-${tag}`)
   })
 
-  it('bỏ qua query param type (lọc theo loại thêm ở C4)', async () => {
+  it('422 khi type không hợp lệ', async () => {
     const response = await app.inject({ method: 'GET', url: '/public/projects?type=web' })
+    expect(response.statusCode).toBe(422)
+    expect(response.json().error).toBe('validation')
+  })
+
+  it('?type=PRODUCT chỉ trả sản phẩm đã công bố', async () => {
+    const project = await createProject({ suffix: 'type-proj', createdById: authorId, status: 'PUBLISHED', type: 'PROJECT' })
+    const product = await createProject({ suffix: 'type-prod', createdById: authorId, status: 'PUBLISHED', type: 'PRODUCT' })
+    await createProject({ suffix: 'type-prod-draft', createdById: authorId, status: 'DRAFT', type: 'PRODUCT' })
+
+    const response = await app.inject({ method: 'GET', url: '/public/projects?type=PRODUCT' })
     expect(response.statusCode).toBe(200)
+    const body = response.json()
+    const slugs = body.items.map((i: { slug: string }) => i.slug)
+    expect(slugs).toContain(product.slug)
+    expect(slugs).not.toContain(project.slug)
+    expect(slugs).not.toContain(`du-an-type-prod-draft-${tag}`)
+    for (const item of body.items) {
+      expect(item.type).toBe('PRODUCT')
+    }
+  })
+
+  it('không có type thì trả cả PROJECT và PRODUCT', async () => {
+    const project = await createProject({ suffix: 'both-proj', createdById: authorId, status: 'PUBLISHED', type: 'PROJECT' })
+    const product = await createProject({ suffix: 'both-prod', createdById: authorId, status: 'PUBLISHED', type: 'PRODUCT' })
+
+    const response = await app.inject({ method: 'GET', url: '/public/projects' })
+    expect(response.statusCode).toBe(200)
+    const slugs = response.json().items.map((i: { slug: string }) => i.slug)
+    expect(slugs).toContain(project.slug)
+    expect(slugs).toContain(product.slug)
   })
 
   it('hỗ trợ phân trang', async () => {
@@ -422,6 +524,130 @@ describe('GET /public/projects/:slug', () => {
 
   it('trả về 404 với slug không tồn tại', async () => {
     const response = await app.inject({ method: 'GET', url: `/public/projects/slug-khong-ton-tai-${tag}` })
+    expect(response.statusCode).toBe(404)
+    expect(response.json().error).toBe('not_found')
+  })
+})
+
+// ─── GET /public/projects/:slug — members (consent PUBLIC_NAME) ─────────────
+
+describe('GET /public/projects/:slug — members', () => {
+  it('chỉ trả thành viên có consent PUBLIC_NAME, kèm hasPhoto, không lộ id tệp ảnh', async () => {
+    const project = await createProject({ suffix: 'mem-filter', createdById: authorId, status: 'PUBLISHED' })
+    const memberA = await createMemberUser('mem-a')
+    const memberB = await createMemberUser('mem-b')
+    await addProjectMember(project.id, memberA.id)
+    await addProjectMember(project.id, memberB.id)
+    await grantProjectConsent(memberA.id, project.id, 'PUBLIC_NAME')
+    await grantProjectConsent(memberA.id, project.id, 'PUBLIC_PHOTO')
+
+    const response = await app.inject({ method: 'GET', url: `/public/projects/${project.slug}` })
+    expect(response.statusCode).toBe(200)
+    const members = response.json().members as { userId: string; name: string; hasPhoto: boolean }[]
+    expect(members).toHaveLength(1)
+    expect(members[0]).toEqual({ userId: memberA.id, name: memberA.fullName, hasPhoto: true })
+    expect(members[0]).not.toHaveProperty('avatarFileId')
+  })
+
+  it('thành viên được cấp consent PUBLIC_NAME sau đó thì hiện ở lần tải tiếp theo', async () => {
+    const project = await createProject({ suffix: 'mem-dyn', createdById: authorId, status: 'PUBLISHED' })
+    const memberA = await createMemberUser('mem-dyn-a')
+    const memberB = await createMemberUser('mem-dyn-b')
+    await addProjectMember(project.id, memberA.id)
+    await addProjectMember(project.id, memberB.id)
+    await grantProjectConsent(memberA.id, project.id, 'PUBLIC_NAME')
+
+    const first = await app.inject({ method: 'GET', url: `/public/projects/${project.slug}` })
+    expect(first.statusCode).toBe(200)
+    expect(first.json().members).toHaveLength(1)
+
+    await grantProjectConsent(memberB.id, project.id, 'PUBLIC_NAME')
+    const second = await app.inject({ method: 'GET', url: `/public/projects/${project.slug}` })
+    expect(second.statusCode).toBe(200)
+    const members = second.json().members as { userId: string }[]
+    expect(members).toHaveLength(2)
+    expect(members.map((m) => m.userId).sort()).toEqual([memberA.id, memberB.id].sort())
+  })
+})
+
+// ─── GET /public/projects/:slug/members/:userId/avatar ──────────────────────
+
+describe('GET /public/projects/:slug/members/:userId/avatar', () => {
+  it('200 khi đủ điều kiện, header Cache-Control: private, no-store', async () => {
+    const project = await createProject({ suffix: 'av-ok', createdById: authorId, status: 'PUBLISHED' })
+    const member = await createMemberUser('av-ok')
+    await addProjectMember(project.id, member.id)
+    await grantProjectConsent(member.id, project.id, 'PUBLIC_PHOTO')
+    const file = await createStoredAvatar(member.id)
+    await db.user.update({ where: { id: member.id }, data: { avatarUrl: file.id } })
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/public/projects/${project.slug}/members/${member.id}/avatar`,
+    })
+    expect(response.statusCode).toBe(200)
+    expect(response.headers['cache-control']).toBe('private, no-store')
+    expect(response.headers['content-type']).toContain('image/png')
+  })
+
+  it('404 khi dự án DRAFT', async () => {
+    const project = await createProject({ suffix: 'av-draft', createdById: authorId, status: 'DRAFT' })
+    const member = await createMemberUser('av-draft')
+    await addProjectMember(project.id, member.id)
+    await grantProjectConsent(member.id, project.id, 'PUBLIC_PHOTO')
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/public/projects/${project.slug}/members/${member.id}/avatar`,
+    })
+    expect(response.statusCode).toBe(404)
+    expect(response.json().error).toBe('not_found')
+  })
+
+  it('404 khi userId không thuộc dự án', async () => {
+    const project = await createProject({ suffix: 'av-foreign', createdById: authorId, status: 'PUBLISHED' })
+    const member = await createMemberUser('av-foreign')
+    await grantProjectConsent(member.id, project.id, 'PUBLIC_PHOTO')
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/public/projects/${project.slug}/members/${member.id}/avatar`,
+    })
+    expect(response.statusCode).toBe(404)
+    expect(response.json().error).toBe('not_found')
+  })
+
+  it('404 khi consent PUBLIC_PHOTO bị thu hồi sau lần tải đầu (check real-time)', async () => {
+    const project = await createProject({ suffix: 'av-revoke', createdById: authorId, status: 'PUBLISHED' })
+    const member = await createMemberUser('av-revoke')
+    await addProjectMember(project.id, member.id)
+    const consent = await grantProjectConsent(member.id, project.id, 'PUBLIC_PHOTO')
+    const file = await createStoredAvatar(member.id)
+    await db.user.update({ where: { id: member.id }, data: { avatarUrl: file.id } })
+
+    const url = `/public/projects/${project.slug}/members/${member.id}/avatar`
+    const first = await app.inject({ method: 'GET', url })
+    expect(first.statusCode).toBe(200)
+
+    // Thu hồi đồng ý trực tiếp trong DB, không qua module consent
+    await db.consentRecord.update({ where: { id: consent.id }, data: { revokedAt: new Date() } })
+
+    const second = await app.inject({ method: 'GET', url })
+    expect(second.statusCode).toBe(404)
+    expect(second.json().error).toBe('not_found')
+  })
+
+  it('404 khi User.avatarUrl = null', async () => {
+    const project = await createProject({ suffix: 'av-null', createdById: authorId, status: 'PUBLISHED' })
+    const member = await createMemberUser('av-null')
+    await addProjectMember(project.id, member.id)
+    await grantProjectConsent(member.id, project.id, 'PUBLIC_PHOTO')
+    // Không set avatarUrl → mặc định null
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/public/projects/${project.slug}/members/${member.id}/avatar`,
+    })
     expect(response.statusCode).toBe(404)
     expect(response.json().error).toBe('not_found')
   })
