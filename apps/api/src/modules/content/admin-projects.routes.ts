@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify'
 import { db } from '../../db/client.js'
 import { currentUser, requireRole, requireScope } from '../auth/rbac.js'
 import {
+  changeProjectStatus,
   createAdminProject,
   getAdminProject,
   listAdminProjects,
@@ -86,6 +87,28 @@ export function adminProjectsRoutes() {
         const user = currentUser(request)
         const { id } = request.params as { id: string }
         return updateAdminProject(user, id, request.body)
+      },
+    )
+
+    // ── PATCH /admin/content/projects/:id/status ───────────────────────────────
+    /**
+     * Đổi trạng thái dự án: publish / unpublish / archive — CHỈ BOARD.
+     * Ghi audit log trong cùng transaction với thao tác nghiệp vụ.
+     * Manager gọi bất kỳ action nào cũng nhận 403.
+     */
+    app.patch(
+      '/admin/content/projects/:id/status',
+      {
+        preHandler: [
+          requireRole('BOARD'),
+          requireScope(({ id }) =>
+            db.project.findUnique({ where: { id }, select: { departmentId: true } }),
+          ),
+        ],
+      },
+      async (request) => {
+        const { id } = request.params as { id: string }
+        return changeProjectStatus(request, id, request.body)
       },
     )
   }

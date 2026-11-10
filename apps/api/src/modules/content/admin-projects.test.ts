@@ -166,6 +166,7 @@ beforeAll(async () => {
 afterAll(async () => {
   // Xóa theo thứ tự phụ thuộc
   await db.consentRecord.deleteMany({ where: { id: { in: createdConsentIds } } })
+  await db.auditLog.deleteMany({ where: { targetType: 'PROJECT', targetId: { in: createdProjectIds } } })
   await db.projectMember.deleteMany({ where: { projectId: { in: createdProjectIds } } })
   await db.project.deleteMany({ where: { id: { in: createdProjectIds } } })
   await db.user.deleteMany({ where: { id: { in: createdUserIds } } })
@@ -470,5 +471,141 @@ describe('GET /admin/content/projects/:id', () => {
     expect(a).toMatchObject({ publicNameConsent: true, publicPhotoConsent: true })
     expect(a?.name).toBe(`Test consent-a`)
     expect(b).toMatchObject({ publicNameConsent: true, publicPhotoConsent: false })
+  })
+})
+
+// ─── PATCH /admin/content/projects/:id/status ─────────────────────────────────
+
+describe('PATCH /admin/content/projects/:id/status', () => {
+  const statusReq = (projectId: string, user: UserKey | null, action: string, updatedAt: string) =>
+    req('PATCH', `/admin/content/projects/${projectId}/status`, user, { action, updatedAt })
+
+  it('401 khi không đăng nhập', async () => {
+    const project = await seedProject({ createdById: users.board.id })
+    const res = await statusReq(project.id, null, 'publish', project.updatedAt.toISOString())
+    expect(res.statusCode).toBe(401)
+    expect(res.json().error).toBe('unauthenticated')
+  })
+
+  it('403 khi MANAGER gọi publish dự án của ban mình', async () => {
+    const project = await seedProject({ createdById: users.manager.id, departmentId: dept1Id })
+    const res = await statusReq(project.id, 'manager', 'publish', project.updatedAt.toISOString())
+    expect(res.statusCode).toBe(403)
+    expect(res.json().error).toBe('forbidden')
+    // Trạng thái trong DB không đổi
+    const saved = await db.project.findUnique({ where: { id: project.id }, select: { status: true } })
+    expect(saved?.status).toBe('DRAFT')
+  })
+
+  it('403 khi MANAGER gọi archive', async () => {
+    const project = await seedProject({
+      createdById: users.manager.id,
+      departmentId: dept1Id,
+      status: 'PUBLISHED',
+    })
+    const res = await statusReq(project.id, 'manager', 'archive', project.updatedAt.toISOString())
+    expect(res.statusCode).toBe(403)
+    expect(res.json().error).toBe('forbidden')
+  })
+
+  it('BOARD publish DRAFT → PUBLISHED, publishedAt != null, audit ghi project.publish', async () => {
+    const project = await seedProject({ createdById: users.board.id, departmentId: null })
+    const res = await statusReq(project.id, 'board', 'publish', project.updatedAt.toISOString())
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toEqual({ id: project.id, status: 'PUBLISHED' })
+
+    const saved = await db.project.findUnique({
+      where: { id: project.id },
+      select: { status: true, publishedAt: true },
+    })
+    expect(saved?.status).toBe('PUBLISHED')
+    expect(saved?.publishedAt).not.toBeNull()
+
+    const log = await db.auditLog.findFirst({
+      where: { targetType: 'PROJECT', targetId: project.id },
+    })
+    expect(log?.action).toBe('project.publish')
+  })
+
+  it('BOARD unpublish PUBLISHED → DRAFT, publishedAt giữ nguyên', async () => {
+    const project = await seedProject({
+      createdById: users.board.id,
+      departmentId: null,
+      status: 'PUBLISHED',
+    })
+    const publishedAtBefore = project.publishedAt?.getTime()
+    const res = await statusReq(project.id, 'board', 'unpublish', project.updatedAt.toISOString())
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toEqual({ id: project.id, status: 'DRAFT' })
+
+    const saved = await db.project.findUnique({
+      where: { id: project.id },
+      select: { status: true, publishedAt: true },
+    })
+    expect(saved?.status).toBe('DRAFT')
+    expect(saved?.publishedAt?.getTime()).toBe(publishedAtBefore)
+  })
+
+  it('BOARD archive PUBLISHED → ARCHIVED', async () => {
+    const project = await seedProject({
+      createdById: users.board.id,
+      departmentId: null,
+      status: 'PUBLISHED',
+    })
+    const res = await statusReq(project.id, 'board', 'archive', project.updatedAt.toISOString())
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toEqual({ id: project.id, status: 'ARCHIVED' })
+
+    const saved = await db.project.findUnique({ where: { id: project.id }, select: { status: true } })
+    expect(saved?.status).toBe('ARCHIVED')
+  })
+
+  it('409 khi publish dự án đã ARCHIVED (bước chuyển sai)', async () => {
+    const project = await seedProject({ createdById: users.board.id, status: 'ARCHIVED' })
+    const res = await statusReq(project.id, 'board', 'publish', project.updatedAt.toISOString())
+    expect(res.statusCode).toBe(409)
+    expect(res.json().error).toBe('conflict')
+  })
+
+  it('409 khi publish với updatedAt cũ (OCC conflict)', async () => {
+    const project = await seedProject({ createdById: users.board.id, departmentId: null })
+    const staleTimestamp = new Date(project.updatedAt.getTime() - 5000).toISOString()
+    const res = await statusReq(project.id, 'board', 'publish', staleTimestamp)
+    expect(res.statusCode).toBe(409)
+    expect(res.json().error).toBe('conflict')
+  })
+
+  it('422 khi action không hợp lệ', async () => {
+    const project = await seedProject({ createdById: users.board.id })
+    const res = await statusReq(project.id, 'board', 'delete', project.updatedAt.toISOString())
+    expect(res.statusCode).toBe(422)
+    expect(res.json().error).toBe('validation')
+  })
+
+  it('audit ghi đủ 3 action tương ứng 3 thao tác thành công', async () => {
+    const p1 = await seedProject({ createdById: users.board.id, departmentId: null })
+    const p2 = await seedProject({
+      createdById: users.board.id,
+      departmentId: null,
+      status: 'PUBLISHED',
+    })
+    const p3 = await seedProject({
+      createdById: users.board.id,
+      departmentId: null,
+      status: 'PUBLISHED',
+    })
+
+    const r1 = await statusReq(p1.id, 'board', 'publish', p1.updatedAt.toISOString())
+    const r2 = await statusReq(p2.id, 'board', 'unpublish', p2.updatedAt.toISOString())
+    const r3 = await statusReq(p3.id, 'board', 'archive', p3.updatedAt.toISOString())
+    expect([r1.statusCode, r2.statusCode, r3.statusCode]).toEqual([200, 200, 200])
+
+    const logs = await db.auditLog.findMany({
+      where: { targetType: 'PROJECT', targetId: { in: [p1.id, p2.id, p3.id] } },
+    })
+    expect(logs).toHaveLength(3)
+    expect(logs.map((l) => l.action).sort()).toEqual(
+      ['project.archive', 'project.publish', 'project.unpublish'].sort(),
+    )
   })
 })

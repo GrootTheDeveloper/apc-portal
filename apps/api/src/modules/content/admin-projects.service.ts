@@ -1,3 +1,4 @@
+import type { FastifyRequest } from 'fastify'
 import { z } from 'zod'
 
 import { db } from '../../db/client.js'
@@ -5,6 +6,7 @@ import { ContentStatus, ProjectType } from '../../db/generated/client.js'
 import { conflict, forbidden, notFound } from '../../lib/errors.js'
 import { buildUniqueSlug, slugify } from '../../lib/ids.js'
 import { pageArgs, pageQuery } from '../../lib/pagination.js'
+import { AUDIT_ACTIONS, audit, AuditCategory, AuditResult } from '../audit/service.js'
 import { type AuthUser, assertInScope, departmentScope, hasRole } from '../auth/rbac.js'
 import { hasActiveConsent } from '../consent/service.js'
 
@@ -284,4 +286,90 @@ export async function updateAdminProject(user: AuthUser, id: string, rawBody: un
     }
     return updated
   })
+}
+
+// ─── TRẠNG THÁI (PUBLISH / UNPUBLISH / ARCHIVE) ───────────────────────────────
+
+/** Body thay đổi trạng thái dự án — chỉ BOARD (chặn ở route). OCC bắt buộc qua updatedAt. */
+export const changeProjectStatusBody = z.object({
+  action: z.enum(['publish', 'unpublish', 'archive']),
+  updatedAt: z.string().datetime(),
+})
+
+/** Bước chuyển hợp lệ: action → [trạng thái hiện tại hợp lệ] (PRD §9.2). */
+const validProjectTransitions: Record<string, ContentStatus[]> = {
+  publish: ['DRAFT'],
+  unpublish: ['PUBLISHED'],
+  archive: ['DRAFT', 'PUBLISHED'],
+}
+
+/**
+ * Đổi trạng thái dự án theo state machine và ghi audit trong cùng transaction.
+ * Công bố KHÔNG chặn vì consent — việc lọc tên/ảnh thành viên theo consent nằm ở API công khai (P5).
+ */
+export async function changeProjectStatus(
+  request: FastifyRequest,
+  id: string,
+  rawBody: unknown,
+) {
+  const body = changeProjectStatusBody.parse(rawBody)
+
+  const project = await db.project.findUnique({
+    where: { id },
+    select: { status: true, publishedAt: true, updatedAt: true },
+  })
+  if (!project) throw notFound('Không tìm thấy dự án.')
+
+  // OCC: so sánh updatedAt client gửi với DB
+  if (project.updatedAt.toISOString() !== body.updatedAt) {
+    throw conflict('Dự án đã được chỉnh sửa bởi người khác. Vui lòng tải lại trang.')
+  }
+
+  // Bước chuyển sai (vd archive rồi publish) → 409 (BR-16)
+  const allowed = validProjectTransitions[body.action]
+  if (!allowed?.includes(project.status as ContentStatus)) {
+    throw conflict(
+      `Không thể thực hiện "${body.action}" trên dự án ở trạng thái "${project.status}".`,
+    )
+  }
+
+  type ProjectStatusUpdate = { status: ContentStatus; publishedAt?: Date | null }
+  const updateData: ProjectStatusUpdate = { status: 'DRAFT' }
+
+  if (body.action === 'publish') {
+    updateData.status = 'PUBLISHED'
+    // Chỉ đặt publishedAt khi chưa có — unpublish rồi publish lại giữ lần công bố đầu
+    if (!project.publishedAt) updateData.publishedAt = new Date()
+  } else if (body.action === 'unpublish') {
+    updateData.status = 'DRAFT'
+    // Giữ nguyên publishedAt khi gỡ (audit trail)
+  } else {
+    updateData.status = 'ARCHIVED'
+  }
+
+  const auditAction =
+    body.action === 'publish'
+      ? AUDIT_ACTIONS.PROJECT_PUBLISH
+      : body.action === 'unpublish'
+        ? AUDIT_ACTIONS.PROJECT_UNPUBLISH
+        : AUDIT_ACTIONS.PROJECT_ARCHIVE
+
+  // Cập nhật và ghi audit trong cùng một transaction
+  await db.$transaction(async (tx) => {
+    await tx.project.update({ where: { id }, data: updateData })
+    await audit(
+      request,
+      {
+        action: auditAction,
+        targetType: 'PROJECT',
+        targetId: id,
+        category: AuditCategory.BUSINESS,
+        result: AuditResult.SUCCESS,
+        metadata: { newStatus: updateData.status },
+      },
+      tx,
+    )
+  })
+
+  return { id, status: updateData.status }
 }
