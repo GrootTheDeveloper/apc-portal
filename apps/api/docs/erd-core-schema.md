@@ -30,6 +30,8 @@ erDiagram
   event_registrations }o--|o users : "user"
   projects }o--|o departments : "department"
   projects }o--|| users : "createdBy"
+  project_members }o--|| projects : "project"
+  project_members }o--|| users : "user"
   recruitment_rounds }o--|| users : "createdBy"
   membership_applications }o--|| recruitment_rounds : "recruitmentRound"
   membership_applications }o--|o departments : "desiredDepartment"
@@ -198,12 +200,18 @@ erDiagram
     Json technologies "tùy chọn. ['React', 'Node.js', 'PostgreSQL']"
     String projectUrl "tùy chọn"
     String sourceUrl "tùy chọn"
+    ProjectType type "PROJECT / PRODUCT"
     ContentStatus status "DRAFT / PUBLISHED / ARCHIVED"
     String departmentId FK "tùy chọn"
     DateTime publishedAt "tùy chọn"
     String createdById FK
     DateTime createdAt
     DateTime updatedAt
+  }
+  project_members {
+    String projectId FK
+    String userId FK
+    DateTime createdAt
   }
   recruitment_rounds {
     String id PK
@@ -324,6 +332,8 @@ erDiagram
   event_registrations }o--|o users : "user"
   projects }o--|o departments : "department"
   projects }o--|| users : "createdBy"
+  project_members }o--|| projects : "project"
+  project_members }o--|| users : "user"
   recruitment_rounds }o--|| users : "createdBy"
   membership_applications }o--|| recruitment_rounds : "recruitmentRound"
   membership_applications }o--|o departments : "desiredDepartment"
@@ -344,6 +354,7 @@ erDiagram
 | `DepartmentStatus` | `ACTIVE`, `ARCHIVED` |
 | `ContentStatus` | `DRAFT`, `PUBLISHED`, `ARCHIVED` |
 | `ContentScope` | `PUBLIC`, `INTERNAL` |
+| `ProjectType` | `PROJECT`, `PRODUCT` |
 | `ApplicationStatus` | `NEW`, `REVIEWING`, `INTERVIEW`, `ACCEPTED`, `REJECTED`, `WITHDRAWN` |
 | `RoleAssignmentStatus` | `PENDING`, `ACTIVE`, `EXPIRED`, `REVOKED` |
 | `EventStatus` | `DRAFT`, `PUBLISHED`, `CANCELLED`, `ENDED`, `ARCHIVED` |

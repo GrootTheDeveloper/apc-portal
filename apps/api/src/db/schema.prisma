@@ -51,6 +51,12 @@ enum ContentScope {
   INTERNAL
 }
 
+// Loại dự án / sản phẩm (PRT-01, C4)
+enum ProjectType {
+  PROJECT
+  PRODUCT
+}
+
 enum ApplicationStatus {
   NEW
   REVIEWING
@@ -264,6 +270,7 @@ model User {
   reviewedApps  MembershipApplication[] @relation("ReviewedBy")
 
   createdProjects          Project[]              @relation("ProjectCreator")
+  projectMemberships      ProjectMember[]
   convertedFromApplication MembershipApplication? @relation("ApplicationConversion")
 
   uploadedFiles StoredFile[] @relation("FileUploader")
@@ -483,6 +490,7 @@ model Project {
   technologies Json? // ["React", "Node.js", "PostgreSQL"]
   projectUrl   String?
   sourceUrl    String?
+  type         ProjectType   @default(PROJECT)
   status       ContentStatus @default(DRAFT)
 
   departmentId String?
@@ -492,11 +500,26 @@ model Project {
   createdById String
   createdBy   User   @relation("ProjectCreator", fields: [createdById], references: [id])
 
+  members ProjectMember[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([status])
   @@map("projects")
+}
+
+// Thành viên tham gia dự án (C4). Xóa dự án thì xóa cả dòng tham gia; xóa tài khoản cũng vậy.
+model ProjectMember {
+  projectId String
+  userId    String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([projectId, userId])
+  @@index([userId])
+  @@map("project_members")
 }
 
 // MODELS — TUYỂN DỤNG
