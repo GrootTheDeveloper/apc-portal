@@ -35,6 +35,8 @@ erDiagram
   membership_applications }o--|o departments : "desiredDepartment"
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
+  application_status_histories }o--|| membership_applications : "application"
+  application_status_histories }o--|| users : "changedBy"
   notification_deliveries }o--|o departments : "department"
   audit_logs }o--|o users : "actor"
   stored_files }o--|| users : "uploadedBy"
@@ -245,6 +247,15 @@ erDiagram
     DateTime submittedAt
     DateTime updatedAt
   }
+  application_status_histories {
+    String id PK
+    String applicationId FK
+    ApplicationStatus fromStatus "NEW / REVIEWING / INTERVIEW / ACCEPTED / REJECTED / WITHDRAWN"
+    ApplicationStatus toStatus "NEW / REVIEWING / INTERVIEW / ACCEPTED / REJECTED / WITHDRAWN"
+    String reason "tùy chọn. Bắt buộc khi Ban Chủ nhiệm rút đơn thay ứng viên"
+    String changedById FK
+    DateTime changedAt
+  }
   notification_deliveries {
     String id PK "Cũng là idempotency key: Message-ID sinh từ id"
     String type "Tên mẫu email, khớp với modules/email/templates.ts"
@@ -330,6 +341,8 @@ erDiagram
   membership_applications }o--|o departments : "desiredDepartment"
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
+  application_status_histories }o--|| membership_applications : "application"
+  application_status_histories }o--|| users : "changedBy"
   notification_deliveries }o--|o departments : "department"
   audit_logs }o--|o users : "actor"
   stored_files }o--|| users : "uploadedBy"
