@@ -11,10 +11,11 @@ import type { AuthUser } from '../auth/rbac.js'
 import { hasRole } from '../auth/rbac.js'
 import { recordConsent } from '../consent/service.js'
 import { enqueueEmail } from '../email/service.js'
+import { createExport, type ExportsContext } from '../exports/service.js'
 import type { Question } from './validation.js'
 import {
   AdminApplicationExportQuerySchema,
-  AdminApplicationQuerySchema,
+  AdminApplicationSearchSchema,
   ChangeApplicationStatusSchema,
   ChangeRoundStatusSchema,
   CreateRecruitmentRoundSchema,
@@ -883,6 +884,17 @@ export async function withdrawApplication(request: FastifyRequest, input: unknow
       throw conflict('Hồ sơ không ở trạng thái có thể rút đơn.')
     }
 
+    // Ghi nhận lịch sử thay đổi trạng thái hồ sơ: Ứng viên tự rút đơn (R4/R5)
+    await tx.applicationStatusHistory.create({
+      data: {
+        applicationId: app.id,
+        fromStatus: app.status,
+        toStatus: 'WITHDRAWN',
+        reason: 'Ứng viên tự rút đơn',
+        changedById: null,
+      },
+    })
+
     const row = await tx.membershipApplication.findUniqueOrThrow({
       where: { id: app.id },
       select: {
@@ -944,8 +956,8 @@ export const APPLICATION_VALID_TRANSITIONS: Record<string, string[]> = {
  * - Lọc theo trạng thái, ban, từ khóa (họ tên, email, MSSV).
  * - Phân quyền: BOARD thấy tất cả; DEPARTMENT_MANAGER chỉ thấy hồ sơ thuộc ban mình.
  */
-export async function listAdminApplications(user: AuthUser, roundId: string, rawQuery: unknown) {
-  const query = AdminApplicationQuerySchema.parse(rawQuery)
+export async function listAdminApplications(user: AuthUser, roundId: string, rawInput: unknown) {
+  const query = AdminApplicationSearchSchema.parse(rawInput ?? {})
   const isBoard = hasRole(user, 'BOARD')
   const managerDeptIds = user.roles
     .filter((r) => r.role === 'DEPARTMENT_MANAGER' && r.departmentId)
@@ -957,16 +969,9 @@ export async function listAdminApplications(user: AuthUser, roundId: string, raw
   })
   if (!round) throw notFound()
 
-  // Phân quyền: MANAGER chỉ xem được đợt tuyển nếu có hồ sơ thuộc ban mình (docs/02 §8.1 & §12)
-  if (!isBoard) {
-    if (managerDeptIds.length === 0) throw notFound()
-    const hasApp = await db.membershipApplication.findFirst({
-      where: {
-        recruitmentRoundId: roundId,
-        desiredDepartmentId: { in: managerDeptIds },
-      },
-    })
-    if (!hasApp) throw notFound()
+  // Phân quyền: MANAGER chỉ xem hồ sơ thuộc ban mình (nếu chưa có hồ sơ nào thì trả danh sách rỗng, không trả 404)
+  if (!isBoard && managerDeptIds.length === 0) {
+    throw notFound()
   }
 
   const where: Prisma.MembershipApplicationWhereInput = {
@@ -994,7 +999,7 @@ export async function listAdminApplications(user: AuthUser, roundId: string, raw
     }
   }
 
-  const searchTerm = query.search || query.q
+  const searchTerm = query.search
   if (searchTerm) {
     where.OR = [
       { applicantName: { contains: searchTerm, mode: 'insensitive' } },
@@ -1049,17 +1054,45 @@ export async function getAdminApplicationById(user: AuthUser, roundId: string, a
       id: applicationId,
       recruitmentRoundId: roundId,
     },
-    include: {
-      desiredDepartment: { select: { id: true, name: true, code: true } },
+    select: {
+      id: true,
+      profileCode: true,
+      recruitmentRoundId: true,
       recruitmentRound: { select: { id: true, title: true, slug: true, questions: true } },
+      applicantName: true,
+      applicantEmail: true,
+      studentId: true,
+      faculty: true,
+      major: true,
+      cohort: true,
+      desiredDepartmentId: true,
+      desiredDepartment: { select: { id: true, name: true, code: true } },
+      skills: true,
+      experience: true,
+      answers: true,
+      status: true,
+      internalNote: true,
+      reviewedById: true,
       reviewedBy: { select: { id: true, fullName: true, username: true, avatarUrl: true } },
+      reviewedAt: true,
+      convertedUserId: true,
       convertedUser: { select: { id: true, fullName: true, username: true } },
+      convertedAt: true,
       statusHistories: {
         orderBy: { changedAt: 'desc' },
-        include: {
+        select: {
+          id: true,
+          applicationId: true,
+          fromStatus: true,
+          toStatus: true,
+          reason: true,
+          changedById: true,
           changedBy: { select: { id: true, fullName: true, username: true, avatarUrl: true } },
+          changedAt: true,
         },
       },
+      submittedAt: true,
+      updatedAt: true,
     },
   })
 
@@ -1111,13 +1144,11 @@ export async function updateApplicationReview(
     }
   }
 
-  // Chống xung đột đồng thời (STATE-09)
-  if (body.updatedAt) {
-    const clientTime = new Date(body.updatedAt).getTime()
-    const serverTime = application.updatedAt.getTime()
-    if (clientTime !== serverTime) {
-      throw conflict('Hồ sơ vừa được người khác cập nhật. Vui lòng tải lại.')
-    }
+  // Chống xung đột đồng thời (STATE-09): bắt buộc kiểm tra updatedAt
+  const clientTime = new Date(body.updatedAt).getTime()
+  const serverTime = application.updatedAt.getTime()
+  if (clientTime !== serverTime) {
+    throw conflict('Hồ sơ vừa được người khác cập nhật. Vui lòng tải lại.')
   }
 
   return db.$transaction(async (tx) => {
@@ -1135,22 +1166,15 @@ export async function updateApplicationReview(
       updateData.internalNote = body.internalNote
     }
 
-    if (body.updatedAt) {
-      const { count } = await tx.membershipApplication.updateMany({
-        where: {
-          id: applicationId,
-          updatedAt: application.updatedAt,
-        },
-        data: updateData,
-      })
-      if (count === 0) {
-        throw conflict('Hồ sơ vừa được người khác cập nhật. Vui lòng tải lại.')
-      }
-    } else {
-      await tx.membershipApplication.update({
-        where: { id: applicationId },
-        data: updateData,
-      })
+    const { count } = await tx.membershipApplication.updateMany({
+      where: {
+        id: applicationId,
+        updatedAt: application.updatedAt,
+      },
+      data: updateData,
+    })
+    if (count === 0) {
+      throw conflict('Hồ sơ vừa được người khác cập nhật. Vui lòng tải lại.')
     }
 
     const updated = await tx.membershipApplication.findUniqueOrThrow({
@@ -1244,23 +1268,22 @@ export async function changeApplicationStatus(
     throw conflict(`Không thể chuyển trạng thái hồ sơ từ ${currentStatus} sang ${targetStatus}.`)
   }
 
-  // Chống xung đột đồng thời (STATE-09):
-  if (body.updatedAt) {
-    const clientTime = new Date(body.updatedAt).getTime()
-    const serverTime = application.updatedAt.getTime()
-    if (clientTime !== serverTime) {
-      throw conflict('Hồ sơ vừa được người khác cập nhật. Vui lòng tải lại.')
-    }
+  // Chống xung đột đồng thời (STATE-09)
+  const clientTime = new Date(body.updatedAt).getTime()
+  const serverTime = application.updatedAt.getTime()
+  if (clientTime !== serverTime) {
+    throw conflict('Hồ sơ vừa được người khác cập nhật. Vui lòng tải lại.')
   }
 
   const now = new Date()
 
   return db.$transaction(async (tx) => {
-    // Dùng updateMany kèm điều kiện status để chống race condition: hai lượt bấm song song chỉ một lượt thắng
+    // Dùng updateMany kèm điều kiện status và updatedAt để chống race condition
     const { count } = await tx.membershipApplication.updateMany({
       where: {
         id: application.id,
         status: currentStatus,
+        updatedAt: application.updatedAt,
       },
       data: {
         status: targetStatus,
@@ -1346,34 +1369,22 @@ export async function changeApplicationStatus(
   })
 }
 
-function neutralizeCsv(val: unknown): string {
-  if (val === null || val === undefined) return ''
-  const str = String(val).trim()
-  if (/^[=+\-@\t\r]/.test(str)) {
-    return `'${str}`
-  }
-  return str
-}
-
-function escapeCsvCell(val: string): string {
-  if (val.includes(',') || val.includes('"') || val.includes('\n') || val.includes('\r')) {
-    return `"${val.replace(/"/g, '""')}"`
-  }
-  return val
-}
+export const MAX_EXPORT_APPLICATIONS = 5000
 
 /**
  * API 5: Xuất danh sách ứng viên (POST /admin/recruitment/:id/applications/export)
- * - Xuất CSV trong phạm vi người xuất (DEPARTMENT_MANAGER chỉ xuất hồ sơ ban mình, BOARD xuất tất cả).
- * - Chống chèn công thức (SEC-09), có BOM UTF-8, ghi audit log.
+ * - Tích hợp createExport của D6 (RP-17, SEC-09): chống chèn công thức, BOM UTF-8, tạo exportFile bảo vệ.
+ * - Đặt giới hạn tối đa MAX_EXPORT_APPLICATIONS dòng.
+ * - Phân quyền: BOARD xuất tất cả; DEPARTMENT_MANAGER chỉ xuất hồ sơ ban mình.
  */
 export async function exportApplicationsCsv(
   request: FastifyRequest,
   roundId: string,
-  rawQuery: unknown,
+  rawBody: unknown,
   user: AuthUser,
+  context: ExportsContext,
 ) {
-  const query = AdminApplicationExportQuerySchema.parse(rawQuery)
+  const query = AdminApplicationExportQuerySchema.parse(rawBody ?? {})
   const isBoard = hasRole(user, 'BOARD')
   const managerDeptIds = user.roles
     .filter((r) => r.role === 'DEPARTMENT_MANAGER' && r.departmentId)
@@ -1385,15 +1396,8 @@ export async function exportApplicationsCsv(
   })
   if (!round) throw notFound()
 
-  if (!isBoard) {
-    if (managerDeptIds.length === 0) throw notFound()
-    const hasApp = await db.membershipApplication.findFirst({
-      where: {
-        recruitmentRoundId: roundId,
-        desiredDepartmentId: { in: managerDeptIds },
-      },
-    })
-    if (!hasApp) throw notFound()
+  if (!isBoard && managerDeptIds.length === 0) {
+    throw notFound()
   }
 
   const where: Prisma.MembershipApplicationWhereInput = {
@@ -1420,7 +1424,7 @@ export async function exportApplicationsCsv(
     }
   }
 
-  const searchTerm = query.search || query.q
+  const searchTerm = query.search
   if (searchTerm) {
     where.OR = [
       { applicantName: { contains: searchTerm, mode: 'insensitive' } },
@@ -1432,29 +1436,12 @@ export async function exportApplicationsCsv(
   const apps = await db.membershipApplication.findMany({
     where,
     orderBy: { submittedAt: 'desc' },
+    take: MAX_EXPORT_APPLICATIONS,
     include: {
       desiredDepartment: { select: { name: true } },
       reviewedBy: { select: { fullName: true } },
     },
   })
-
-  const headers = [
-    'Mã hồ sơ',
-    'Họ và tên',
-    'Email',
-    'MSSV',
-    'Khoa/Viện',
-    'Ngành',
-    'Khóa',
-    'Ban mong muốn',
-    'Kỹ năng',
-    'Kinh nghiệm',
-    'Trạng thái',
-    'Ghi chú nội bộ',
-    'Người duyệt',
-    'Thời gian nộp',
-    'Cập nhật lần cuối',
-  ]
 
   const statusLabels: Record<string, string> = {
     NEW: 'Mới',
@@ -1465,43 +1452,40 @@ export async function exportApplicationsCsv(
     WITHDRAWN: 'Đã rút',
   }
 
-  const rows = apps.map((app) => [
-    neutralizeCsv(app.profileCode),
-    neutralizeCsv(app.applicantName),
-    neutralizeCsv(app.applicantEmail),
-    neutralizeCsv(app.studentId),
-    neutralizeCsv(app.faculty ?? ''),
-    neutralizeCsv(app.major ?? ''),
-    neutralizeCsv(app.cohort ?? ''),
-    neutralizeCsv(app.desiredDepartment?.name ?? ''),
-    neutralizeCsv(app.skills ?? ''),
-    neutralizeCsv(app.experience ?? ''),
-    neutralizeCsv(statusLabels[app.status] ?? app.status),
-    neutralizeCsv(app.internalNote ?? ''),
-    neutralizeCsv(app.reviewedBy?.fullName ?? ''),
-    neutralizeCsv(app.submittedAt.toISOString()),
-    neutralizeCsv(app.updatedAt.toISOString()),
-  ])
+  const rows: Record<string, unknown>[] = apps.map((app) => ({
+    'Mã hồ sơ': app.profileCode,
+    'Họ và tên': app.applicantName,
+    'Email': app.applicantEmail,
+    'MSSV': app.studentId,
+    'Khoa/Viện': app.faculty ?? '',
+    'Ngành': app.major ?? '',
+    'Khóa': app.cohort ?? '',
+    'Ban mong muốn': app.desiredDepartment?.name ?? '',
+    'Kỹ năng': app.skills ?? '',
+    'Kinh nghiệm': app.experience ?? '',
+    'Trạng thái': statusLabels[app.status] ?? app.status,
+    'Ghi chú nội bộ': app.internalNote ?? '',
+    'Người duyệt': app.reviewedBy?.fullName ?? '',
+    'Thời gian nộp': app.submittedAt.toISOString(),
+    'Cập nhật lần cuối': app.updatedAt.toISOString(),
+  }))
 
-  const csvContent =
-    '\uFEFF' +
-    [
-      headers.map(escapeCsvCell).join(','),
-      ...rows.map((row) => row.map(escapeCsvCell).join(',')),
-    ].join('\r\n')
-
-  await audit(request, {
-    action: AUDIT_ACTIONS.RECRUITMENT_EXPORT,
-    category: AuditCategory.BUSINESS,
-    result: AuditResult.SUCCESS,
-    targetType: 'RECRUITMENT_ROUND',
-    targetId: round.id,
-    metadata: { rowCount: apps.length },
-  })
+  const filename = `apc-ung-tuyen-${round.slug}.csv`
+  const exportFile = await createExport(
+    request,
+    {
+      kind: 'recruitment',
+      filename,
+      rows,
+    },
+    context,
+  )
 
   return {
-    filename: `apc-ung-tuyen-${round.slug}.csv`,
-    csv: csvContent,
-    rowCount: apps.length,
+    id: exportFile.id,
+    status: exportFile.status,
+    filename: exportFile.filename,
+    expiresAt: exportFile.expiresAt.toISOString(),
+    rowCount: rows.length,
   }
 }

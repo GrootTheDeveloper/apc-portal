@@ -589,8 +589,8 @@ model ApplicationStatusHistory {
   fromStatus    ApplicationStatus
   toStatus      ApplicationStatus
   reason        String? // Bắt buộc khi Ban Chủ nhiệm rút đơn thay ứng viên
-  changedById   String
-  changedBy     User                  @relation(fields: [changedById], references: [id])
+  changedById   String?
+  changedBy     User?                 @relation(fields: [changedById], references: [id])
   changedAt     DateTime              @default(now())
 
   @@index([applicationId])
