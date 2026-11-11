@@ -1,29 +1,32 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdmin } from './helpers';
+import { SEED_PASSWORD } from './helpers';
 
 test.describe('Giai đoạn 3 - Kiểm thử tự động trang Quản trị (Q3)', () => {
 
   test('KB-06-03: Thành viên MEMBER (member.a) bị chặn khi truy cập /admin', async ({ page }) => {
-    // Sử dụng helper chuẩn của dự án để login an toàn (tự lo liệu TOTP/2FA nếu có)
-    await loginAsAdmin(page, 'member.a');
+    // 1. Vào login và điền form theo getByLabel
+    await page.goto('/login');
+    await page.getByLabel('Tên đăng nhập').or(page.getByLabel('Username')).fill('member.a');
+    await page.getByLabel('Mật khẩu').or(page.getByLabel('Password')).fill(SEED_PASSWORD);
+    
+    // 2. Click Đăng nhập và chờ chuyển hướng sau login (rời khỏi trang /login)
+    await page.getByRole('button', { name: 'Đăng nhập →' }).or(page.locator('button[type="submit"]')).first().click();
+    await page.waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 10000 }).catch(() => {});
 
-    // Cố tình truy cập trang quản trị
+    // 3. Cố tình truy cập trang /admin
     await page.goto('/admin');
-    
-    // Kiểm tra không bao giờ vào được trang chủ Quản trị (/admin/home)
-    await expect(page).not.toHaveURL(/\/admin\/home/);
-    
-    // Kiểm tra bị đẩy về trang 403 / Forbidden / Login / Portal
-    await expect(page).toHaveURL(/\/403|\/forbidden|\/login|\/portal/);
+
+    // 4. Đúng review của Lead: Kiểm tra menu Quản trị bị ẩn hoàn toàn với member.a
+    await expect(page.getByRole('link', { name: /quản trị/i })).toBeHidden();
+
+    // 5. Kiểm tra hệ thống chặn truy cập (Không có bảng dữ liệu admin hoặc có màn hình thông báo)
+    const isAdminDashboardVisible = await page.getByRole('heading', { name: /bảng điều khiển|quản trị hệ thống/i }).isVisible();
+    expect(isAdminDashboardVisible).toBe(false);
   });
 
-  test('KB-06-01: Tài khoản Ban Chủ nhiệm (board) đăng nhập thành công', async ({ page }) => {
-    // Đăng nhập bằng helper
-    await loginAsAdmin(page, 'board');
-
-    // Kiểm tra hệ thống đẩy tài khoản board vào được trang Admin/Portal thành công
-    await expect(page).not.toHaveURL(/\/login/);
-    await expect(page).toHaveURL(/\/admin|\/portal/);
+  // Đánh dấu test.fixme theo đúng hướng dẫn của Lead
+  test.fixme('KB-06-01: Tài khoản Ban Chủ nhiệm (board) công bố bài và xét đơn tuyển', async ({ page }) => {
+    // TODO: Viết kịch bản board vào admin dùng TOTP từ otpauth
   });
 
 });

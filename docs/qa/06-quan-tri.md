@@ -2,8 +2,11 @@
 
 ## Bảng tài khoản mẫu sử dụng
 - `board`: Ban Chủ nhiệm (toàn quyền)
+- `board.pending`: Ban Chủ nhiệm chưa thiết lập 2FA (bị chặn)
 - `manager.a`: Trưởng ban Chuyên môn A
+- `manager.b`: Trưởng ban Chuyên môn B
 - `member.a`: Thành viên Ban A (không có quyền quản trị)
+- `member.b`: Thành viên Ban B
 - `techadmin`: Kỹ thuật viên (chỉ quản trị hạ tầng, không xem nội dung/hồ sơ)
 
 ---
@@ -50,7 +53,7 @@
 | --- | --- | --- |
 | 1 | Đăng nhập bằng tài khoản `member.a` | Đăng nhập thành công vào trang `/portal` |
 | 2 | Kiểm tra thanh điều hướng (Navbar / Sidebar) | Không hiển thị menu hoặc liên kết **Quản trị (/admin)** |
-| 3 | Cố tình gõ trực tiếp URL http://localhost:5173/admin | Hệ thống từ chối truy cập, chuyển hướng về `/403` (Forbidden) hoặc `/login` |
+| 3 | Cố tình gõ trực tiếp URL http://localhost:5173/admin | Màn hình hiển thị "Không có quyền truy cập" (Forbidden) tại chỗ, giữ nguyên URL hoặc chuyển hướng phù hợp |
 
 | Ngày chạy | Người chạy | Kết quả | Issue |
 | --- | --- | --- | --- |
@@ -71,3 +74,79 @@
 | Ngày chạy | Người chạy | Kết quả | Issue |
 | --- | --- | --- | --- |
 | | Nguyễn Tiến Bảo | | |
+
+---
+
+### KB-06-05. Phân quyền Trưởng ban xét hồ sơ ứng tuyển (manager.a)
+- **Chức năng**: R5, AC-RBAC · **Tài khoản**: `manager.a`
+
+| # | Thao tác | Kết quả phải thấy |
+| --- | --- | --- |
+| 1 | Đăng nhập bằng `manager.a`, mở trang duyệt hồ sơ | Chỉ hiển thị các hồ sơ ứng tuyển nộp vào Ban A |
+| 2 | Xem chi tiết hồ sơ ứng tuyển | Không xuất hiện các nút chốt trạng thái **Đã chấp nhận** / **Không chấp nhận** (chỉ có ở quyền `board`) |
+
+| Ngày chạy | Người chạy | Kết quả | Issue |
+| --- | --- | --- | --- |
+| | Nguyễn Tiến Bảo | | |
+
+---
+
+### KB-06-06. Tech Admin bị giới hạn quyền truy cập nội dung nghiệp vụ
+- **Chức năng**: AC-RBAC-04 · **Tài khoản**: `techadmin`
+
+| # | Thao tác | Kết quả phải thấy |
+| --- | --- | --- |
+| 1 | Đăng nhập bằng `techadmin` vào trang quản trị | Chỉ vào được các trang cấu hình kỹ thuật / hệ thống |
+| 2 | Cố tình truy cập URL bài viết nháp, hồ sơ ứng tuyển, tài liệu nội bộ, quản lý thành viên | Hệ thống từ chối truy cập (Forbidden / 404), API không trả về dữ liệu nội dung |
+
+| Ngày chạy | Người chạy | Kết quả | Issue |
+| --- | --- | --- | --- |
+| | Nguyễn Tiến Bảo | | |
+
+---
+
+### KB-06-07. Quyền truy cập tài liệu nội bộ (member.b)
+- **Chức năng**: AC-05 · **Tài khoản**: `member.b`
+
+| # | Thao tác | Kết quả phải thấy |
+| --- | --- | --- |
+| 1 | Đăng nhập bằng `member.b`, cố tình tải/mở link trực tiếp tài liệu thuộc Ban A | Hệ thống báo Không có quyền truy cập |
+| 2 | Quản trị viên tải file mới thay thế cho một tài liệu | File mới cập nhật nhưng vẫn bảo lưu được lịch sử / bản cũ |
+
+| Ngày chạy | Người chạy | Kết quả | Issue |
+| --- | --- | --- | --- |
+| | Nguyễn Tiến Bảo | | |
+
+---
+
+### KB-06-08. Ghi nhận Nhật ký hệ thống (Audit Log)
+- **Chức năng**: AC-06 · **Tài khoản**: `board`
+
+| # | Thao tác | Kết quả phải thấy |
+| --- | --- | --- |
+| 1 | Thực hiện các thao tác: công bố bài viết, đổi trạng thái hồ sơ, khóa tài khoản | Hệ thống tự động sinh các dòng nhật ký audit log tương ứng |
+| 2 | Truy cập trang Xem nhật ký hệ thống (`/admin/audit-logs`) | Danh sách dòng nhật ký hiển thị đầy đủ, **KHÔNG** có nút Sửa hoặc Xóa |
+
+| Ngày chạy | Người chạy | Kết quả | Issue |
+| --- | --- | --- | --- |
+| | Nguyễn Tiến Bảo | | |
+
+---
+
+### KB-06-09. Tài khoản chưa bật 2FA (board.pending) bị chặn khỏi Admin
+- **Chức năng**: AC-10 · **Tài khoản**: `board.pending`
+
+| # | Thao tác | Kết quả phải thấy |
+| --- | --- | --- |
+| 1 | Đăng nhập bằng `board.pending` | Đăng nhập thành công nhưng hệ thống yêu cầu cài đặt 2FA |
+| 2 | Cố tình gõ trực tiếp URL `/admin` | Bị chặn không vào được trang quản trị cho tới khi hoàn tất thiết lập 2FA |
+
+| Ngày chạy | Người chạy | Kết quả | Issue |
+| --- | --- | --- | --- |
+| | Nguyễn Tiến Bảo | | |
+
+---
+
+### KB-06-10. Các kịch bản đang chờ chức năng merge
+- [ ] **Nhập / Xuất dữ liệu CSV (AC-08)**: Kiểm tra file có 1 dòng lỗi thì hủy toàn bộ import; file xuất ra chỉ người tạo tải được. *(Viết kịch bản chi tiết ngay khi C6 / B6 merge)*.
+- [ ] **Email quản trị & Khắc phục sự cố (AC-09)**: `manager.a` chỉ thấy email Ban A; `techadmin` chỉ xem metadata và gửi lại khi có mã sự cố. *(Viết kịch bản chi tiết ngay khi O6 merge)*.
