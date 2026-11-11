@@ -12,12 +12,14 @@ export class ApiError extends Error {
   readonly status: number
   readonly code: string
   readonly issues: unknown[]
+  readonly data?: Record<string, unknown>
 
-  constructor(status: number, code: string, message: string, issues: unknown[] = []) {
+  constructor(status: number, code: string, message: string, issues: unknown[] = [], data?: Record<string, unknown>) {
     super(message)
     this.status = status
     this.code = code
     this.issues = issues
+    this.data = data
   }
 }
 
@@ -71,6 +73,7 @@ export async function api<T = unknown>(path: string, { method, body, headers }: 
       data?.error ?? 'unknown',
       data?.message ?? 'Đã có lỗi xảy ra. Vui lòng thử lại.',
       data?.issues,
+      data,
     )
   }
   return data as T

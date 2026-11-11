@@ -177,7 +177,20 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
   {
     label: 'Thành viên',
     items: [
-      { label: 'Danh sách thành viên', to: '/admin/members', roles: MANAGER_OR_BOARD },
+      {
+        label: 'Danh sách thành viên',
+        to: '/admin/members',
+        roles: MANAGER_OR_BOARD,
+        children: [
+          {
+            label: 'Chi tiết thành viên',
+            to: '/admin/members/:id',
+            roles: MANAGER_OR_BOARD,
+            page: () =>
+              import('../pages/admin/accounts/detail/AccountDetailPage').then((m) => ({ Component: m.AccountDetailPage })),
+          },
+        ],
+      },
       { label: 'Nhập từ CSV', to: '/admin/members/import', roles: BOARD },
     ],
   },
