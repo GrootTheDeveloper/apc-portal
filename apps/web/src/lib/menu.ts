@@ -46,10 +46,25 @@ export const PORTAL_MENU: readonly MenuGroup[] = [
         label: 'Tổng quan',
         to: '/portal',
         roles: MEMBER,
-        page: () => import('../pages/portal/home/PortalHomePage').then((m) => ({ Component: m.PortalHomePage })),
+        page: () =>
+          import('../pages/portal/dashboard/PortalDashboard').then((m) => ({ Component: m.PortalDashboard })),
       },
       { label: 'Thông báo', to: '/portal/announcements', roles: MEMBER },
-      { label: 'Sự kiện', to: '/portal/events', roles: MEMBER },
+      {
+        label: 'Sự kiện',
+        to: '/portal/events',
+        roles: MEMBER,
+        page: () => import('../pages/portal/events/list/PortalEventsListPage').then((m) => ({ Component: m.PortalEventsListPage })),
+        children: [
+          {
+            label: 'Chi tiết sự kiện',
+            to: '/portal/events/:id',
+            roles: MEMBER,
+            page: () =>
+              import('../pages/portal/events/detail/PortalEventDetailPage').then((m) => ({ Component: m.PortalEventDetailPage })),
+          },
+        ],
+      },
       { label: 'Tài liệu', to: '/portal/documents', roles: MEMBER },
       { label: 'Thành viên', to: '/portal/members', roles: MEMBER },
     ],
@@ -57,11 +72,29 @@ export const PORTAL_MENU: readonly MenuGroup[] = [
   {
     label: 'Tài khoản',
     items: [
-      { label: 'Hồ sơ của tôi', to: '/portal/profile', roles: MEMBER },
-      { label: 'Lịch sử hoạt động', to: '/portal/activity-history', roles: MEMBER },
+      {
+        label: 'Hồ sơ của tôi',
+        to: '/portal/profile',
+        roles: MEMBER,
+        page: () =>
+          import('../pages/portal/profile/ProfilePage').then((m) => ({ Component: m.ProfilePage })),
+      },
+      {
+        label: 'Lịch sử hoạt động',
+        to: '/portal/activity-history',
+        roles: MEMBER,
+        page: () =>
+          import('../pages/portal/activity/ActivityHistoryPage').then((m) => ({ Component: m.ActivityHistoryPage })),
+      },
       { label: 'Quyền riêng tư', to: '/portal/privacy', roles: MEMBER },
       { label: 'Dữ liệu cá nhân', to: '/portal/data-requests', roles: MEMBER },
-      { label: 'Vai trò và phạm vi của tôi', to: '/portal/account/roles', roles: MEMBER },
+      {
+        label: 'Vai trò và phạm vi của tôi',
+        to: '/portal/account/roles',
+        roles: MEMBER,
+        page: () =>
+          import('../pages/portal/roles/MyRolesPage').then((m) => ({ Component: m.MyRolesPage })),
+      },
       {
         label: 'Bảo mật tài khoản',
         to: '/portal/account/security',
@@ -189,7 +222,34 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
   { label: 'Sự kiện', items: [{ label: 'Sự kiện', to: '/admin/events', roles: MANAGER_OR_BOARD }] },
   {
     label: 'Bài viết và thông báo',
-    items: [{ label: 'Bài viết và thông báo', to: '/admin/content/posts', roles: MANAGER_OR_BOARD }],
+    items: [
+      {
+        label: 'Bài viết và thông báo',
+        to: '/admin/content/posts',
+        roles: MANAGER_OR_BOARD,
+        page: () => import('../pages/admin/content/AdminPostListPage').then((m) => ({ Component: m.AdminPostListPage })),
+        children: [
+          {
+            label: 'Viết bài mới',
+            to: '/admin/content/posts/new',
+            roles: MANAGER_OR_BOARD,
+            page: () => import('../pages/admin/content/AdminPostCreatePage').then((m) => ({ Component: m.AdminPostCreatePage })),
+          },
+          {
+            label: 'Sửa bài viết',
+            to: '/admin/content/posts/:id',
+            roles: MANAGER_OR_BOARD,
+            page: () => import('../pages/admin/content/AdminPostEditPage').then((m) => ({ Component: m.AdminPostEditPage })),
+          },
+          {
+            label: 'Xem trước bài viết',
+            to: '/admin/content/posts/:id/preview',
+            roles: MANAGER_OR_BOARD,
+            page: () => import('../pages/admin/content/AdminPostPreviewPage').then((m) => ({ Component: m.AdminPostPreviewPage })),
+          },
+        ],
+      },
+    ],
   },
   {
     label: 'Dự án và sản phẩm',

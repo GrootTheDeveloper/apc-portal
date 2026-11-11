@@ -293,7 +293,7 @@ File xuất hết hạn được tác vụ nền xóa tự động theo `RP-17`,
 | RP-14 | Khôi phục TOTP cho tài khoản đặc quyền cần hai người: một `BOARD` xác nhận danh tính và một `TECH_ADMIN` thực hiện; không người nào được tự khôi phục cho mình |
 | RP-15 | Tài khoản `BOARD` đầu tiên và `TECH_ADMIN` đầu tiên được tạo cho hai hồ sơ thành viên đã xác định trong cùng quy trình bootstrap dùng một lần; mỗi tài khoản có vai trò nền `MEMBER` và đúng một vai trò đặc quyền tương ứng, bắt buộc đổi mật khẩu và thiết lập TOTP trước mọi thao tác production |
 | RP-16 | Import thành viên không được gán sẵn vai trò đặc quyền; mọi tài khoản nhập vào bắt đầu với `MEMBER` |
-| RP-17 | File export chứa dữ liệu cá nhân chỉ được tải bởi người tạo trong 24 giờ và phải bị xóa tự động sau thời hạn |
+| RP-17 | File export chứa dữ liệu cá nhân chỉ được tải bởi người tạo trong 24 giờ và phải bị xóa tự động sau thời hạn. Ngoại lệ: file trả lời yêu cầu dữ liệu cá nhân do `BOARD` tạo được giao cho một tài khoản đang hoạt động tải; lúc tải vẫn kiểm lại tài khoản và quyền, có ghi nhật ký |
 | RP-18 | Production duy trì tối thiểu hai `BOARD` và hai `TECH_ADMIN` đang hoạt động, do những người khác nhau nắm giữ |
 | RP-19 | Cùng một tài khoản không được đồng thời mang `BOARD` và `TECH_ADMIN` để duy trì tách biệt nghiệp vụ/kỹ thuật |
 
@@ -412,7 +412,7 @@ Khi cần ghi thay đổi trước/sau, audit log chỉ lưu tên trường và 
 ### AC-RBAC-07. Import, export và dữ liệu cá nhân
 
 - Chỉ `BOARD` nhập hoặc xuất danh sách thành viên.
-- File export không tải được bởi người khác hoặc sau 24 giờ.
+- File export không tải được bởi người khác hoặc sau 24 giờ, trừ người được giao file yêu cầu dữ liệu cá nhân theo `RP-17`.
 - Chỉ `BOARD` quyết định xử lý dữ liệu cá nhân; `TECH_ADMIN` chỉ thực thi bước kỹ thuật cần phối hợp.
 - Import không thể tạo sẵn `BOARD`, `DEPARTMENT_MANAGER` hoặc `TECH_ADMIN`.
 
