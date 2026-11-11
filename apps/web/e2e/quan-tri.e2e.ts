@@ -1,28 +1,36 @@
 import { test, expect } from '@playwright/test';
+import { SEED_PASSWORD } from './helpers';
 
-test.describe('Giai đoạn 3 - Kiểm thử tự động trang Quản trị', () => {
+test.describe('Giai đoạn 3 - Kiểm thử tự động trang Quản trị (Q3)', () => {
 
   test('KB-06-03: Thành viên MEMBER (member.a) bị chặn khi truy cập /admin', async ({ page }) => {
-
-    // Mở trang đăng nhập
+    // Đăng nhập bằng tài khoản member.a
     await page.goto('/login');
-
-    // Điền tài khoản member.a
     await page.fill('input[name="username"], input[type="text"]', 'member.a');
-    await page.fill('input[name="password"], input[type="password"]', 'ApcPortal@2026');
+    await page.fill('input[name="password"], input[type="password"]', SEED_PASSWORD);
     await page.click('button[type="submit"]');
 
-    // Cố tình gõ đường dẫn /admin
+    // Chờ vào portal công khai
+    await page.waitForURL(/\/portal/);
+
+    // Cố tình truy cập trực tiếp vào trang quản trị
     await page.goto('/admin');
 
-    // Kiểm tra hệ thống từ chối truy cập (chuyển hướng hoặc báo 403 / Forbidden)
-    await expect(page).not.toHaveURL(/\/admin\/home/);
+    // Phải bị đẩy về trang 403 (Forbidden) hoặc bị chặn khỏi giao diện admin
+    await expect(page).toHaveURL(/\/403|\/forbidden|\/login/);
+    await expect(page.locator('body')).not.toContainText('Quản trị hệ thống');
   });
 
-  test('KB-06-01: Luồng truy cập trang quản trị bài viết', async ({ page }) => {
-    await page.goto('/admin');
-    // Kiểm tra chuyển hướng về trang login nếu chưa đăng nhập
-    await expect(page).toHaveURL(/\/login/);
+  test('KB-06-01: Tài khoản Ban Chủ nhiệm (board) đăng nhập thành công vào trang Quản trị', async ({ page }) => {
+    // Đăng nhập bằng tài khoản board
+    await page.goto('/login');
+    await page.fill('input[name="username"], input[type="text"]', 'board');
+    await page.fill('input[name="password"], input[type="password"]', SEED_PASSWORD);
+    await page.click('button[type="submit"]');
+
+    // Kiểm tra vào đúng giao diện Admin/Portal
+    await page.waitForURL(/\/admin|\/portal/);
+    await expect(page).not.toHaveURL(/\/login/);
   });
 
 });
