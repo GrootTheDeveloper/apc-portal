@@ -7,6 +7,7 @@ import { Button } from '../../../components/Button'
 import { buttonClass } from '../../../components/buttonClass'
 import { ConfirmDialog } from '../../../components/ConfirmDialog'
 import { Eyebrow } from '../../../components/Eyebrow'
+import { FileUpload } from '../../../components/FileUpload'
 import { inputClass, labelClass } from '../../../components/formClass'
 import { useApi } from '../../../hooks/useApi'
 import { useAuth } from '../../../hooks/useAuth'
@@ -44,10 +45,10 @@ function InlineError({ message }: { message: string | undefined }) {
  *
  * Luồng chỉnh sửa: chỉ DRAFT và PUBLISHED sửa được (API 409 các trạng thái khác — BR-16). Khi sự kiện
  * đang có người đăng ký, đổi thời gian diễn ra, sức chứa hay đối tượng phải qua hộp xác nhận kèm số
- * người bị ảnh hưởng (FLOW-15 nhánh thay thế). Hủy sự kiện bắt buộc lý do (EVT-09), dùng chung hộp
- * xác nhận ConfirmDialog; 409 do người khác vừa sửa thì hộp hiện nút "Tải lại" (STATE-09).
- *
- * Chưa làm: các nút Công bố (DRAFT → PUBLISHED) và Lưu trữ (→ ARCHIVED).
+ * người bị ảnh hưởng (FLOW-15 nhánh thay thế). Các bước chuyển trạng thái — Công bố (DRAFT → PUBLISHED),
+ * Hủy bắt buộc lý do (PUBLISHED → CANCELLED, EVT-09), Lưu trữ (CANCELLED/ENDED → ARCHIVED) — đều qua
+ * hộp xác nhận ConfirmDialog; 409 do người khác vừa sửa thì hộp hiện nút "Tải lại" (STATE-09).
+ * Ảnh bìa upload qua module tệp D2 (FileUpload); API nhận coverImageUrl dạng "/api/public/files/<id>".
  */
 export function AdminEventDetailContent({ event }: { event: AdminEvent }) {
   const badge = ADMIN_EVENT_STATUS_LABELS[event.status]
@@ -119,24 +120,40 @@ export function AdminEventDetailContent({ event }: { event: AdminEvent }) {
         </div>
       </section>
 
-      {/* Công bố (DRAFT → PUBLISHED) và Lưu trữ (→ ARCHIVED) sẽ được tích hợp ở vòng kế tiếp. */}
+      {/* Các bước chuyển trạng thái (Công bố / Hủy / Lưu trữ) nằm ở khối thao tác của trang chi tiết. */}
     </main>
   )
 }
 
-/** PAGE-ADM-EVT-03 — trang chi tiết: xem, sửa (FLOW-15) và hủy sự kiện (EVT-09). */
+/** PAGE-ADM-EVT-03 — trang chi tiết: xem, sửa (FLOW-15), công bố, hủy và lưu trữ sự kiện. */
 export function AdminEventDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const { user } = useAuth()
+  const isBoard = hasRole(user, 'BOARD')
   // Sai id hoặc sự kiện ngoài phạm vi ban đều 404 (docs/02 mục 12) — AsyncState tự hiện màn "không tìm thấy".
   const { data: event, loading, error, reload } = useApi<AdminEvent>(id ? `/admin/events/${id}` : null)
 
   const [editing, setEditing] = useState(false)
-  const [cancelOpen, setCancelOpen] = useState(false)
+  const [action, setAction] = useState<'publish' | 'cancel' | 'archive' | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
   // Số đăng ký còn hiệu lực, luôn đọc từ dữ liệu mới nhất sau mỗi lần reload (FLOW-15).
   const registeredCount = event?.registeredCount ?? 0
   const editable = event?.status === 'DRAFT' || event?.status === 'PUBLISHED'
+
+  const ACTION_DIALOG = {
+    publish: { title: 'Công bố sự kiện?', confirmLabel: 'Công bố', notice: 'Đã công bố sự kiện.' },
+    cancel: {
+      title: 'Hủy sự kiện?',
+      confirmLabel: 'Hủy sự kiện',
+      notice: 'Đã hủy sự kiện. Đăng ký được giữ nguyên và hệ thống đã gửi email báo hủy.',
+    },
+    archive: {
+      title: 'Lưu trữ sự kiện?',
+      confirmLabel: 'Lưu trữ',
+      notice: 'Đã lưu trữ sự kiện. Sự kiện bị gỡ khỏi trang công khai.',
+    },
+  }
 
   return (
     <>
@@ -176,8 +193,13 @@ export function AdminEventDetailPage() {
               </div>
               <AdminEventDetailContent event={event} />
               <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-3 px-gutter pb-10">
+                {/* Công bố (DRAFT → PUBLISHED): FLOW-15 bước 5 — quản lý ban chỉ công bố sự kiện nội bộ ban. */}
+                {event.status === 'DRAFT' && (isBoard || event.audience === 'DEPARTMENT') && (
+                  <Button onClick={() => setAction('publish')}>Công bố</Button>
+                )}
                 {editable && (
                   <Button
+                    variant="outline"
                     onClick={() => {
                       setNotice(null)
                       setEditing(true)
@@ -187,8 +209,14 @@ export function AdminEventDetailPage() {
                   </Button>
                 )}
                 {event.status === 'PUBLISHED' && (
-                  <Button variant="outline" onClick={() => setCancelOpen(true)}>
+                  <Button variant="outline" onClick={() => setAction('cancel')}>
                     Hủy sự kiện
+                  </Button>
+                )}
+                {/* Lưu trữ chỉ từ CANCELLED hoặc ENDED (docs/01 §9.2, BR-16); ENDED do tác vụ event-end chuyển. */}
+                {(event.status === 'CANCELLED' || event.status === 'ENDED') && (
+                  <Button variant="outline" onClick={() => setAction('archive')}>
+                    Lưu trữ
                   </Button>
                 )}
                 <Link to={`/admin/events/${event.id}/preview`} className={buttonClass('outline')}>
@@ -205,34 +233,51 @@ export function AdminEventDetailPage() {
                 )}
               </div>
 
-              {/* EVT-09: hủy chỉ từ PUBLISHED, bắt buộc lý do; giữ đăng ký và gửi email báo hủy. */}
-              <ConfirmDialog
-                open={cancelOpen}
-                title="Hủy sự kiện?"
-                description={
-                  <>
-                    Sự kiện <b>{event.title}</b> sẽ chuyển sang trạng thái <b>Đã hủy</b> và không nhận thêm đăng ký.
-                    {registeredCount > 0 && (
-                      <> {registeredCount} đăng ký còn hiệu lực sẽ được giữ nguyên và nhận email báo hủy.</>
-                    )}{' '}
-                    Lý do hủy sẽ hiển thị trên trang sự kiện công khai.
-                  </>
-                }
-                confirmLabel="Hủy sự kiện"
-                danger
-                reason="required"
-                onConfirm={async (values) => {
-                  await api(`/admin/events/${event.id}/cancel`, {
-                    method: 'POST',
-                    body: { reason: values.reason },
-                  })
-                  setCancelOpen(false)
-                  setNotice('Đã hủy sự kiện. Đăng ký được giữ nguyên và hệ thống đã gửi email báo hủy.')
-                  reload()
-                }}
-                onClose={() => setCancelOpen(false)}
-                onReload={reload}
-              />
+              {/* Một hộp xác nhận chung cho ba bước chuyển trạng thái; hủy là bước duy nhất bắt buộc lý do (EVT-09). */}
+              {action !== null && (
+                <ConfirmDialog
+                  open
+                  title={ACTION_DIALOG[action].title}
+                  confirmLabel={ACTION_DIALOG[action].confirmLabel}
+                  danger={action === 'cancel'}
+                  reason={action === 'cancel' ? 'required' : 'none'}
+                  description={
+                    action === 'publish' ? (
+                      <>
+                        Sự kiện <b>{event.title}</b> sẽ chuyển sang <b>Đang công bố</b>, hiển thị ở trang công khai với
+                        đối tượng <b>{AUDIENCE_LABELS[event.audience]}</b>.
+                      </>
+                    ) : action === 'cancel' ? (
+                      <>
+                        Sự kiện <b>{event.title}</b> sẽ chuyển sang trạng thái <b>Đã hủy</b> và không nhận thêm đăng ký.
+                        {registeredCount > 0 && (
+                          <> {registeredCount} đăng ký còn hiệu lực sẽ được giữ nguyên và nhận email báo hủy.</>
+                        )}{' '}
+                        Lý do hủy sẽ hiển thị trên trang sự kiện công khai.
+                      </>
+                    ) : (
+                      <>
+                        Sự kiện <b>{event.title}</b> sẽ chuyển sang <b>Lưu trữ</b> và bị gỡ khỏi trang công khai; dữ liệu
+                        đăng ký vẫn được giữ nguyên.
+                      </>
+                    )
+                  }
+                  onConfirm={async (values) => {
+                    if (action === 'publish') {
+                      await api(`/admin/events/${event.id}/publish`, { method: 'POST' })
+                    } else if (action === 'cancel') {
+                      await api(`/admin/events/${event.id}/cancel`, { method: 'POST', body: { reason: values.reason } })
+                    } else {
+                      await api(`/admin/events/${event.id}/archive`, { method: 'POST' })
+                    }
+                    setAction(null)
+                    setNotice(ACTION_DIALOG[action].notice)
+                    reload()
+                  }}
+                  onClose={() => setAction(null)}
+                  onReload={reload}
+                />
+              )}
             </>
           ))}
       </AsyncState>
@@ -266,6 +311,8 @@ function EventEditForm({
 
   const [title, setTitle] = useState(event.title)
   const [description, setDescription] = useState(event.description)
+  // Ảnh bìa dạng "/api/public/files/<id>" — giữ ảnh hiện có, FileUpload trả id khi thay ảnh mới (D2).
+  const [coverImageUrl, setCoverImageUrl] = useState(event.coverImageUrl ?? '')
   const [eventType, setEventType] = useState<string>(event.eventType)
   // Đối tượng chỉ BOARD được đổi (kể từ DEPARTMENT sang CLUB/PUBLIC là hành vi công bố — docs/02 §8.3).
   const [audience, setAudience] = useState<EventAudience>(event.audience)
@@ -327,6 +374,7 @@ function EventEditForm({
         eventType,
         // Quản lý ban không gửi audience: PATCH gửi CLUB/PUBLIC (kể cả không đổi) bị chặn 403.
         ...(isBoard ? { audience } : {}),
+        coverImageUrl: coverImageUrl.trim() || null,
         departmentId: departmentValue || null,
         startAt: fromVnDatetimeInput(startAt),
         endAt: fromVnDatetimeInput(endAt),
@@ -374,14 +422,14 @@ function EventEditForm({
       </p>
 
       {errorMessage && (
-        <div role="alert" className="mt-6 rounded-xl border-2 border-apc-red bg-apc-red-pale/40 p-4 font-bold text-apc-red">
+        <div role="alert" className="mt-6 rounded-xl bg-apc-red-pale p-4 font-bold text-apc-red">
           {errorMessage}
         </div>
       )}
 
       <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-8">
-        {/* 1. Nội dung */}
-        <section className="space-y-5 rounded-xl border-2 border-ink bg-paper p-6">
+        {/* 1. Nội dung — khối màu đặc, không viền (DESIGN.md) */}
+        <section className="space-y-5 rounded-xl bg-soft p-6">
           <h2 className="text-lg font-bold text-on-surface">1. Nội dung sự kiện</h2>
 
           <label className={labelClass}>
@@ -443,17 +491,24 @@ function EventEditForm({
             </label>
           </div>
 
-          {/* Chỗ trống cho upload ảnh bìa (D2): chưa gửi trường coverImageUrl khi PATCH. */}
+          {/* Ảnh bìa upload qua D2; API nhận coverImageUrl dạng "/api/public/files/<id>". */}
           <div>
             <p className={labelClass}>Ảnh bìa</p>
-            <div className="mt-2 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-muted/40 px-6 py-8 text-center">
-              <span className="font-bold text-muted">Chức năng tải ảnh bìa đang được xây dựng (D2)</span>
+            {coverImageUrl && (
+              <img src={coverImageUrl} alt="Ảnh bìa hiện tại" className="mt-2 max-h-48 w-auto rounded-xl object-contain" />
+            )}
+            <div className="mt-2">
+              <FileUpload
+                purpose="CONTENT_IMAGE"
+                label={coverImageUrl ? 'Thay ảnh bìa khác' : 'Chọn ảnh bìa'}
+                onUploaded={(id) => setCoverImageUrl(`/api/public/files/${id}`)}
+              />
             </div>
           </div>
         </section>
 
         {/* 2. Thời gian, địa điểm, liên hệ */}
-        <section className="space-y-5 rounded-xl border-2 border-ink bg-paper p-6">
+        <section className="space-y-5 rounded-xl bg-soft p-6">
           <h2 className="text-lg font-bold text-on-surface">2. Thời gian và địa điểm</h2>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -530,7 +585,11 @@ function EventEditForm({
                 {departmentLocked && !selectableDepartments.some((d) => d.id === departmentValue) && (
                   <option value={departmentValue}>{loadingAbout ? 'Đang tải…' : 'Ban của bạn'}</option>
                 )}
-                {isBoard && <option value="">Toàn CLB (không thuộc ban — chỉ Ban Chủ nhiệm xem được)</option>}
+                {isBoard && (
+                  <option value="" disabled={audience === 'DEPARTMENT'}>
+                    Toàn CLB (không thuộc ban — chỉ Ban Chủ nhiệm xem được)
+                  </option>
+                )}
                 {selectableDepartments.map((department) => (
                   <option key={department.id} value={department.id}>
                     {department.name}
@@ -548,7 +607,7 @@ function EventEditForm({
         </section>
 
         {/* 3. Đăng ký */}
-        <section className="space-y-5 rounded-xl border-2 border-ink bg-paper p-6">
+        <section className="space-y-5 rounded-xl bg-soft p-6">
           <h2 className="text-lg font-bold text-on-surface">3. Cửa sổ đăng ký</h2>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -592,7 +651,7 @@ function EventEditForm({
                 Hiện có {registeredCount} đăng ký — sức chứa mới không được nhỏ hơn số này (FLOW-15).
               </span>
             </label>
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-soft p-4">
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-paper p-4">
               <input
                 type="checkbox"
                 disabled={audience !== 'PUBLIC'}
@@ -628,6 +687,14 @@ function EventEditForm({
           <>
             Sự kiện đang có <b>{registeredCount}</b> đăng ký còn hiệu lực. Bạn đang đổi{' '}
             <b>thời gian diễn ra, sức chứa hoặc đối tượng</b> — thay đổi sẽ áp dụng cho toàn bộ số người này.
+            {/* Backend hotfix #44: hạ độ hiển thị từ Công khai xuống mức giới hạn làm mất hiệu lực đăng ký
+                của khách và hệ thống gửi email báo hủy cho họ. */}
+            {event.audience === 'PUBLIC' && audience !== 'PUBLIC' && (
+              <p className="mt-3 font-bold text-apc-red">
+                Lưu ý: hạ độ hiển thị từ <b>Công khai</b> xuống mức giới hạn sẽ khiến hệ thống gửi email báo hủy
+                cho các đăng ký hiện có.
+              </p>
+            )}
           </>
         }
         confirmLabel="Xác nhận và lưu"

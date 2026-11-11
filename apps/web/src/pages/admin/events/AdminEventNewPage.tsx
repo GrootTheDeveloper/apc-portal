@@ -6,6 +6,7 @@ import { AsyncState } from '../../../components/AsyncState'
 import { Breadcrumb } from '../../../components/Breadcrumb'
 import { buttonClass } from '../../../components/buttonClass'
 import { Eyebrow } from '../../../components/Eyebrow'
+import { FileUpload } from '../../../components/FileUpload'
 import { inputClass, labelClass } from '../../../components/formClass'
 import { useApi } from '../../../hooks/useApi'
 import { useAuth } from '../../../hooks/useAuth'
@@ -29,9 +30,11 @@ const AUDIENCE_OPTIONS: EventAudience[] = ['PUBLIC', 'CLUB', 'DEPARTMENT']
  *
  * Phân quyền (EVT-02): BOARD chọn được ban nào hoặc bỏ trống cho sự kiện toàn CLB; quản lý ban
  * bị khóa vào đúng ban mình đang quản lý (một ban) hoặc chọn trong các ban mình quản lý (nhiều ban).
+ * Sự kiện đối tượng "Nội bộ ban" bắt buộc chọn ban cụ thể, kể cả với BOARD.
  * Danh sách ban lấy từ /public/about — API chỉ trả ban ACTIVE nên ban ARCHIVED không xuất hiện.
  *
- * Chưa làm: tải ảnh bìa qua module tệp D2 — đang để chỗ trống.
+ * Ảnh bìa upload qua module tệp D2 (FileUpload → POST /portal/files, purpose CONTENT_IMAGE);
+ * API nhận trường coverImageUrl dạng "/api/public/files/<id>".
  */
 export function AdminEventNewPage() {
   const navigate = useNavigate()
@@ -55,6 +58,8 @@ export function AdminEventNewPage() {
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  // Ảnh bìa dạng "/api/public/files/<id>" — FileUpload trả id sau khi tải lên (D2).
+  const [coverImageUrl, setCoverImageUrl] = useState('')
   const [eventType, setEventType] = useState<string>(EVENT_TYPES[0])
   const [audience, setAudience] = useState<EventAudience>('PUBLIC')
   const [startAt, setStartAt] = useState('')
@@ -114,7 +119,7 @@ export function AdminEventNewPage() {
         description: description.trim(),
         eventType,
         audience,
-        // coverImageUrl: bỏ trống cho tới khi tích hợp upload D2.
+        coverImageUrl: coverImageUrl.trim() || null,
         departmentId: departmentValue || null,
         startAt: fromVnDatetimeInput(startAt),
         endAt: fromVnDatetimeInput(endAt),
@@ -153,15 +158,15 @@ export function AdminEventNewPage() {
       </p>
 
       {errorMessage && (
-        <div role="alert" className="mt-6 rounded-xl border-2 border-apc-red bg-apc-red-pale/40 p-4 font-bold text-apc-red">
+        <div role="alert" className="mt-6 rounded-xl bg-apc-red-pale p-4 font-bold text-apc-red">
           {errorMessage}
         </div>
       )}
 
       {/* noValidate: dùng thông báo lỗi riêng của form thay vì bong bóng mặc định của trình duyệt. */}
       <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-8">
-        {/* 1. Nội dung */}
-        <section className="space-y-5 rounded-xl border-2 border-ink bg-paper p-6">
+        {/* 1. Nội dung — khối màu đặc, không viền (DESIGN.md) */}
+        <section className="space-y-5 rounded-xl bg-soft p-6">
           <h2 className="text-lg font-bold text-on-surface">1. Nội dung sự kiện</h2>
 
           <label className={labelClass}>
@@ -220,18 +225,24 @@ export function AdminEventNewPage() {
             </label>
           </div>
 
-          {/* Chỗ trống cho upload ảnh bìa (D2): tích hợp sau, chưa gửi trường coverImageUrl. */}
+          {/* Ảnh bìa upload qua D2; API nhận coverImageUrl dạng "/api/public/files/<id>". */}
           <div>
             <p className={labelClass}>Ảnh bìa</p>
-            <div className="mt-2 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-muted/40 px-6 py-8 text-center">
-              <span className="font-bold text-muted">Chức năng tải ảnh bìa đang được xây dựng (D2)</span>
-              <span className="text-sm text-muted">Sẽ chọn được ảnh JPG, PNG, WebP · tối đa 20 MB.</span>
+            {coverImageUrl && (
+              <img src={coverImageUrl} alt="Ảnh bìa đã chọn" className="mt-2 max-h-48 w-auto rounded-xl object-contain" />
+            )}
+            <div className="mt-2">
+              <FileUpload
+                purpose="CONTENT_IMAGE"
+                label={coverImageUrl ? 'Chọn ảnh bìa khác' : 'Chọn ảnh bìa'}
+                onUploaded={(id) => setCoverImageUrl(`/api/public/files/${id}`)}
+              />
             </div>
           </div>
         </section>
 
         {/* 2. Thời gian, địa điểm, liên hệ */}
-        <section className="space-y-5 rounded-xl border-2 border-ink bg-paper p-6">
+        <section className="space-y-5 rounded-xl bg-soft p-6">
           <h2 className="text-lg font-bold text-on-surface">2. Thời gian và địa điểm</h2>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -313,7 +324,11 @@ export function AdminEventNewPage() {
                 {departmentLocked && !selectableDepartments.some((d) => d.id === departmentValue) && (
                   <option value={departmentValue}>{loadingAbout ? 'Đang tải…' : 'Ban của bạn'}</option>
                 )}
-                {isBoard && <option value="">Toàn CLB (không thuộc ban — chỉ Ban Chủ nhiệm xem được)</option>}
+                {isBoard && (
+                  <option value="" disabled={audience === 'DEPARTMENT'}>
+                    Toàn CLB (không thuộc ban — chỉ Ban Chủ nhiệm xem được)
+                  </option>
+                )}
                 {selectableDepartments.map((department) => (
                   <option key={department.id} value={department.id}>
                     {department.name}
@@ -331,7 +346,7 @@ export function AdminEventNewPage() {
         </section>
 
         {/* 3. Đăng ký */}
-        <section className="space-y-5 rounded-xl border-2 border-ink bg-paper p-6">
+        <section className="space-y-5 rounded-xl bg-soft p-6">
           <h2 className="text-lg font-bold text-on-surface">3. Cửa sổ đăng ký</h2>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -372,7 +387,7 @@ export function AdminEventNewPage() {
               />
               <InlineError message={errors.capacity} />
             </label>
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-soft p-4">
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-paper p-4">
               <input
                 type="checkbox"
                 disabled={audience !== 'PUBLIC'}

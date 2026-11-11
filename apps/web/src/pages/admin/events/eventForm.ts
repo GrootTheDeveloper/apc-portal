@@ -96,6 +96,10 @@ export function validateEventForm(
   if (requireDepartment && !values.departmentId) {
     errors.departmentId = requireDepartmentMessage
   }
+  // EVT-02: sự kiện đối tượng "Nội bộ ban" phải gắn với một ban cụ thể — không chấp nhận để trống (toàn CLB).
+  if (values.audience === 'DEPARTMENT' && !values.departmentId) {
+    errors.departmentId = 'Sự kiện nội bộ ban phải chọn ban quản lý cụ thể.'
+  }
   return errors
 }
 

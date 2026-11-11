@@ -60,6 +60,16 @@ describe('validateEventForm', () => {
     expect(validateEventForm({ ...valid, departmentId: '' })).toEqual({})
   })
 
+  it('sự kiện nội bộ ban bắt buộc chọn ban cụ thể, kể cả với BOARD', () => {
+    expect(validateEventForm({ ...valid, audience: 'DEPARTMENT', departmentId: '' }).departmentId).toBe(
+      'Sự kiện nội bộ ban phải chọn ban quản lý cụ thể.',
+    )
+    expect(validateEventForm({ ...valid, audience: 'DEPARTMENT', departmentId: 'dept-1' }).departmentId).toBeUndefined()
+    // Đối tượng Công khai hay Toàn CLB vẫn được bỏ trống ban (sự kiện toàn CLB của BOARD).
+    expect(validateEventForm({ ...valid, audience: 'PUBLIC', departmentId: '' }).departmentId).toBeUndefined()
+    expect(validateEventForm({ ...valid, audience: 'CLUB', departmentId: '' }).departmentId).toBeUndefined()
+  })
+
   it('sức chứa không được nhỏ hơn số người đã đăng ký khi đang sửa sự kiện', () => {
     const options = { registeredCount: 30 }
     expect(validateEventForm({ ...valid, capacity: '29' }, options).capacity).toBe(
