@@ -56,7 +56,7 @@ beforeAll(async () => {
   app.get('/admin/board-only', { preHandler: requireRole('BOARD') }, async () => ({ ok: true }))
   app.get('/admin/tech-only', { preHandler: requireRole('TECH_ADMIN') }, async () => ({ ok: true }))
   app.get(
-    '/admin/documents/:id',
+    '/__test/admin/documents/:id',
     {
       preHandler: [
         requireRole('DEPARTMENT_MANAGER', 'BOARD'),
@@ -67,7 +67,7 @@ beforeAll(async () => {
   )
   // Route chỉ kiểm phạm vi (không giới hạn vai trò): MEMBER và TECH_ADMIN vẫn không đọc được dữ liệu nghiệp vụ.
   app.get(
-    '/portal/documents/:id',
+    '/__test/portal/documents/:id',
     { preHandler: requireScope(async ({ id }) => DOCUMENTS[id] ?? null) },
     async (request) => ({ id: (request.params as { id: string }).id }),
   )
@@ -127,7 +127,7 @@ describe('requireScope', () => {
     ['board', 'doc-club', 200],
     ['board', 'doc-missing', 404],
   ] as const)('%s opening %s → %i', async (user, id, status) => {
-    const response = await call(`/admin/documents/${id}`, user)
+    const response = await call(`/__test/admin/documents/${id}`, user)
     expect(response.statusCode).toBe(status)
   })
 
@@ -138,12 +138,12 @@ describe('requireScope', () => {
     ['managerA', 200],
     ['board', 200],
   ] as const)('scope-only route: %s reading a department record → %i', async (user, status) => {
-    expect((await call('/portal/documents/doc-a', user)).statusCode).toBe(status)
+    expect((await call('/__test/portal/documents/doc-a', user)).statusCode).toBe(status)
   })
 
   it('answers out-of-scope exactly like a missing document, so existence is not leaked', async () => {
-    const outOfScope = await call('/admin/documents/doc-b', 'managerA')
-    const missing = await call('/admin/documents/doc-missing', 'managerA')
+    const outOfScope = await call('/__test/admin/documents/doc-b', 'managerA')
+    const missing = await call('/__test/admin/documents/doc-missing', 'managerA')
     expect(outOfScope.statusCode).toBe(404)
     expect(outOfScope.json()).toEqual({ error: 'not_found', message: expect.any(String) })
     expect(outOfScope.body).toBe(missing.body)
