@@ -1,32 +1,34 @@
 import { test, expect } from '@playwright/test';
-import { SEED_PASSWORD } from './helpers';
+import { loginAsUser, loginAsAdmin } from './helpers.js';
 
-test.describe('Giai đoạn 3 - Kiểm thử tự động trang Quản trị (Q3)', () => {
+test.describe('Quản trị & Phân quyền (docs/qa/06-quan-tri.md)', () => {
+  test('KB-06-03: Thành viên member.a bị chặn khi truy cập /admin', async ({ page }) => {
+    await loginAsUser(page, 'member.a');
 
-  test('KB-06-03: Thành viên MEMBER (member.a) bị chặn khi truy cập /admin', async ({ page }) => {
-    // 1. Vào login và điền form theo getByLabel
-    await page.goto('/login');
-    await page.getByLabel('Tên đăng nhập').or(page.getByLabel('Username')).fill('member.a');
-    await page.getByLabel('Mật khẩu').or(page.getByLabel('Password')).fill(SEED_PASSWORD);
-    
-    // 2. Click Đăng nhập và chờ chuyển hướng sau login (rời khỏi trang /login)
-    await page.getByRole('button', { name: 'Đăng nhập →' }).or(page.locator('button[type="submit"]')).first().click();
-    await page.waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 10000 }).catch(() => {});
+    // Chờ đăng nhập xong vào /portal theo đúng review
+    await page.waitForURL(/\/portal/);
 
-    // 3. Cố tình truy cập trang /admin
+    // Thử truy cập thẳng /admin
     await page.goto('/admin');
 
-    // 4. Đúng review của Lead: Kiểm tra menu Quản trị bị ẩn hoàn toàn với member.a
-    await expect(page.getByRole('link', { name: /quản trị/i })).toBeHidden();
+    // RequireAuth hiện màn Forbidden tại chỗ với tiêu đề "Không có quyền truy cập"
+    await expect(page.getByText('Không có quyền truy cập')).toBeVisible();
 
-    // 5. Kiểm tra hệ thống chặn truy cập (Không có bảng dữ liệu admin hoặc có màn hình thông báo)
-    const isAdminDashboardVisible = await page.getByRole('heading', { name: /bảng điều khiển|quản trị hệ thống/i }).isVisible();
-    expect(isAdminDashboardVisible).toBe(false);
+    // Không có mục menu/nút Quản trị trên thanh điều hướng
+    await expect(page.getByRole('button', { name: 'Quản trị' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Quản trị' })).toHaveCount(0);
   });
 
-  // Đánh dấu test.fixme theo đúng hướng dẫn của Lead
-  test.fixme('KB-06-01: Tài khoản Ban Chủ nhiệm (board) công bố bài và xét đơn tuyển', async ({ page }) => {
-    // TODO: Viết kịch bản board vào admin dùng TOTP từ otpauth
-  });
+  test('KB-06-01 & KB-06-04: Ban Chủ nhiệm (board) đăng nhập vào /admin và quản lý tuyển thành viên', async ({ page }) => {
+    await loginAsAdmin(page, 'board');
 
+    // Truy cập trang quản trị
+    await page.goto('/admin');
+    await expect(page).toHaveURL(/\/admin/);
+    await expect(page.getByText('Không có quyền truy cập')).toHaveCount(0);
+
+    // Mở trang quản lý tuyển thành viên (/admin/recruitment)
+    await page.goto('/admin/recruitment');
+    await expect(page.getByRole('link', { name: /\+ Tạo đợt tuyển mới/i })).toBeVisible();
+  });
 });
