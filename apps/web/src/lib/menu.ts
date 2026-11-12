@@ -65,7 +65,20 @@ export const PORTAL_MENU: readonly MenuGroup[] = [
           },
         ],
       },
-      { label: 'Tài liệu', to: '/portal/documents', roles: MEMBER },
+      {
+        label: 'Tài liệu',
+        to: '/portal/documents',
+        roles: MEMBER,
+        page: () => import('../pages/portal/documents/PortalDocumentsListPage').then((m) => ({ Component: m.PortalDocumentsListPage })),
+        children: [
+          {
+            label: 'Chi tiết tài liệu',
+            to: '/portal/documents/:id',
+            roles: MEMBER,
+            page: () => import('../pages/portal/documents/detail/PortalDocumentDetailPage').then((m) => ({ Component: m.PortalDocumentDetailPage })),
+          },
+        ],
+      },
       { label: 'Thành viên', to: '/portal/members', roles: MEMBER },
     ],
   },
@@ -255,7 +268,35 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
     label: 'Dự án và sản phẩm',
     items: [{ label: 'Dự án và sản phẩm', to: '/admin/content/projects', roles: MANAGER_OR_BOARD }],
   },
-  { label: 'Tài liệu', items: [{ label: 'Tài liệu', to: '/admin/documents', roles: MANAGER_OR_BOARD }] },
+  {
+    label: 'Tài liệu',
+    items: [{
+      label: 'Tài liệu',
+      to: '/admin/documents',
+      roles: MANAGER_OR_BOARD,
+      page: () => import('../pages/admin/documents/list/AdminDocumentsListPage').then((m) => ({ Component: m.AdminDocumentsListPage })),
+      children: [
+        {
+          label: 'Tải tài liệu lên',
+          to: '/admin/documents/upload',
+          roles: MANAGER_OR_BOARD,
+          page: () => import('../pages/admin/documents/upload/AdminDocumentUploadPage').then((m) => ({ Component: m.AdminDocumentUploadPage })),
+        },
+        {
+          label: 'Chi tiết tài liệu',
+          to: '/admin/documents/:id',
+          roles: MANAGER_OR_BOARD,
+          page: () => import('../pages/admin/documents/detail/AdminDocumentDetailPage').then((m) => ({ Component: m.AdminDocumentDetailPage })),
+        },
+        {
+          label: 'Các phiên bản tài liệu',
+          to: '/admin/documents/:id/versions',
+          roles: MANAGER_OR_BOARD,
+          page: () => import('../pages/admin/documents/versions/AdminDocumentVersionsPage').then((m) => ({ Component: m.AdminDocumentVersionsPage })),
+        },
+      ],
+    }],
+  },
   {
     label: 'Tổ chức',
     items: [

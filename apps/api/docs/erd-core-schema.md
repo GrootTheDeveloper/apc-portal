@@ -40,6 +40,11 @@ erDiagram
   notification_deliveries }o--|o departments : "department"
   audit_logs }o--|o users : "actor"
   stored_files }o--|| users : "uploadedBy"
+  documents }o--|o departments : "department"
+  documents }o--|| users : "createdBy"
+  document_versions }o--|| documents : "document"
+  document_versions }o--|| stored_files : "storedFile"
+  document_versions }o--|| users : "uploadedBy"
   export_files }o--|| users : "createdBy"
   export_files }o--|| users : "downloader"
 ```
@@ -317,6 +322,27 @@ erDiagram
     DateTime createdAt
     DateTime updatedAt
   }
+  documents {
+    String id PK
+    String title
+    String description "tùy chọn"
+    String category
+    String departmentId FK "tùy chọn"
+    DocumentScope scope "DEPARTMENT / CLUB"
+    Role allowedRoles "MEMBER / DEPARTMENT_MANAGER / BOARD / TECH_ADMIN. Rỗng: mọi thành viên trong phạm vi; nếu có thì cần một vai…"
+    DocumentStatus status "ACTIVE / ARCHIVED"
+    String createdById FK
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  document_versions {
+    String id PK
+    String documentId FK
+    Int versionNumber
+    String storedFileId FK
+    String uploadedById FK
+    DateTime createdAt
+  }
   export_files {
     String id PK
     String createdById FK
@@ -360,6 +386,11 @@ erDiagram
   notification_deliveries }o--|o departments : "department"
   audit_logs }o--|o users : "actor"
   stored_files }o--|| users : "uploadedBy"
+  documents }o--|o departments : "department"
+  documents }o--|| users : "createdBy"
+  document_versions }o--|| documents : "document"
+  document_versions }o--|| stored_files : "storedFile"
+  document_versions }o--|| users : "uploadedBy"
   export_files }o--|| users : "createdBy"
   export_files }o--|| users : "downloader"
 ```
@@ -372,6 +403,8 @@ erDiagram
 | `AccountStatus` | `PENDING_ACTIVATION`, `ACTIVE`, `LOCKED`, `INACTIVE` |
 | `MemberStatus` | `ACTIVE`, `PAUSED`, `LEFT` |
 | `DepartmentStatus` | `ACTIVE`, `ARCHIVED` |
+| `DocumentScope` | `DEPARTMENT`, `CLUB` |
+| `DocumentStatus` | `ACTIVE`, `ARCHIVED` |
 | `ContentStatus` | `DRAFT`, `PUBLISHED`, `ARCHIVED` |
 | `ContentScope` | `PUBLIC`, `INTERNAL` |
 | `ApplicationStatus` | `NEW`, `REVIEWING`, `INTERVIEW`, `ACCEPTED`, `REJECTED`, `WITHDRAWN` |
