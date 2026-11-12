@@ -1,5 +1,5 @@
 import { type FormEvent, type ReactNode, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState.js'
 import { Button } from '../../../components/Button.js'
@@ -58,6 +58,7 @@ function EditProject({
 }) {
   const { user } = useAuth()
   const board = hasRole(user, 'BOARD')
+  const navigate = useNavigate()
 
   const [detail, setDetail] = useState(project)
   const [values, setValues] = useState<ProjectFormValues>(() => initialProjectValues(project))
@@ -69,7 +70,6 @@ function EditProject({
     fields: Record<string, string[]>
     stale: boolean
   } | null>(null)
-  const [savedAt, setSavedAt] = useState<Date | null>(null)
   const [statusAction, setStatusAction] = useState<ProjectAction | null>(null)
 
   // Quản lý ban chỉ sửa dự án Ẩn của ban mình; dự án đã công bố phải chờ BOARD gỡ công bố.
@@ -82,13 +82,12 @@ function EditProject({
   const dirty = JSON.stringify(values) !== JSON.stringify(initialProjectValues(detail))
   useDirtyFormWarning(dirty && !pending)
 
-  /** Đọc lại dự án từ server: dùng sau khi lưu và khi nút "Tải lại" của xung đột. */
+  /** Đọc lại dự án từ server: dùng khi nút "Tải lại" của xung đột và sau khi đổi trạng thái. */
   async function refresh() {
     const fresh = await api<AdminProjectDetail>(`/admin/content/projects/${detail.id}`)
     setDetail(fresh)
     setValues(initialProjectValues(fresh))
     setBaseline(fresh.updatedAt)
-    setSavedAt(null)
     setSaveError(null)
   }
 
@@ -96,15 +95,13 @@ function EditProject({
     event.preventDefault()
     setPending(true)
     setSaveError(null)
-    setSavedAt(null)
     try {
       await api(`/admin/content/projects/${detail.id}`, {
         method: 'PATCH',
         body: updateProjectPayload(values, baseline, board),
       })
-      // PATCH trả về bản ghi không kèm members: đọc lại chi tiết để cập nhật danh sách thành viên và updatedAt mới.
-      await refresh()
-      setSavedAt(new Date())
+      // Lưu xong về danh sách; server tự cập nhật updatedAt và memberIds trong cùng transaction.
+      navigate('/admin/content/projects')
     } catch (caught) {
       // 409: người khác vừa lưu dự án này (STATE-09) — không ghi đè, bắt buộc tải lại bản mới.
       const stale = caught instanceof ApiError && caught.status === 409
@@ -236,12 +233,6 @@ function EditProject({
             </div>
           )}
         </div>
-      )}
-
-      {savedAt && !saveError && (
-        <p role="status" className="rounded-2xl bg-apc-blue-pale px-5 py-4 text-[15px] font-bold text-apc-blue">
-          Đã lưu lúc {formatDateTime(savedAt)}.
-        </p>
       )}
 
       <form onSubmit={handleSave} noValidate className="flex flex-col gap-8">
