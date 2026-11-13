@@ -1,20 +1,51 @@
+import { useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 
-import { AsyncState } from '../../../components/AsyncState'
-import { Breadcrumb } from '../../../components/Breadcrumb'
-import { buttonClass } from '../../../components/buttonClass'
-import { PageHero } from '../../../components/PageHero'
-import { Seo } from '../../../components/Seo'
-import { useApi } from '../../../hooks/useApi'
-import { safeHttpUrl, type ProjectItem } from '../../../lib/content'
-import { NotFound } from '../../NotFound'
+import { AsyncState } from '../../../components/AsyncState.js'
+import { Breadcrumb } from '../../../components/Breadcrumb.js'
+import { buttonClass } from '../../../components/buttonClass.js'
+import { PageHero } from '../../../components/PageHero.js'
+import { Seo } from '../../../components/Seo.js'
+import { useApi } from '../../../hooks/useApi.js'
+import { safeHttpUrl } from '../../../lib/content.js'
+import { NotFound } from '../../NotFound.js'
+import { PROJECT_TYPE_LABEL, type ProjectDetail, type ProjectMember } from '../types.js'
+
+/** Một thành viên trong mục Thành viên tham gia: ảnh đại diện nếu được đồng ý công bố ảnh, nếu không là chữ cái đầu. */
+function ProjectMemberRow({ slug, member }: { slug: string; member: ProjectMember }) {
+  // Ảnh 404 (ví dụ thành viên vừa thu hồi đồng ý công bố ảnh) thì chuyển sang chữ cái đầu thay vì ảnh vỡ.
+  const [avatarFailed, setAvatarFailed] = useState(false)
+  const initial = member.name.trim().charAt(0).toUpperCase() || '?'
+
+  return (
+    <li className="flex items-center gap-4 rounded-2xl bg-soft px-4 py-3">
+      {member.hasPhoto && !avatarFailed ? (
+        <img
+          src={`/api/public/projects/${slug}/members/${member.userId}/avatar`}
+          alt=""
+          loading="lazy"
+          className="h-14 w-14 shrink-0 rounded-full bg-soft object-cover"
+          onError={() => setAvatarFailed(true)}
+        />
+      ) : (
+        <span
+          aria-hidden
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-ink font-display text-[20px] font-extrabold text-paper"
+        >
+          {initial}
+        </span>
+      )}
+      <span className="font-display text-[17px] font-extrabold">{member.name}</span>
+    </li>
+  )
+}
 
 /** Trang chi tiết dự án. Loại dự án và thành viên tham gia thêm ở C4. */
 export function ProjectDetailPage() {
   const { slug } = useParams<{ slug: string }>()
   const location = useLocation()
   const backTo = (location.state as { from?: string } | null)?.from ?? '/projects'
-  const { data: item, loading, error, reload } = useApi<ProjectItem>(slug ? `/public/projects/${slug}` : null)
+  const { data: item, loading, error, reload } = useApi<ProjectDetail>(slug ? `/public/projects/${slug}` : null)
 
   // Dự án không tồn tại hoặc chưa công bố trả 404
   if (!slug || error?.status === 404) {
@@ -24,6 +55,8 @@ export function ProjectDetailPage() {
   const productUrl = safeHttpUrl(item?.projectUrl)
   const sourceUrl = safeHttpUrl(item?.sourceUrl)
   const technologies = item?.technologies ?? []
+  // API đã lọc sẵn: chỉ thành viên có đồng ý công bố tên mới nằm trong mảng này — không tự lọc lại ở web.
+  const members = item?.members ?? []
 
   return (
     <main>
@@ -48,7 +81,7 @@ export function ProjectDetailPage() {
                 />
               }
               compact
-              comment="dự án"
+              comment={PROJECT_TYPE_LABEL[item.type].toLowerCase()}
               title={item.title}
               lede={item.description}
             >
@@ -95,6 +128,21 @@ export function ProjectDetailPage() {
                     </ul>
                   </div>
                 )}
+
+                <div className="mt-[clamp(40px,7vh,72px)] max-w-[760px]">
+                  <h2 className="border-b-2 border-ink pb-3 font-display text-[28px] font-extrabold leading-none">
+                    Thành viên tham gia
+                  </h2>
+                  {members.length > 0 ? (
+                    <ul className="mt-5 flex flex-col gap-3">
+                      {members.map((member) => (
+                        <ProjectMemberRow key={member.userId} slug={slug} member={member} />
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-5 text-[16px] text-muted">Chưa có thông tin thành viên.</p>
+                  )}
+                </div>
 
                 <Link
                   to={backTo}
