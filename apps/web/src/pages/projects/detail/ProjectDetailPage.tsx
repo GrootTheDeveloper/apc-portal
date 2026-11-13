@@ -81,7 +81,7 @@ export function ProjectDetailPage() {
                 />
               }
               compact
-              comment={PROJECT_TYPE_LABEL[item.type].toLowerCase()}
+              comment={(PROJECT_TYPE_LABEL[item.type] ?? 'dự án').toLowerCase()}
               title={item.title}
               lede={item.description}
             >
