@@ -76,10 +76,11 @@ export function FileUpload({ purpose, label = 'Chọn tệp', onUploaded, disabl
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Khối màu đặc theo DESIGN.md: không viền, không gạch đứt — thường là nền soft, lỗi là nền đỏ nhạt. */}
       <label
         htmlFor={inputId}
-        className={`flex flex-col items-center justify-center gap-2 rounded-apc border-2 border-dashed px-6 py-8 text-center transition-colors ${
-          status === 'error' ? 'border-apc-red bg-apc-red-pale/40' : 'border-muted/40 hover:border-apc-blue hover:bg-soft'
+        className={`flex flex-col items-center justify-center gap-2 rounded-xl px-6 py-8 text-center transition-colors ${
+          status === 'error' ? 'bg-apc-red-pale' : 'bg-soft hover:bg-apc-blue-pale'
         } ${disabled || uploading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
       >
         <span className="font-bold text-apc-blue">{label}</span>
@@ -98,7 +99,7 @@ export function FileUpload({ purpose, label = 'Chọn tệp', onUploaded, disabl
       </label>
 
       {preview && (
-        <img src={preview} alt="Xem trước" className="max-h-48 w-auto self-start rounded-apc border border-muted/20 object-contain" />
+        <img src={preview} alt="Xem trước" className="max-h-48 w-auto self-start rounded-xl object-contain" />
       )}
 
       <div aria-live="polite" className="text-sm">
