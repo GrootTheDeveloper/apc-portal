@@ -165,6 +165,12 @@ enum FileScanStatus {
   REJECTED
 }
 
+enum ExportFileStatus {
+  CREATING
+  READY
+  EXPIRED
+}
+
 // MODELS — TỔ CHỨC
 
 // Thông tin CLB — singleton (1 dòng duy nhất, id = "singleton")
@@ -214,6 +220,7 @@ model User {
   id           String        @id @default(cuid())
   username     String        @unique // Tên đăng nhập (AUTH-02, BR-02)
   email        String        @unique
+  contactEmail String?       // Email liên hệ tùy chọn (QĐ-8, MEM-03)
   passwordHash String // Băm Argon2id (SEC-02)
   status       AccountStatus @default(PENDING_ACTIVATION)
 
@@ -266,7 +273,11 @@ model User {
   createdProjects          Project[]              @relation("ProjectCreator")
   convertedFromApplication MembershipApplication? @relation("ApplicationConversion")
 
-  uploadedFiles StoredFile[] @relation("FileUploader")
+  statusHistories ApplicationStatusHistory[]
+
+  uploadedFiles       StoredFile[] @relation("FileUploader")
+  createdExports      ExportFile[] @relation("ExportCreator")
+  downloadableExports ExportFile[] @relation("ExportDownloader")
 
   @@map("users")
 }
@@ -558,6 +569,8 @@ model MembershipApplication {
   convertedUser   User?     @relation("ApplicationConversion", fields: [convertedUserId], references: [id])
   convertedAt     DateTime?
 
+  statusHistories ApplicationStatusHistory[]
+
   submittedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -566,6 +579,23 @@ model MembershipApplication {
   @@index([applicantEmail])
   @@index([recruitmentRoundId])
   @@map("membership_applications")
+}
+
+// R5 — Lịch sử trạng thái hồ sơ (FLOW-07 bước 6)
+model ApplicationStatusHistory {
+  id            String                @id @default(cuid())
+  applicationId String
+  application   MembershipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  fromStatus    ApplicationStatus
+  toStatus      ApplicationStatus
+  reason        String? // Bắt buộc khi Ban Chủ nhiệm rút đơn thay ứng viên
+  changedById   String
+  changedBy     User                  @relation(fields: [changedById], references: [id])
+  changedAt     DateTime              @default(now())
+
+  @@index([applicationId])
+  @@index([changedAt])
+  @@map("application_status_histories")
 }
 
 // MODELS — EMAIL (O1)
@@ -667,4 +697,24 @@ model StoredFile {
   @@index([scanStatus, createdAt])
   @@index([uploadedById])
   @@map("stored_files")
+}
+
+// File xuất chứa dữ liệu cá nhân (D6): chỉ người được chỉ định tải trong 24 giờ.
+model ExportFile {
+  id           String           @id @default(cuid())
+  createdById  String
+  createdBy    User             @relation("ExportCreator", fields: [createdById], references: [id])
+  downloaderId String
+  downloader   User             @relation("ExportDownloader", fields: [downloaderId], references: [id])
+  kind         String
+  filename     String
+  storageKey   String           @unique
+  status       ExportFileStatus @default(CREATING)
+  expiresAt    DateTime
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([downloaderId, status, expiresAt])
+  @@index([status, expiresAt])
+  @@map("export_files")
 }

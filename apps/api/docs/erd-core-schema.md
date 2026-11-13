@@ -35,9 +35,13 @@ erDiagram
   membership_applications }o--|o departments : "desiredDepartment"
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
+  application_status_histories }o--|| membership_applications : "application"
+  application_status_histories }o--|| users : "changedBy"
   notification_deliveries }o--|o departments : "department"
   audit_logs }o--|o users : "actor"
   stored_files }o--|| users : "uploadedBy"
+  export_files }o--|| users : "createdBy"
+  export_files }o--|| users : "downloader"
 ```
 
 ## Chi tiết từng bảng
@@ -65,6 +69,7 @@ erDiagram
     String id PK
     String username UK "Tên đăng nhập (AUTH-02, BR-02)"
     String email UK
+    String contactEmail "tùy chọn. Email liên hệ tùy chọn (QĐ-8, MEM-03)"
     String passwordHash "Băm Argon2id (SEC-02)"
     AccountStatus status "PENDING_ACTIVATION / ACTIVE / LOCKED / INACTIVE"
     Boolean mustChangePassword
@@ -244,6 +249,15 @@ erDiagram
     DateTime submittedAt
     DateTime updatedAt
   }
+  application_status_histories {
+    String id PK
+    String applicationId FK
+    ApplicationStatus fromStatus "NEW / REVIEWING / INTERVIEW / ACCEPTED / REJECTED / WITHDRAWN"
+    ApplicationStatus toStatus "NEW / REVIEWING / INTERVIEW / ACCEPTED / REJECTED / WITHDRAWN"
+    String reason "tùy chọn. Bắt buộc khi Ban Chủ nhiệm rút đơn thay ứng viên"
+    String changedById FK
+    DateTime changedAt
+  }
   notification_deliveries {
     String id PK "Cũng là idempotency key: Message-ID sinh từ id"
     String type "Tên mẫu email, khớp với modules/email/templates.ts"
@@ -303,6 +317,18 @@ erDiagram
     DateTime createdAt
     DateTime updatedAt
   }
+  export_files {
+    String id PK
+    String createdById FK
+    String downloaderId FK
+    String kind
+    String filename
+    String storageKey UK
+    ExportFileStatus status "CREATING / READY / EXPIRED"
+    DateTime expiresAt
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
   users }o--|o departments : "department"
   role_decisions }o--|| users : "user"
@@ -329,9 +355,13 @@ erDiagram
   membership_applications }o--|o departments : "desiredDepartment"
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
+  application_status_histories }o--|| membership_applications : "application"
+  application_status_histories }o--|| users : "changedBy"
   notification_deliveries }o--|o departments : "department"
   audit_logs }o--|o users : "actor"
   stored_files }o--|| users : "uploadedBy"
+  export_files }o--|| users : "createdBy"
+  export_files }o--|| users : "downloader"
 ```
 
 ## Giá trị trạng thái (enum)
@@ -360,5 +390,6 @@ erDiagram
 | `FilePurpose` |  |
 | `FileVisibility` | `PUBLIC`, `INTERNAL` |
 | `FileScanStatus` | `PENDING`, `CLEAN`, `REJECTED` |
+| `ExportFileStatus` | `CREATING`, `READY`, `EXPIRED` |
 | `RoleDecisionAction` | `GRANT`, `REVOKE` |
 | `RoleDecisionStatus` | `PENDING`, `EXECUTED`, `CANCELLED` |

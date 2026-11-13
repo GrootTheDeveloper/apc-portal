@@ -13,10 +13,14 @@ import { recordConsent } from '../consent/service.js'
 import { enqueueEmail } from '../email/service.js'
 import type { Question } from './validation.js'
 import {
+  AdminApplicationExportQuerySchema,
+  AdminApplicationQuerySchema,
+  ChangeApplicationStatusSchema,
   ChangeRoundStatusSchema,
   CreateRecruitmentRoundSchema,
   LookupApplicationSchema,
   SubmitApplicationSchema,
+  UpdateApplicationReviewSchema,
   UpdateRecruitmentRoundSchema,
   WithdrawApplicationSchema,
 } from './validation.js'
@@ -712,6 +716,16 @@ export async function submitApplication(
         },
       })
       if (existingApp) {
+        // Nếu trùng do chính request này vừa được tạo bởi một luồng gửi song song (cùng Idempotency-Key)
+        if (idempotencyKey && existingApp.idempotencyKey === idempotencyKey) {
+          return {
+            profileCode: existingApp.profileCode,
+            applicantName: existingApp.applicantName,
+            applicantEmail: existingApp.applicantEmail,
+            roundTitle: round.title,
+            submittedAt: existingApp.submittedAt.toISOString(),
+          }
+        }
         throw conflict('Không thể nộp đơn với thông tin này. Nếu đã nộp, vui lòng dùng trang tra cứu.')
       }
 
@@ -762,22 +776,22 @@ export async function submitApplication(
       }
     })
   } catch (error: any) {
-    if (error?.code === 'P2002') {
-      if (idempotencyKey) {
-        const existing = await db.membershipApplication.findUnique({
-          where: { idempotencyKey },
-          include: { recruitmentRound: true },
-        })
-        if (existing && existing.recruitmentRoundId === initialRound.id) {
-          return {
-            profileCode: existing.profileCode,
-            applicantName: existing.applicantName,
-            applicantEmail: existing.applicantEmail,
-            roundTitle: existing.recruitmentRound.title,
-            submittedAt: existing.submittedAt.toISOString(),
-          }
+    if (idempotencyKey) {
+      const existing = await db.membershipApplication.findUnique({
+        where: { idempotencyKey },
+        include: { recruitmentRound: true },
+      })
+      if (existing && existing.recruitmentRoundId === initialRound.id) {
+        return {
+          profileCode: existing.profileCode,
+          applicantName: existing.applicantName,
+          applicantEmail: existing.applicantEmail,
+          roundTitle: existing.recruitmentRound.title,
+          submittedAt: existing.submittedAt.toISOString(),
         }
       }
+    }
+    if (error?.code === 'P2002') {
       throw conflict('Không thể nộp đơn với thông tin này. Nếu đã nộp, vui lòng dùng trang tra cứu.')
     }
     throw error
@@ -911,5 +925,583 @@ export async function withdrawApplication(request: FastifyRequest, input: unknow
     success: true,
     status: updated.status,
     updatedAt: updated.updatedAt,
+  }
+}
+
+// ─── ADMIN SERVICES (R5) ────────────────────────────────────────────────────────
+
+export const APPLICATION_VALID_TRANSITIONS: Record<string, string[]> = {
+  NEW: ['REVIEWING', 'WITHDRAWN'],
+  REVIEWING: ['INTERVIEW', 'ACCEPTED', 'REJECTED', 'WITHDRAWN'],
+  INTERVIEW: ['ACCEPTED', 'REJECTED', 'WITHDRAWN'],
+  ACCEPTED: [],
+  REJECTED: [],
+  WITHDRAWN: [],
+}
+
+/**
+ * API 1: Danh sách hồ sơ đợt tuyển (GET /admin/recruitment/:id/applications)
+ * - Lọc theo trạng thái, ban, từ khóa (họ tên, email, MSSV).
+ * - Phân quyền: BOARD thấy tất cả; DEPARTMENT_MANAGER chỉ thấy hồ sơ thuộc ban mình.
+ */
+export async function listAdminApplications(user: AuthUser, roundId: string, rawQuery: unknown) {
+  const query = AdminApplicationQuerySchema.parse(rawQuery)
+  const isBoard = hasRole(user, 'BOARD')
+  const managerDeptIds = user.roles
+    .filter((r) => r.role === 'DEPARTMENT_MANAGER' && r.departmentId)
+    .map((r) => r.departmentId as string)
+
+  const round = await db.recruitmentRound.findUnique({
+    where: { id: roundId },
+    select: { id: true, title: true },
+  })
+  if (!round) throw notFound()
+
+  // Phân quyền: MANAGER chỉ xem được đợt tuyển nếu có hồ sơ thuộc ban mình (docs/02 §8.1 & §12)
+  if (!isBoard) {
+    if (managerDeptIds.length === 0) throw notFound()
+    const hasApp = await db.membershipApplication.findFirst({
+      where: {
+        recruitmentRoundId: roundId,
+        desiredDepartmentId: { in: managerDeptIds },
+      },
+    })
+    if (!hasApp) throw notFound()
+  }
+
+  const where: Prisma.MembershipApplicationWhereInput = {
+    recruitmentRoundId: roundId,
+  }
+
+  if (query.status) {
+    where.status = query.status
+  }
+
+  if (isBoard) {
+    if (query.departmentId) {
+      where.desiredDepartmentId = query.departmentId
+    }
+  } else {
+    // DEPARTMENT_MANAGER: Chỉ xem hồ sơ thuộc ban mình quản lý
+    if (query.departmentId) {
+      if (!managerDeptIds.includes(query.departmentId)) {
+        where.desiredDepartmentId = '__none__'
+      } else {
+        where.desiredDepartmentId = query.departmentId
+      }
+    } else {
+      where.desiredDepartmentId = { in: managerDeptIds }
+    }
+  }
+
+  const searchTerm = query.search || query.q
+  if (searchTerm) {
+    where.OR = [
+      { applicantName: { contains: searchTerm, mode: 'insensitive' } },
+      { applicantEmail: { contains: searchTerm, mode: 'insensitive' } },
+      { studentId: { contains: searchTerm, mode: 'insensitive' } },
+    ]
+  }
+
+  const [total, items] = await Promise.all([
+    db.membershipApplication.count({ where }),
+    db.membershipApplication.findMany({
+      where,
+      ...pageArgs(query),
+      orderBy: { submittedAt: 'desc' },
+      select: {
+        id: true,
+        profileCode: true,
+        applicantName: true,
+        applicantEmail: true,
+        studentId: true,
+        faculty: true,
+        major: true,
+        cohort: true,
+        desiredDepartmentId: true,
+        desiredDepartment: { select: { id: true, name: true, code: true } },
+        status: true,
+        internalNote: true,
+        reviewedAt: true,
+        reviewedBy: { select: { id: true, fullName: true, username: true } },
+        submittedAt: true,
+        updatedAt: true,
+      },
+    }),
+  ])
+
+  return toPage(items, total, query)
+}
+
+/**
+ * API 2: Chi tiết hồ sơ (GET /admin/recruitment/:id/applications/:applicationId)
+ * - Trả về thông tin cá nhân, câu trả lời, ghi chú nội bộ, và lịch sử trạng thái kèm người thay đổi.
+ * - Quản lý ban mở hồ sơ ngoài ban mình: trả 404 (docs/02 §12).
+ */
+export async function getAdminApplicationById(user: AuthUser, roundId: string, applicationId: string) {
+  const isBoard = hasRole(user, 'BOARD')
+  const managerDeptIds = user.roles
+    .filter((r) => r.role === 'DEPARTMENT_MANAGER' && r.departmentId)
+    .map((r) => r.departmentId as string)
+
+  const application = await db.membershipApplication.findFirst({
+    where: {
+      id: applicationId,
+      recruitmentRoundId: roundId,
+    },
+    include: {
+      desiredDepartment: { select: { id: true, name: true, code: true } },
+      recruitmentRound: { select: { id: true, title: true, slug: true, questions: true } },
+      reviewedBy: { select: { id: true, fullName: true, username: true, avatarUrl: true } },
+      convertedUser: { select: { id: true, fullName: true, username: true } },
+      statusHistories: {
+        orderBy: { changedAt: 'desc' },
+        include: {
+          changedBy: { select: { id: true, fullName: true, username: true, avatarUrl: true } },
+        },
+      },
+    },
+  })
+
+  if (!application) throw notFound()
+
+  // Phân quyền: DEPARTMENT_MANAGER chỉ xem được hồ sơ nộp vào ban mình quản lý
+  if (!isBoard) {
+    if (!application.desiredDepartmentId || !managerDeptIds.includes(application.desiredDepartmentId)) {
+      throw notFound()
+    }
+  }
+
+  return application
+}
+
+/**
+ * API 3: Cập nhật ghi chú nội bộ & đánh giá (PATCH /admin/recruitment/:id/applications/:applicationId/review)
+ * - Cập nhật internalNote, reviewedById, reviewedAt.
+ * - Chống xung đột đồng thời (STATE-09): kiểm tra updatedAt.
+ */
+export async function updateApplicationReview(
+  request: FastifyRequest,
+  roundId: string,
+  applicationId: string,
+  rawBody: unknown,
+  user: AuthUser,
+) {
+  const body = UpdateApplicationReviewSchema.parse(rawBody)
+  const isBoard = hasRole(user, 'BOARD')
+  const managerDeptIds = user.roles
+    .filter((r) => r.role === 'DEPARTMENT_MANAGER' && r.departmentId)
+    .map((r) => r.departmentId as string)
+
+  const application = await db.membershipApplication.findFirst({
+    where: { id: applicationId, recruitmentRoundId: roundId },
+    select: {
+      id: true,
+      desiredDepartmentId: true,
+      updatedAt: true,
+      status: true,
+    },
+  })
+
+  if (!application) throw notFound()
+
+  if (!isBoard) {
+    if (!application.desiredDepartmentId || !managerDeptIds.includes(application.desiredDepartmentId)) {
+      throw notFound()
+    }
+  }
+
+  // Chống xung đột đồng thời (STATE-09)
+  if (body.updatedAt) {
+    const clientTime = new Date(body.updatedAt).getTime()
+    const serverTime = application.updatedAt.getTime()
+    if (clientTime !== serverTime) {
+      throw conflict('Hồ sơ vừa được người khác cập nhật. Vui lòng tải lại.')
+    }
+  }
+
+  return db.$transaction(async (tx) => {
+    const updateData: {
+      internalNote?: string | null
+      reviewedById: string
+      reviewedAt: Date
+      updatedAt: Date
+    } = {
+      reviewedById: user.id,
+      reviewedAt: new Date(),
+      updatedAt: new Date(),
+    }
+    if (body.internalNote !== undefined) {
+      updateData.internalNote = body.internalNote
+    }
+
+    if (body.updatedAt) {
+      const { count } = await tx.membershipApplication.updateMany({
+        where: {
+          id: applicationId,
+          updatedAt: application.updatedAt,
+        },
+        data: updateData,
+      })
+      if (count === 0) {
+        throw conflict('Hồ sơ vừa được người khác cập nhật. Vui lòng tải lại.')
+      }
+    } else {
+      await tx.membershipApplication.update({
+        where: { id: applicationId },
+        data: updateData,
+      })
+    }
+
+    const updated = await tx.membershipApplication.findUniqueOrThrow({
+      where: { id: applicationId },
+      select: {
+        id: true,
+        internalNote: true,
+        reviewedById: true,
+        reviewedAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await audit(
+      request,
+      {
+        action: AUDIT_ACTIONS.APPLICATION_REVIEW,
+        category: AuditCategory.BUSINESS,
+        result: AuditResult.SUCCESS,
+        targetType: 'APPLICATION',
+        targetId: application.id,
+        metadata: { field: 'internalNote' },
+      },
+      tx,
+    )
+
+    return updated
+  })
+}
+
+/**
+ * API 4: Chuyển trạng thái hồ sơ (POST /admin/recruitment/:id/applications/:applicationId/status)
+ * - Kiểm tra bước chuyển theo PRD 9.2 (BR-16). Bước chuyển sai trả 409.
+ * - Kiểm tra quyền (docs/02 §8.1): DEPARTMENT_MANAGER chỉ chuyển trung gian (NEW -> REVIEWING -> INTERVIEW).
+ *   Cố chốt ACCEPTED/REJECTED hoặc WITHDRAWN trả 403.
+ * - BOARD được chuyển tất cả, chuyển sang WITHDRAWN bắt buộc nhập lý do (reason).
+ * - Chống xung đột đồng thời (STATE-09): dùng updateMany với điều kiện status hiện tại và/hoặc updatedAt.
+ * - Ghi lịch sử trạng thái: tạo 1 dòng trong bảng ApplicationStatusHistory.
+ * - Gửi email thông báo cho ứng viên khi sang INTERVIEW, ACCEPTED, REJECTED, WITHDRAWN (QĐ-7, NTF-01).
+ *   NEW -> REVIEWING không gửi email.
+ */
+export async function changeApplicationStatus(
+  request: FastifyRequest,
+  roundId: string,
+  applicationId: string,
+  rawBody: unknown,
+  user: AuthUser,
+) {
+  const body = ChangeApplicationStatusSchema.parse(rawBody)
+  const isBoard = hasRole(user, 'BOARD')
+  const managerDeptIds = user.roles
+    .filter((r) => r.role === 'DEPARTMENT_MANAGER' && r.departmentId)
+    .map((r) => r.departmentId as string)
+
+  const application = await db.membershipApplication.findFirst({
+    where: { id: applicationId, recruitmentRoundId: roundId },
+    select: {
+      id: true,
+      status: true,
+      applicantEmail: true,
+      desiredDepartmentId: true,
+      updatedAt: true,
+    },
+  })
+
+  if (!application) throw notFound()
+
+  // Phân quyền theo ban: Manager ngoài ban nhận 404 (docs/02 §12)
+  if (!isBoard) {
+    if (!application.desiredDepartmentId || !managerDeptIds.includes(application.desiredDepartmentId)) {
+      throw notFound()
+    }
+  }
+
+  const currentStatus = application.status
+  const targetStatus = body.status
+
+  // Kiểm tra quyền chuyển trạng thái (docs/02 §8.1):
+  // DEPARTMENT_MANAGER chỉ được chuyển trung gian (NEW -> REVIEWING -> INTERVIEW).
+  // Nếu Manager cố chốt ACCEPTED, REJECTED hoặc WITHDRAWN -> 403 Forbidden.
+  if (!isBoard) {
+    const managerAllowedStatuses = ['REVIEWING', 'INTERVIEW']
+    if (!managerAllowedStatuses.includes(targetStatus)) {
+      throw forbidden('Chỉ Ban Chủ nhiệm mới có quyền chốt kết quả hoặc rút đơn ứng viên.')
+    }
+  }
+
+  // Kiểm tra bước chuyển theo sơ đồ trạng thái PRD 9.2 (BR-16):
+  const allowedNext = APPLICATION_VALID_TRANSITIONS[currentStatus] ?? []
+  if (!allowedNext.includes(targetStatus)) {
+    throw conflict(`Không thể chuyển trạng thái hồ sơ từ ${currentStatus} sang ${targetStatus}.`)
+  }
+
+  // Chống xung đột đồng thời (STATE-09):
+  if (body.updatedAt) {
+    const clientTime = new Date(body.updatedAt).getTime()
+    const serverTime = application.updatedAt.getTime()
+    if (clientTime !== serverTime) {
+      throw conflict('Hồ sơ vừa được người khác cập nhật. Vui lòng tải lại.')
+    }
+  }
+
+  const now = new Date()
+
+  return db.$transaction(async (tx) => {
+    // Dùng updateMany kèm điều kiện status để chống race condition: hai lượt bấm song song chỉ một lượt thắng
+    const { count } = await tx.membershipApplication.updateMany({
+      where: {
+        id: application.id,
+        status: currentStatus,
+      },
+      data: {
+        status: targetStatus,
+        reviewedById: user.id,
+        reviewedAt: now,
+      },
+    })
+
+    if (count === 0) {
+      throw conflict('Hồ sơ vừa được người khác cập nhật. Vui lòng tải lại.')
+    }
+
+    // Tạo dòng lịch sử trạng thái (FLOW-07 bước 6)
+    const history = await tx.applicationStatusHistory.create({
+      data: {
+        applicationId: application.id,
+        fromStatus: currentStatus,
+        toStatus: targetStatus,
+        reason: body.reason?.trim() || null,
+        changedById: user.id,
+        changedAt: now,
+      },
+      include: {
+        changedBy: {
+          select: { id: true, fullName: true, username: true, avatarUrl: true },
+        },
+      },
+    })
+
+    // Email thông báo (QĐ-7, NTF-01):
+    // Gửi khi chuyển sang INTERVIEW, ACCEPTED, REJECTED, WITHDRAWN.
+    // NEW -> REVIEWING không gửi email.
+    if (['INTERVIEW', 'ACCEPTED', 'REJECTED', 'WITHDRAWN'].includes(targetStatus)) {
+      await enqueueEmail(tx, {
+        type: 'APPLICATION_STATUS',
+        to: application.applicantEmail,
+        refType: 'APPLICATION',
+        refId: application.id,
+        departmentId: application.desiredDepartmentId ?? undefined,
+      })
+    }
+
+    // Audit log
+    const auditAction =
+      targetStatus === 'ACCEPTED' || targetStatus === 'REJECTED'
+        ? AUDIT_ACTIONS.RECRUITMENT_FINALIZE
+        : targetStatus === 'WITHDRAWN'
+          ? AUDIT_ACTIONS.APPLICATION_WITHDRAW
+          : AUDIT_ACTIONS.APPLICATION_STATUS_CHANGE
+
+    await audit(
+      request,
+      {
+        action: auditAction,
+        category: AuditCategory.BUSINESS,
+        result: AuditResult.SUCCESS,
+        targetType: 'APPLICATION',
+        targetId: application.id,
+        metadata: {
+          fromStatus: currentStatus,
+          toStatus: targetStatus,
+          reason: body.reason?.trim() || null,
+        },
+      },
+      tx,
+    )
+
+    const updatedApp = await tx.membershipApplication.findUniqueOrThrow({
+      where: { id: application.id },
+      select: {
+        id: true,
+        status: true,
+        reviewedById: true,
+        reviewedAt: true,
+        updatedAt: true,
+      },
+    })
+
+    return {
+      ...updatedApp,
+      history,
+    }
+  })
+}
+
+function neutralizeCsv(val: unknown): string {
+  if (val === null || val === undefined) return ''
+  const str = String(val).trim()
+  if (/^[=+\-@\t\r]/.test(str)) {
+    return `'${str}`
+  }
+  return str
+}
+
+function escapeCsvCell(val: string): string {
+  if (val.includes(',') || val.includes('"') || val.includes('\n') || val.includes('\r')) {
+    return `"${val.replace(/"/g, '""')}"`
+  }
+  return val
+}
+
+/**
+ * API 5: Xuất danh sách ứng viên (POST /admin/recruitment/:id/applications/export)
+ * - Xuất CSV trong phạm vi người xuất (DEPARTMENT_MANAGER chỉ xuất hồ sơ ban mình, BOARD xuất tất cả).
+ * - Chống chèn công thức (SEC-09), có BOM UTF-8, ghi audit log.
+ */
+export async function exportApplicationsCsv(
+  request: FastifyRequest,
+  roundId: string,
+  rawQuery: unknown,
+  user: AuthUser,
+) {
+  const query = AdminApplicationExportQuerySchema.parse(rawQuery)
+  const isBoard = hasRole(user, 'BOARD')
+  const managerDeptIds = user.roles
+    .filter((r) => r.role === 'DEPARTMENT_MANAGER' && r.departmentId)
+    .map((r) => r.departmentId as string)
+
+  const round = await db.recruitmentRound.findUnique({
+    where: { id: roundId },
+    select: { id: true, title: true, slug: true },
+  })
+  if (!round) throw notFound()
+
+  if (!isBoard) {
+    if (managerDeptIds.length === 0) throw notFound()
+    const hasApp = await db.membershipApplication.findFirst({
+      where: {
+        recruitmentRoundId: roundId,
+        desiredDepartmentId: { in: managerDeptIds },
+      },
+    })
+    if (!hasApp) throw notFound()
+  }
+
+  const where: Prisma.MembershipApplicationWhereInput = {
+    recruitmentRoundId: roundId,
+  }
+
+  if (query.status) {
+    where.status = query.status
+  }
+
+  if (isBoard) {
+    if (query.departmentId) {
+      where.desiredDepartmentId = query.departmentId
+    }
+  } else {
+    if (query.departmentId) {
+      if (!managerDeptIds.includes(query.departmentId)) {
+        where.desiredDepartmentId = '__none__'
+      } else {
+        where.desiredDepartmentId = query.departmentId
+      }
+    } else {
+      where.desiredDepartmentId = { in: managerDeptIds }
+    }
+  }
+
+  const searchTerm = query.search || query.q
+  if (searchTerm) {
+    where.OR = [
+      { applicantName: { contains: searchTerm, mode: 'insensitive' } },
+      { applicantEmail: { contains: searchTerm, mode: 'insensitive' } },
+      { studentId: { contains: searchTerm, mode: 'insensitive' } },
+    ]
+  }
+
+  const apps = await db.membershipApplication.findMany({
+    where,
+    orderBy: { submittedAt: 'desc' },
+    include: {
+      desiredDepartment: { select: { name: true } },
+      reviewedBy: { select: { fullName: true } },
+    },
+  })
+
+  const headers = [
+    'Mã hồ sơ',
+    'Họ và tên',
+    'Email',
+    'MSSV',
+    'Khoa/Viện',
+    'Ngành',
+    'Khóa',
+    'Ban mong muốn',
+    'Kỹ năng',
+    'Kinh nghiệm',
+    'Trạng thái',
+    'Ghi chú nội bộ',
+    'Người duyệt',
+    'Thời gian nộp',
+    'Cập nhật lần cuối',
+  ]
+
+  const statusLabels: Record<string, string> = {
+    NEW: 'Mới',
+    REVIEWING: 'Đang xét',
+    INTERVIEW: 'Mời phỏng vấn',
+    ACCEPTED: 'Đã chấp nhận',
+    REJECTED: 'Không chấp nhận',
+    WITHDRAWN: 'Đã rút',
+  }
+
+  const rows = apps.map((app) => [
+    neutralizeCsv(app.profileCode),
+    neutralizeCsv(app.applicantName),
+    neutralizeCsv(app.applicantEmail),
+    neutralizeCsv(app.studentId),
+    neutralizeCsv(app.faculty ?? ''),
+    neutralizeCsv(app.major ?? ''),
+    neutralizeCsv(app.cohort ?? ''),
+    neutralizeCsv(app.desiredDepartment?.name ?? ''),
+    neutralizeCsv(app.skills ?? ''),
+    neutralizeCsv(app.experience ?? ''),
+    neutralizeCsv(statusLabels[app.status] ?? app.status),
+    neutralizeCsv(app.internalNote ?? ''),
+    neutralizeCsv(app.reviewedBy?.fullName ?? ''),
+    neutralizeCsv(app.submittedAt.toISOString()),
+    neutralizeCsv(app.updatedAt.toISOString()),
+  ])
+
+  const csvContent =
+    '\uFEFF' +
+    [
+      headers.map(escapeCsvCell).join(','),
+      ...rows.map((row) => row.map(escapeCsvCell).join(',')),
+    ].join('\r\n')
+
+  await audit(request, {
+    action: AUDIT_ACTIONS.RECRUITMENT_EXPORT,
+    category: AuditCategory.BUSINESS,
+    result: AuditResult.SUCCESS,
+    targetType: 'RECRUITMENT_ROUND',
+    targetId: round.id,
+    metadata: { rowCount: apps.length },
+  })
+
+  return {
+    filename: `apc-ung-tuyen-${round.slug}.csv`,
+    csv: csvContent,
+    rowCount: apps.length,
   }
 }
