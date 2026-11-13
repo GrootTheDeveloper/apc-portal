@@ -253,7 +253,19 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
   },
   {
     label: 'Dự án và sản phẩm',
-    items: [{ label: 'Dự án và sản phẩm', to: '/admin/content/projects', roles: MANAGER_OR_BOARD }],
+    items: [
+      {
+        label: 'Dự án và sản phẩm',
+        to: '/admin/content/projects',
+        roles: MANAGER_OR_BOARD,
+        page: () => import('../pages/admin/content/AdminProjectListPage').then((m) => ({ Component: m.AdminProjectListPage })),
+        children: [
+          { label: 'Thêm dự án', to: '/admin/content/projects/new', roles: MANAGER_OR_BOARD, page: () => import('../pages/admin/content/AdminProjectCreatePage').then((m) => ({ Component: m.AdminProjectCreatePage })) },
+          { label: 'Sửa dự án', to: '/admin/content/projects/:id', roles: MANAGER_OR_BOARD, page: () => import('../pages/admin/content/AdminProjectEditPage').then((m) => ({ Component: m.AdminProjectEditPage })) },
+          { label: 'Xem trước', to: '/admin/content/projects/:id/preview', roles: MANAGER_OR_BOARD, page: () => import('../pages/admin/content/AdminProjectPreviewPage').then((m) => ({ Component: m.AdminProjectPreviewPage })) },
+        ],
+      },
+    ],
   },
   { label: 'Tài liệu', items: [{ label: 'Tài liệu', to: '/admin/documents', roles: MANAGER_OR_BOARD }] },
   {

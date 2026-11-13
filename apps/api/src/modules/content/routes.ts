@@ -1,14 +1,16 @@
 import type { FastifyInstance } from 'fastify'
 
+import type { FilesContext } from '../files/service.js'
 import {
   getPublicNewsBySlug,
   getPublishedProjectBySlug,
   listPublicNews,
   listPublishedProjects,
+  projectMemberAvatar,
   searchPublicContent,
 } from './service.js'
 
-export function contentRoutes() {
+export function contentRoutes(context: FilesContext) {
   return async function registerContentRoutes(app: FastifyInstance) {
     app.get(
       '/public/search',
@@ -42,10 +44,21 @@ export function contentRoutes() {
     /**
      * Danh sách dự án đã công bố.
      * Không yêu cầu đăng nhập (public/*).
-     * Query: page, pageSize (default 12), type (tạm thời nhận nhưng chưa filter — schema chưa có trường `type`).
+     * Query: page, pageSize (default 12), type (PROJECT | PRODUCT, tùy chọn).
      */
     app.get('/public/projects', async (request) => {
       return listPublishedProjects(request.query)
+    })
+
+    /**
+     * Ảnh đại diện thành viên trên trang dự án công khai (PRT-04).
+     * Đăng ký TRƯỚC /public/projects/:slug để Fastify khớp đúng path nhiều tầng.
+     * 404 khi dự án chưa công bố, thành viên không thuộc dự án,
+     * chưa đồng ý công khai ảnh hoặc chưa đặt ảnh đại diện.
+     */
+    app.get('/public/projects/:slug/members/:userId/avatar', async (request, reply) => {
+      const { slug, userId } = request.params as { slug: string; userId: string }
+      return projectMemberAvatar(context, reply, slug, userId)
     })
 
     /**
