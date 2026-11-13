@@ -46,10 +46,25 @@ export const PORTAL_MENU: readonly MenuGroup[] = [
         label: 'Tổng quan',
         to: '/portal',
         roles: MEMBER,
-        page: () => import('../pages/portal/home/PortalHomePage').then((m) => ({ Component: m.PortalHomePage })),
+        page: () =>
+          import('../pages/portal/dashboard/PortalDashboard').then((m) => ({ Component: m.PortalDashboard })),
       },
       { label: 'Thông báo', to: '/portal/announcements', roles: MEMBER },
-      { label: 'Sự kiện', to: '/portal/events', roles: MEMBER },
+      {
+        label: 'Sự kiện',
+        to: '/portal/events',
+        roles: MEMBER,
+        page: () => import('../pages/portal/events/list/PortalEventsListPage').then((m) => ({ Component: m.PortalEventsListPage })),
+        children: [
+          {
+            label: 'Chi tiết sự kiện',
+            to: '/portal/events/:id',
+            roles: MEMBER,
+            page: () =>
+              import('../pages/portal/events/detail/PortalEventDetailPage').then((m) => ({ Component: m.PortalEventDetailPage })),
+          },
+        ],
+      },
       { label: 'Tài liệu', to: '/portal/documents', roles: MEMBER },
       { label: 'Thành viên', to: '/portal/members', roles: MEMBER },
     ],
@@ -57,11 +72,29 @@ export const PORTAL_MENU: readonly MenuGroup[] = [
   {
     label: 'Tài khoản',
     items: [
-      { label: 'Hồ sơ của tôi', to: '/portal/profile', roles: MEMBER },
-      { label: 'Lịch sử hoạt động', to: '/portal/activity-history', roles: MEMBER },
+      {
+        label: 'Hồ sơ của tôi',
+        to: '/portal/profile',
+        roles: MEMBER,
+        page: () =>
+          import('../pages/portal/profile/ProfilePage').then((m) => ({ Component: m.ProfilePage })),
+      },
+      {
+        label: 'Lịch sử hoạt động',
+        to: '/portal/activity-history',
+        roles: MEMBER,
+        page: () =>
+          import('../pages/portal/activity/ActivityHistoryPage').then((m) => ({ Component: m.ActivityHistoryPage })),
+      },
       { label: 'Quyền riêng tư', to: '/portal/privacy', roles: MEMBER },
       { label: 'Dữ liệu cá nhân', to: '/portal/data-requests', roles: MEMBER },
-      { label: 'Vai trò và phạm vi của tôi', to: '/portal/account/roles', roles: MEMBER },
+      {
+        label: 'Vai trò và phạm vi của tôi',
+        to: '/portal/account/roles',
+        roles: MEMBER,
+        page: () =>
+          import('../pages/portal/roles/MyRolesPage').then((m) => ({ Component: m.MyRolesPage })),
+      },
       {
         label: 'Bảo mật tài khoản',
         to: '/portal/account/security',
@@ -118,6 +151,24 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
             to: '/admin/recruitment/:id/preview',
             roles: MANAGER_OR_BOARD,
             page: () => import('../pages/admin/recruitment/AdminRecruitmentPreviewPage').then((m) => ({ Component: m.AdminRecruitmentPreviewPage })),
+          },
+          {
+            label: 'Danh sách hồ sơ ứng tuyển',
+            to: '/admin/recruitment/:id/applications',
+            roles: MANAGER_OR_BOARD,
+            page: () =>
+              import('../pages/admin/recruitment/applications/AdminApplicationListPage').then((m) => ({
+                Component: m.AdminApplicationListPage,
+              })),
+          },
+          {
+            label: 'Chi tiết hồ sơ ứng tuyển',
+            to: '/admin/recruitment/:id/applications/:applicationId',
+            roles: MANAGER_OR_BOARD,
+            page: () =>
+              import('../pages/admin/recruitment/applications/AdminApplicationDetailPage').then((m) => ({
+                Component: m.AdminApplicationDetailPage,
+              })),
           },
         ],
       },
