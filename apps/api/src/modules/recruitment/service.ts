@@ -11,12 +11,14 @@ import type { AuthUser } from '../auth/rbac.js'
 import { hasRole } from '../auth/rbac.js'
 import { recordConsent } from '../consent/service.js'
 import { enqueueEmail } from '../email/service.js'
+import { createAccount } from '../accounts/service.js'
 import type { Question } from './validation.js'
 import {
   AdminApplicationExportQuerySchema,
   AdminApplicationQuerySchema,
   ChangeApplicationStatusSchema,
   ChangeRoundStatusSchema,
+  ConvertApplicationSchema,
   CreateRecruitmentRoundSchema,
   LookupApplicationSchema,
   SubmitApplicationSchema,
@@ -1504,4 +1506,271 @@ export async function exportApplicationsCsv(
     csv: csvContent,
     rowCount: apps.length,
   }
+}
+
+// ─── CHUYỂN HỒ SƠ THÀNH THÀNH VIÊN (R6, FLOW-08, BR-06, STATE-03) ────────────
+
+/**
+ * Chuẩn hóa tên ứng viên thành tiền tố username không dấu, chữ thường, dạng word1.word2...
+ * Nếu tên quá ngắn hoặc rỗng, dùng tiền tố email.
+ */
+export function normalizeNameToUsername(name: string, email: string): string {
+  const withoutDiacritics = name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .trim()
+
+  const words = withoutDiacritics.split(/[^a-z0-9]+/).filter(Boolean)
+  let base = words.join('.')
+
+  if (base.length < 3) {
+    const emailPrefix = (email.split('@')[0] ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[đĐ]/g, 'd')
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]/g, '')
+    base = emailPrefix
+  }
+
+  if (base.length < 3) {
+    base = (base + 'apc').slice(0, 10)
+  }
+
+  if (base.length > 40) {
+    base = base.slice(0, 40).replace(/[._-]+$/, '')
+  }
+
+  return base
+}
+
+/**
+ * API 1: Đề xuất tên đăng nhập duy nhất (GET .../applications/:applicationId/suggest-username)
+ * Chuẩn hóa họ tên ứng viên, tự động thêm số tăng dần nếu trùng trong bảng User.
+ */
+export async function suggestApplicationUsername(roundId: string, applicationId: string) {
+  const application = await db.membershipApplication.findFirst({
+    where: { id: applicationId, recruitmentRoundId: roundId },
+    select: { id: true, applicantName: true, applicantEmail: true },
+  })
+  if (!application) throw notFound('Không tìm thấy hồ sơ ứng tuyển.')
+
+  const base = normalizeNameToUsername(application.applicantName, application.applicantEmail)
+
+  const existingUsers = await db.user.findMany({
+    where: {
+      username: {
+        startsWith: base,
+      },
+    },
+    select: { username: true },
+  })
+  const existingSet = new Set(existingUsers.map((u) => u.username))
+
+  if (!existingSet.has(base)) {
+    return { suggestedUsername: base }
+  }
+
+  let counter = 1
+  while (existingSet.has(`${base}${counter}`)) {
+    counter++
+  }
+  return { suggestedUsername: `${base}${counter}` }
+}
+
+/**
+ * API 2: Chuyển ứng viên thành thành viên (POST .../applications/:applicationId/convert)
+ * - Chỉ hồ sơ ACCEPTED mới được chuyển (BR-06). Khác ACCEPTED trả 409.
+ * - Idempotent: Nếu đã có convertedUserId, trả về tài khoản đã tạo kèm alreadyConverted: true.
+ * - Chống trùng thành viên: applicantEmail hoặc studentId trùng với User đã có trả 409 kèm existingUserId.
+ * - Dùng lại createAccount của A5 trong single transaction.
+ * - Cập nhật thông tin sinh viên vào User và gắn convertedUserId vào đơn.
+ * - Mật khẩu tạm chỉ hiển thị MỘT LẦN DUY NHẤT trong phản hồi (STATE-03).
+ */
+export async function convertApplicationToMember(
+  request: FastifyRequest,
+  roundId: string,
+  applicationId: string,
+  rawBody: unknown,
+) {
+  const body = ConvertApplicationSchema.parse(rawBody)
+
+  // 1. Kiểm tra hồ sơ tồn tại
+  const application = await db.membershipApplication.findFirst({
+    where: { id: applicationId, recruitmentRoundId: roundId },
+    select: {
+      id: true,
+      status: true,
+      applicantEmail: true,
+      applicantName: true,
+      studentId: true,
+      faculty: true,
+      major: true,
+      cohort: true,
+      desiredDepartmentId: true,
+      convertedUserId: true,
+    },
+  })
+
+  if (!application) throw notFound('Không tìm thấy hồ sơ ứng tuyển.')
+
+  // 2. Idempotency: nếu đã chuyển thành viên trước đó, trả về thông tin thành viên mà không tạo mới
+  if (application.convertedUserId) {
+    const user = await db.user.findUnique({
+      where: { id: application.convertedUserId },
+      select: { id: true, username: true, fullName: true, email: true },
+    })
+    return {
+      alreadyConverted: true,
+      user,
+    }
+  }
+
+  // 3. Kiểm tra trạng thái hồ sơ: bắt buộc ACCEPTED (BR-06)
+  if (application.status !== 'ACCEPTED') {
+    throw conflict('Chỉ hồ sơ ở trạng thái Đã chấp nhận mới có thể chuyển thành viên.')
+  }
+
+  // 4. Kiểm tra chống trùng thành viên: email hoặc MSSV đã thuộc user khác
+  const existingUser = await db.user.findFirst({
+    where: {
+      OR: [
+        { email: application.applicantEmail.toLowerCase() },
+        { studentId: application.studentId },
+      ],
+    },
+    select: { id: true, username: true, fullName: true, email: true, studentId: true },
+  })
+  if (existingUser) {
+    throw conflict(
+      `Email hoặc MSSV của ứng viên đã thuộc tài khoản thành viên (@${existingUser.username}).`,
+      { existingUserId: existingUser.id },
+    )
+  }
+
+  // Kiểm tra tên đăng nhập đã có người dùng chưa
+  const existingUsername = await db.user.findUnique({
+    where: { username: body.username },
+    select: { id: true },
+  })
+  if (existingUsername) {
+    throw conflict(`Tên đăng nhập "${body.username}" đã được sử dụng.`)
+  }
+
+  const now = new Date()
+
+  return db.$transaction(async (tx) => {
+    // Khóa dòng hồ sơ chống race condition
+    const lockedApp = await tx.membershipApplication.findUniqueOrThrow({
+      where: { id: application.id },
+    })
+
+    if (lockedApp.convertedUserId) {
+      const user = await tx.user.findUnique({
+        where: { id: lockedApp.convertedUserId },
+        select: { id: true, username: true, fullName: true, email: true },
+      })
+      return {
+        alreadyConverted: true,
+        user,
+      }
+    }
+
+    if (lockedApp.status !== 'ACCEPTED') {
+      throw conflict('Chỉ hồ sơ ở trạng thái Đã chấp nhận mới có thể chuyển thành viên.')
+    }
+
+    const targetDepartmentId = body.departmentId ?? lockedApp.desiredDepartmentId ?? null
+
+    // Gọi hàm createAccount của A5 (quy định: dùng lại hàm này, không viết bản khác)
+    const { user: createdUser, temporaryPassword } = await createAccount(
+      tx,
+      request,
+      {
+        username: body.username,
+        email: lockedApp.applicantEmail,
+        fullName: lockedApp.applicantName,
+        departmentId: targetDepartmentId,
+      },
+      now,
+    )
+
+    // Trích xuất kỹ năng và số điện thoại (nếu có từ hồ sơ / câu trả lời)
+    const skillsList = lockedApp.skills
+      ? lockedApp.skills
+          .split(/[,;\n]+/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : undefined
+
+    let phoneNumber: string | null = null
+    if (lockedApp.answers && typeof lockedApp.answers === 'object') {
+      const ans = lockedApp.answers as Record<string, unknown>
+      for (const [key, val] of Object.entries(ans)) {
+        if (
+          (key.toLowerCase().includes('phone') ||
+            key.toLowerCase().includes('sdt') ||
+            key.toLowerCase().includes('dien_thoai')) &&
+          typeof val === 'string' &&
+          val.trim()
+        ) {
+          phoneNumber = val.trim()
+          break
+        }
+      }
+    }
+
+    // Cập nhật thông tin sinh viên từ hồ sơ vào User (đồng bộ hồ sơ)
+    await tx.user.update({
+      where: { id: createdUser.id },
+      data: {
+        studentId: lockedApp.studentId,
+        faculty: lockedApp.faculty,
+        major: lockedApp.major,
+        cohort: lockedApp.cohort,
+        ...(phoneNumber ? { phoneNumber } : {}),
+        ...(skillsList && skillsList.length > 0 ? { skills: skillsList } : {}),
+      },
+    })
+
+    // Cập nhật liên kết hồ sơ sang User đã tạo
+    await tx.membershipApplication.update({
+      where: { id: lockedApp.id },
+      data: {
+        convertedUserId: createdUser.id,
+        convertedAt: now,
+      },
+    })
+
+    // Ghi audit log: APPLICATION_CONVERT_USER
+    await audit(
+      request,
+      {
+        action: AUDIT_ACTIONS.APPLICATION_CONVERT_USER,
+        category: AuditCategory.BUSINESS,
+        result: AuditResult.SUCCESS,
+        targetType: 'APPLICATION',
+        targetId: lockedApp.id,
+        metadata: {
+          userId: createdUser.id,
+          username: createdUser.username,
+        },
+      },
+      tx,
+    )
+
+    // Trả mật khẩu tạm MỘT LẦN DUY NHẤT trong API response (STATE-03)
+    return {
+      alreadyConverted: false,
+      user: {
+        id: createdUser.id,
+        username: createdUser.username,
+        fullName: lockedApp.applicantName,
+        email: lockedApp.applicantEmail,
+      },
+      temporaryPassword,
+    }
+  })
 }

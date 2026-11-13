@@ -19,6 +19,7 @@ const tag = randomUUID().slice(0, 8)
 const ORIGIN = config.WEB_URL
 
 let boardToken: string
+let boardUserId: string
 let managerAToken: string
 let memberToken: string // Đã dùng cho các test 403
 let deptAId: string
@@ -65,6 +66,7 @@ beforeAll(async () => {
     },
   })
   createdUserIds.push(boardUser.id)
+  boardUserId = boardUser.id
   boardToken = (await createSession(boardUser.id, { ipAddress: '127.0.0.1', userAgent: 'test' })).token
 
   // 3. Tạo User DEPARTMENT_MANAGER Ban A
@@ -122,6 +124,10 @@ afterAll(async () => {
       },
     })
     if (appIds.length > 0) {
+      await db.membershipApplication.updateMany({
+        where: { id: { in: appIds } },
+        data: { convertedUserId: null },
+      })
       await db.consentRecord.deleteMany({
         where: { subjectType: 'APPLICATION', subjectId: { in: appIds } },
       })
@@ -1926,6 +1932,590 @@ describe('Recruitment Module (R2)', () => {
       })
       expect(reviewRes2.statusCode).toBe(409)
       expect(reviewRes2.json().error).toBe('conflict')
+    })
+  })
+
+  // ─── R6: CHUYỂN HỒ SƠ THÀNH THÀNH VIÊN (FLOW-08, BR-06, STATE-03) ───────────
+  describe('R6: Chuyển hồ sơ thành thành viên (FLOW-08, BR-06, STATE-03)', () => {
+    let r6RoundId: string
+    let acceptedAppId: string
+    let r6AppEmail: string
+    let r6AppStudentId: string
+    let r6TempPassword = ''
+
+    beforeAll(async () => {
+      // Tạo một đợt tuyển riêng cho test R6
+      const round = await db.recruitmentRound.create({
+        data: {
+          title: `Đợt tuyển R6 ${tag}`,
+          slug: `round-r6-${tag}`,
+          description: 'Mô tả đợt tuyển R6',
+          audience: 'Sinh viên UMT',
+          requirements: 'Yêu thích lập trình',
+          opensAt: new Date(Date.now() - 3600000),
+          closesAt: new Date(Date.now() + 86400000),
+          status: 'OPEN',
+          createdById: boardUserId,
+          departments: { connect: [{ id: deptAId }, { id: deptBId }] },
+        },
+      })
+      r6RoundId = round.id
+      createdRoundIds.push(round.id)
+
+      r6AppEmail = `candidate-r6-${tag}@test.local`
+      r6AppStudentId = `SV-R6-${tag}`
+
+      // Hồ sơ ACCEPTED
+      const acceptedApp = await db.membershipApplication.create({
+        data: {
+          profileCode: publicCode(),
+          recruitmentRoundId: r6RoundId,
+          applicantName: 'Nguyễn Văn An',
+          applicantEmail: r6AppEmail,
+          studentId: r6AppStudentId,
+          faculty: 'Công nghệ thông tin',
+          major: 'Kỹ thuật phần mềm',
+          cohort: 'K2024',
+          desiredDepartmentId: deptAId,
+          skills: 'TypeScript, React, Node.js',
+          answers: { phone: '0901234567' },
+          status: 'ACCEPTED',
+        },
+      })
+      acceptedAppId = acceptedApp.id
+    })
+
+    // ─── 1. PHÂN QUYỀN RBAC ─────────────────────────────────────────────────
+    it('Chỉ BOARD mới có quyền gọi suggest-username; Manager và Member nhận 403, khách nhận 401', async () => {
+      // Khách không phiên -> 401
+      const resGuest = await app.inject({
+        method: 'GET',
+        url: `/admin/recruitment/${r6RoundId}/applications/${acceptedAppId}/suggest-username`,
+        headers: { origin: ORIGIN },
+      })
+      expect(resGuest.statusCode).toBe(401)
+
+      // Member -> 403
+      const resMember = await app.inject({
+        method: 'GET',
+        url: `/admin/recruitment/${r6RoundId}/applications/${acceptedAppId}/suggest-username`,
+        cookies: { [SESSION_COOKIE]: memberToken },
+        headers: { origin: ORIGIN },
+      })
+      expect(resMember.statusCode).toBe(403)
+
+      // Manager -> 403
+      const resManager = await app.inject({
+        method: 'GET',
+        url: `/admin/recruitment/${r6RoundId}/applications/${acceptedAppId}/suggest-username`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+        headers: { origin: ORIGIN },
+      })
+      expect(resManager.statusCode).toBe(403)
+
+      // BOARD -> 200
+      const resBoard = await app.inject({
+        method: 'GET',
+        url: `/admin/recruitment/${r6RoundId}/applications/${acceptedAppId}/suggest-username`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+        headers: { origin: ORIGIN },
+      })
+      expect(resBoard.statusCode).toBe(200)
+    })
+
+    it('Chỉ BOARD mới có quyền convert hồ sơ; Manager và Member nhận 403, khách nhận 401', async () => {
+      const payload = { username: `user-test-${tag}` }
+
+      // Khách -> 401
+      const resGuest = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r6RoundId}/applications/${acceptedAppId}/convert`,
+        headers: { origin: ORIGIN },
+        payload,
+      })
+      expect(resGuest.statusCode).toBe(401)
+
+      // Member -> 403
+      const resMember = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r6RoundId}/applications/${acceptedAppId}/convert`,
+        cookies: { [SESSION_COOKIE]: memberToken },
+        headers: { origin: ORIGIN },
+        payload,
+      })
+      expect(resMember.statusCode).toBe(403)
+
+      // Manager -> 403
+      const resManager = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r6RoundId}/applications/${acceptedAppId}/convert`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+        headers: { origin: ORIGIN },
+        payload,
+      })
+      expect(resManager.statusCode).toBe(403)
+    })
+
+    // ─── 2. ĐỀ XUẤT TÊN ĐĂNG NHẬP (API 1) ──────────────────────────────────
+    it('Đề xuất tên đăng nhập chuẩn hóa họ tên không dấu và tự động thêm số nếu đã trùng trong bảng User', async () => {
+      // Ứng viên Nguyễn Văn An -> nguyen.van.an
+      const res1 = await app.inject({
+        method: 'GET',
+        url: `/admin/recruitment/${r6RoundId}/applications/${acceptedAppId}/suggest-username`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+        headers: { origin: ORIGIN },
+      })
+      expect(res1.statusCode).toBe(200)
+      expect(res1.json()).toEqual({ suggestedUsername: 'nguyen.van.an' })
+
+      // Tạo một user đã có tên nguyen.van.an
+      const conflictUser1 = await db.user.create({
+        data: {
+          username: 'nguyen.van.an',
+          email: `temp-an1-${tag}@test.local`,
+          fullName: 'Nguyen Van An Da Co',
+          passwordHash: 'dummy',
+          status: 'ACTIVE',
+        },
+      })
+      createdUserIds.push(conflictUser1.id)
+
+      // Gọi lại -> đề xuất nguyen.van.an1
+      const res2 = await app.inject({
+        method: 'GET',
+        url: `/admin/recruitment/${r6RoundId}/applications/${acceptedAppId}/suggest-username`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+        headers: { origin: ORIGIN },
+      })
+      expect(res2.statusCode).toBe(200)
+      expect(res2.json()).toEqual({ suggestedUsername: 'nguyen.van.an1' })
+
+      // Tạo tiếp nguyen.van.an1
+      const conflictUser2 = await db.user.create({
+        data: {
+          username: 'nguyen.van.an1',
+          email: `temp-an2-${tag}@test.local`,
+          fullName: 'Nguyen Van An 1 Da Co',
+          passwordHash: 'dummy',
+          status: 'ACTIVE',
+        },
+      })
+      createdUserIds.push(conflictUser2.id)
+
+      // Gọi lại -> đề xuất nguyen.van.an2
+      const res3 = await app.inject({
+        method: 'GET',
+        url: `/admin/recruitment/${r6RoundId}/applications/${acceptedAppId}/suggest-username`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+        headers: { origin: ORIGIN },
+      })
+      expect(res3.statusCode).toBe(200)
+      expect(res3.json()).toEqual({ suggestedUsername: 'nguyen.van.an2' })
+
+      // Test ứng viên có tên chữ đ: Đỗ Đức Đạt
+      const datApp = await db.membershipApplication.create({
+        data: {
+          profileCode: publicCode(),
+          recruitmentRoundId: r6RoundId,
+          applicantName: 'Đỗ Đức Đạt',
+          applicantEmail: `dat-${tag}@test.local`,
+          studentId: `SV-DAT-${tag}`,
+          desiredDepartmentId: deptAId,
+          status: 'ACCEPTED',
+        },
+      })
+      const resDat = await app.inject({
+        method: 'GET',
+        url: `/admin/recruitment/${r6RoundId}/applications/${datApp.id}/suggest-username`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+        headers: { origin: ORIGIN },
+      })
+      expect(resDat.statusCode).toBe(200)
+      expect(resDat.json().suggestedUsername).toBe('do.duc.dat')
+    })
+
+    // ─── 3. VALIDATION VÀ ĐIỀU KIỆN LỖI CHUYỂN THÀNH VIÊN (API 2) ───────────
+    it('Chuyển hồ sơ không ở trạng thái ACCEPTED (NEW, REVIEWING, INTERVIEW, REJECTED, WITHDRAWN) trả 409 Conflict (BR-06)', async () => {
+      const nonAcceptedStatuses = ['NEW', 'REVIEWING', 'INTERVIEW', 'REJECTED', 'WITHDRAWN'] as const
+
+      for (const st of nonAcceptedStatuses) {
+        const testApp = await db.membershipApplication.create({
+          data: {
+            profileCode: publicCode(),
+            recruitmentRoundId: r6RoundId,
+            applicantName: `Ứng viên test status ${st}`,
+            applicantEmail: `status-${st.toLowerCase()}-${tag}@test.local`,
+            studentId: `SV-${st}-${tag}`,
+            desiredDepartmentId: deptAId,
+            status: st,
+          },
+        })
+
+        const res = await app.inject({
+          method: 'POST',
+          url: `/admin/recruitment/${r6RoundId}/applications/${testApp.id}/convert`,
+          cookies: { [SESSION_COOKIE]: boardToken },
+          headers: { origin: ORIGIN },
+          payload: { username: `user.${st.toLowerCase()}-${tag}` },
+        })
+        expect(res.statusCode).toBe(409)
+        expect(res.json().error).toBe('conflict')
+        expect(res.json().message).toContain('Chỉ hồ sơ ở trạng thái Đã chấp nhận mới có thể chuyển thành viên.')
+      }
+    })
+
+    it('Chống trùng thành viên: Email hoặc MSSV đã thuộc User khác trả 409 kèm existingUserId', async () => {
+      // 1. Trùng email: tạo user có email trùng với applicantEmail của hồ sơ
+      const dupEmailUser = await db.user.create({
+        data: {
+          username: `dup-email-${tag}`,
+          email: `dup-candidate-${tag}@test.local`,
+          studentId: `SV-OTHER-${tag}`,
+          fullName: 'Duplicate Email User',
+          passwordHash: 'dummy',
+          status: 'ACTIVE',
+        },
+      })
+      createdUserIds.push(dupEmailUser.id)
+
+      const dupEmailApp = await db.membershipApplication.create({
+        data: {
+          profileCode: publicCode(),
+          recruitmentRoundId: r6RoundId,
+          applicantName: 'Ứng viên Trùng Email',
+          applicantEmail: `dup-candidate-${tag}@test.local`,
+          studentId: `SV-UNIQUE-1-${tag}`,
+          desiredDepartmentId: deptAId,
+          status: 'ACCEPTED',
+        },
+      })
+
+      const resEmail = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r6RoundId}/applications/${dupEmailApp.id}/convert`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+        headers: { origin: ORIGIN },
+        payload: { username: `valid.user-${tag}` },
+      })
+      expect(resEmail.statusCode).toBe(409)
+      expect(resEmail.json().existingUserId).toBe(dupEmailUser.id)
+      expect(resEmail.json().message).toContain(dupEmailUser.username)
+
+      // 2. Trùng studentId: tạo user có studentId trùng với hồ sơ
+      const dupStudentUser = await db.user.create({
+        data: {
+          username: `dup-student-${tag}`,
+          email: `other-email-${tag}@test.local`,
+          studentId: `SV-DUP-${tag}`,
+          fullName: 'Duplicate Student User',
+          passwordHash: 'dummy',
+          status: 'ACTIVE',
+        },
+      })
+      createdUserIds.push(dupStudentUser.id)
+
+      const dupStudentApp = await db.membershipApplication.create({
+        data: {
+          profileCode: publicCode(),
+          recruitmentRoundId: r6RoundId,
+          applicantName: 'Ứng viên Trùng MSSV',
+          applicantEmail: `unique-email-${tag}@test.local`,
+          studentId: `SV-DUP-${tag}`,
+          desiredDepartmentId: deptAId,
+          status: 'ACCEPTED',
+        },
+      })
+
+      const resStudent = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r6RoundId}/applications/${dupStudentApp.id}/convert`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+        headers: { origin: ORIGIN },
+        payload: { username: `valid.user2-${tag}` },
+      })
+      expect(resStudent.statusCode).toBe(409)
+      expect(resStudent.json().existingUserId).toBe(dupStudentUser.id)
+      expect(resStudent.json().message).toContain(dupStudentUser.username)
+    })
+
+    it('Validate input username không hợp lệ (có dấu tiếng Việt, chữ hoa, ký tự lạ) trả 422', async () => {
+      const invalidApp = await db.membershipApplication.create({
+        data: {
+          profileCode: publicCode(),
+          recruitmentRoundId: r6RoundId,
+          applicantName: 'Ứng viên Test Validation',
+          applicantEmail: `val-${tag}@test.local`,
+          studentId: `SV-VAL-${tag}`,
+          desiredDepartmentId: deptAId,
+          status: 'ACCEPTED',
+        },
+      })
+
+      const invalidUsernames = [
+        'NguyễnVănAn', // có dấu
+        'NGUYEN_AN', // chữ hoa
+        'an', // quá ngắn (< 3)
+        'an@name', // ký tự @ không hợp lệ
+        'an space', // có khoảng trắng
+      ]
+
+      for (const username of invalidUsernames) {
+        const res = await app.inject({
+          method: 'POST',
+          url: `/admin/recruitment/${r6RoundId}/applications/${invalidApp.id}/convert`,
+          cookies: { [SESSION_COOKIE]: boardToken },
+          headers: { origin: ORIGIN },
+          payload: { username },
+        })
+        expect(res.statusCode).toBe(422)
+      }
+    })
+
+    // ─── 4. CHUYỂN THÀNH VIÊN THÀNH CÔNG VÀ KIỂM TRA MẬT KHẨU TẠM (STATE-03) ──
+    it('Chuyển thành viên thành công: User được tạo ở PENDING_ACTIVATION, trả mật khẩu tạm một lần, ghi audit log an toàn', async () => {
+      const convertPayload = {
+        username: `an.nguyen.${tag}`,
+        departmentId: deptAId,
+      }
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r6RoundId}/applications/${acceptedAppId}/convert`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+        headers: { origin: ORIGIN },
+        payload: convertPayload,
+      })
+
+      expect(res.statusCode).toBe(200)
+      const data = res.json()
+      expect(data.alreadyConverted).toBe(false)
+      expect(data.user).toBeDefined()
+      expect(data.user.username).toBe(convertPayload.username)
+      expect(data.user.email).toBe(r6AppEmail)
+
+      // Kiểm tra mật khẩu tạm được trả về trong API response
+      expect(data.temporaryPassword).toBeDefined()
+      expect(typeof data.temporaryPassword).toBe('string')
+      expect(data.temporaryPassword).toMatch(/^[a-zA-Z0-9]{5}-[a-zA-Z0-9]{5}-[a-zA-Z0-9]{5}-[a-zA-Z0-9]{5}$/)
+      r6TempPassword = data.temporaryPassword
+
+      const createdUserId = data.user.id
+      createdUserIds.push(createdUserId)
+
+      // Kiểm tra User trong database
+      const dbUser = await db.user.findUniqueOrThrow({
+        where: { id: createdUserId },
+      })
+      expect(dbUser.status).toBe('PENDING_ACTIVATION')
+      expect(dbUser.isTemporaryPassword).toBe(true)
+      expect(dbUser.mustChangePassword).toBe(true)
+      expect(dbUser.temporaryPasswordExpiresAt).toBeDefined()
+      expect(dbUser.studentId).toBe(r6AppStudentId)
+      expect(dbUser.faculty).toBe('Công nghệ thông tin')
+      expect(dbUser.major).toBe('Kỹ thuật phần mềm')
+      expect(dbUser.cohort).toBe('K2024')
+      expect(dbUser.departmentId).toBe(deptAId)
+      expect(dbUser.phoneNumber).toBe('0901234567')
+      expect(dbUser.skills).toEqual(['TypeScript', 'React', 'Node.js'])
+
+      // Kiểm tra đơn ứng tuyển đã được liên kết
+      const dbApp = await db.membershipApplication.findUniqueOrThrow({
+        where: { id: acceptedAppId },
+      })
+      expect(dbApp.convertedUserId).toBe(createdUserId)
+      expect(dbApp.convertedAt).not.toBeNull()
+
+      // Kiểm tra Audit Log: có action 'application.convert_user' và 'account.create'
+      const convertAudits = await db.auditLog.findMany({
+        where: {
+          targetType: 'APPLICATION',
+          targetId: acceptedAppId,
+          action: AUDIT_ACTIONS.APPLICATION_CONVERT_USER,
+        },
+      })
+      expect(convertAudits.length).toBe(1)
+      expect(convertAudits[0]?.metadata).toEqual({
+        userId: createdUserId,
+        username: convertPayload.username,
+      })
+
+      // STATE-03: Tuyệt đối không lưu mật khẩu tạm vào bất kỳ audit log nào
+      const allAudits = await db.auditLog.findMany({
+        where: {
+          OR: [
+            { targetId: acceptedAppId },
+            { targetId: createdUserId },
+          ],
+        },
+      })
+      for (const a of allAudits) {
+        const metaStr = JSON.stringify(a.metadata ?? {})
+        expect(metaStr).not.toContain(data.temporaryPassword)
+      }
+
+      // NTF-05 & STATE-03: Tuyệt đối không enqueue email chứa mật khẩu tạm thời
+      const allNotificationDeliveries = await db.notificationDelivery.findMany()
+      for (const delivery of allNotificationDeliveries) {
+        const deliveryStr = JSON.stringify(delivery)
+        expect(deliveryStr).not.toContain(data.temporaryPassword)
+      }
+    })
+
+    it('Đăng nhập bằng mật khẩu tạm: Tài khoản PENDING_ACTIVATION đăng nhập được, có mustChangePassword: true, bị chặn tại route bảo vệ và kích hoạt thành công qua /auth/activate', async () => {
+      // 1. Đăng nhập bằng username và mật khẩu tạm vừa được cấp
+      const loginRes = await app.inject({
+        method: 'POST',
+        url: '/auth/login',
+        headers: { origin: ORIGIN },
+        payload: {
+          username: `an.nguyen.${tag}`,
+          password: r6TempPassword,
+        },
+      })
+      expect(loginRes.statusCode).toBe(200)
+      const loginData = loginRes.json()
+      expect(loginData.status).toBe('PENDING_ACTIVATION')
+      expect(loginData.mustChangePassword).toBe(true)
+
+      const memberCookie = loginRes.headers['set-cookie']
+      expect(memberCookie).toBeDefined()
+      const rawCookie = Array.isArray(memberCookie) ? memberCookie[0]! : memberCookie!
+      const memberSessionToken = rawCookie.split(';')[0]!.split('=')[1]!
+
+      // 2. Chặn quyền khi truy cập route thành viên /portal/me/profile (403 Forbidden do pendingActivation)
+      const portalRes = await app.inject({
+        method: 'GET',
+        url: '/portal/me/profile',
+        cookies: { [SESSION_COOKIE]: memberSessionToken },
+        headers: { origin: ORIGIN },
+      })
+      expect(portalRes.statusCode).toBe(403)
+      expect(portalRes.json().error).toBe('forbidden')
+      expect(portalRes.json().message).toContain('Bạn cần đổi mật khẩu tạm thời')
+
+      // 3. /auth/me vẫn cho phép truy cập để lấy thông tin phiên
+      const meRes = await app.inject({
+        method: 'GET',
+        url: '/auth/me',
+        cookies: { [SESSION_COOKIE]: memberSessionToken },
+      })
+      expect(meRes.statusCode).toBe(200)
+      expect(meRes.json().status).toBe('PENDING_ACTIVATION')
+      expect(meRes.json().mustChangePassword).toBe(true)
+
+      // 4. Kích hoạt tài khoản qua /auth/activate: đổi mật khẩu mới (yêu cầu ít nhất 15 ký tự và confirmPassword)
+      const newPassword = 'MatKhauMoiCucKyBaoMat2026!'
+      const activateRes = await app.inject({
+        method: 'POST',
+        url: '/auth/activate',
+        cookies: { [SESSION_COOKIE]: memberSessionToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          newPassword,
+          confirmPassword: newPassword,
+        },
+      })
+      expect(activateRes.statusCode).toBe(200)
+      const activateData = activateRes.json()
+      expect(activateData.status).toBe('ACTIVE')
+      expect(activateData.mustChangePassword).toBe(false)
+
+      const newCookie = activateRes.headers['set-cookie']
+      const activeRawCookie = Array.isArray(newCookie) ? newCookie[0]! : newCookie!
+      const activeSessionToken = activeRawCookie.split(';')[0]!.split('=')[1]!
+
+      // 5. Sau khi kích hoạt: truy cập route thành viên /portal/me/profile thành công
+      const portalResAfter = await app.inject({
+        method: 'GET',
+        url: '/portal/me/profile',
+        cookies: { [SESSION_COOKIE]: activeSessionToken },
+        headers: { origin: ORIGIN },
+      })
+      expect(portalResAfter.statusCode).toBe(200)
+      expect(portalResAfter.json().username).toBe(`an.nguyen.${tag}`)
+    })
+
+    it('Nếu có lỗi xảy ra trong quá trình tạo (vd ban không ACTIVE): rollback toàn bộ transaction, không tạo dở dang bản ghi', async () => {
+      // Tạo một ban ARCHIVED
+      const archivedDept = await db.department.create({
+        data: {
+          name: `Ban Luu Tru ${tag}`,
+          code: `ARC-${tag}`,
+          status: 'ARCHIVED',
+        },
+      })
+      createdDeptIds.push(archivedDept.id)
+
+      const rollbackApp = await db.membershipApplication.create({
+        data: {
+          profileCode: publicCode(),
+          recruitmentRoundId: r6RoundId,
+          applicantName: 'Ứng viên Test Rollback',
+          applicantEmail: `rollback-${tag}@test.local`,
+          studentId: `SV-ROLLBACK-${tag}`,
+          desiredDepartmentId: deptAId,
+          status: 'ACCEPTED',
+        },
+      })
+
+      const targetUsername = `rollback.user.${tag}`
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r6RoundId}/applications/${rollbackApp.id}/convert`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          username: targetUsername,
+          departmentId: archivedDept.id, // Ban ARCHIVED -> createAccount ném lỗi
+        },
+      })
+
+      expect(res.statusCode).toBe(422)
+
+      // Kiểm tra User không hề tồn tại trong database (đã rollback)
+      const userInDb = await db.user.findUnique({
+        where: { username: targetUsername },
+      })
+      expect(userInDb).toBeNull()
+
+      // Kiểm tra hồ sơ không bị cập nhật dở dang
+      const appInDb = await db.membershipApplication.findUniqueOrThrow({
+        where: { id: rollbackApp.id },
+      })
+      expect(appInDb.convertedUserId).toBeNull()
+      expect(appInDb.convertedAt).toBeNull()
+
+      // Kiểm tra không có audit log dở dang
+      const auditInDb = await db.auditLog.findFirst({
+        where: {
+          targetType: 'APPLICATION',
+          targetId: rollbackApp.id,
+          action: AUDIT_ACTIONS.APPLICATION_CONVERT_USER,
+        },
+      })
+      expect(auditInDb).toBeNull()
+    })
+
+    // ─── 5. IDEMPOTENT KHI GỌI LẠI CONVERT ──────────────────────────────────
+    it('Gọi lại convert trên đơn đã chuyển: trả alreadyConverted: true kèm thông tin User, không tạo tài khoản mới', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r6RoundId}/applications/${acceptedAppId}/convert`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          username: `an.nguyen.different.${tag}`,
+        },
+      })
+
+      expect(res.statusCode).toBe(200)
+      const data = res.json()
+      expect(data.alreadyConverted).toBe(true)
+      expect(data.user).toBeDefined()
+      expect(data.user.username).toBe(`an.nguyen.${tag}`)
+      // Không cấp lại mật khẩu tạm khi đã convert
+      expect(data.temporaryPassword).toBeUndefined()
     })
   })
 })

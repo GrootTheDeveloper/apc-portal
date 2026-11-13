@@ -10,6 +10,7 @@ import {
 import {
   changeApplicationStatus,
   changeRecruitmentRoundStatus,
+  convertApplicationToMember,
   createRecruitmentRound,
   exportApplicationsCsv,
   getAdminApplicationById,
@@ -20,6 +21,7 @@ import {
   listPublicRecruitmentRounds,
   lookupApplication,
   submitApplication,
+  suggestApplicationUsername,
   updateApplicationReview,
   updateRecruitmentRound,
   withdrawApplication,
@@ -241,6 +243,46 @@ export function recruitmentRoutes(config: AppConfig) {
       const { id, applicationId } = request.params as { id: string; applicationId: string }
       const user = currentUser(request)
       return changeApplicationStatus(request, id, applicationId, request.body, user)
+    },
+  )
+
+  // ─── CHUYỂN HỒ SƠ THÀNH THÀNH VIÊN (R6, FLOW-08, BR-06, STATE-03) ────────────
+
+  // Đề xuất tên đăng nhập duy nhất: Chỉ BOARD
+  app.get(
+    '/admin/recruitment/:id/applications/:applicationId/suggest-username',
+    { preHandler: [requireAuth, requireRole('BOARD')] },
+    async (request) => {
+      const { id, applicationId } = request.params as { id: string; applicationId: string }
+      return suggestApplicationUsername(id, applicationId)
+    },
+  )
+
+  app.get(
+    '/admin/recruitment/rounds/:id/applications/:applicationId/suggest-username',
+    { preHandler: [requireAuth, requireRole('BOARD')] },
+    async (request) => {
+      const { id, applicationId } = request.params as { id: string; applicationId: string }
+      return suggestApplicationUsername(id, applicationId)
+    },
+  )
+
+  // Chuyển ứng viên thành thành viên: Chỉ BOARD
+  app.post(
+    '/admin/recruitment/:id/applications/:applicationId/convert',
+    { preHandler: [requireAuth, requireRole('BOARD')] },
+    async (request) => {
+      const { id, applicationId } = request.params as { id: string; applicationId: string }
+      return convertApplicationToMember(request, id, applicationId, request.body)
+    },
+  )
+
+  app.post(
+    '/admin/recruitment/rounds/:id/applications/:applicationId/convert',
+    { preHandler: [requireAuth, requireRole('BOARD')] },
+    async (request) => {
+      const { id, applicationId } = request.params as { id: string; applicationId: string }
+      return convertApplicationToMember(request, id, applicationId, request.body)
     },
   )
   }
