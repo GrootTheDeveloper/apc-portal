@@ -252,10 +252,12 @@ export async function getDeliveryAsIncident(request: FastifyRequest, rawParams: 
 export async function retryDelivery(request: FastifyRequest, user: AuthUser, rawParams: unknown, rawBody: unknown) {
   const { id } = idParams.parse(rawParams)
   const isBoard = hasRole(user, 'BOARD')
+  // Form gửi chuỗi rỗng khi BOARD bỏ trống ô không bắt buộc: coi như không nhập.
+  const blankAsMissing = (value: unknown) => (typeof value === 'string' && value.trim() === '' ? undefined : value)
   const body = z
     .object({
-      reason: isBoard ? reasonSchema.optional() : reasonSchema,
-      incidentId: isBoard ? incidentIdSchema.optional() : incidentIdSchema,
+      reason: z.preprocess(blankAsMissing, isBoard ? reasonSchema.optional() : reasonSchema),
+      incidentId: z.preprocess(blankAsMissing, isBoard ? incidentIdSchema.optional() : incidentIdSchema),
     })
     .parse(rawBody ?? {})
   return db.$transaction(async (tx) => {
@@ -264,7 +266,7 @@ export async function retryDelivery(request: FastifyRequest, user: AuthUser, raw
     // Điều kiện trạng thái nằm trong câu UPDATE: hai người bấm cùng lúc thì chỉ một người thành công.
     const { count } = await tx.notificationDelivery.updateMany({
       where: { id, status: 'FAILED' },
-      data: { status: 'PENDING', attempts: 0, nextAttemptAt: new Date(), lockedAt: null },
+      data: { status: 'PENDING', attempts: 0, nextAttemptAt: new Date(), lockedAt: null, lastError: null },
     })
     if (count === 0) throw conflict('Chỉ gửi lại được email ở trạng thái Gửi lỗi.')
     await audit(request, {

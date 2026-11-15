@@ -189,8 +189,9 @@ describe('POST /admin/email-deliveries/:id/retry', () => {
     })
   })
 
-  it('BOARD gửi lại không cần lý do', async () => {
-    expect((await call('POST', `/admin/email-deliveries/${ids.club_failed}/retry`, 'board')).statusCode).toBe(200)
+  it('BOARD gửi lại không cần lý do (form gửi chuỗi rỗng như giao diện)', async () => {
+    const response = await call('POST', `/admin/email-deliveries/${ids.club_failed}/retry`, 'board', { reason: '', incidentId: '' })
+    expect(response.statusCode).toBe(200)
     expect((await row(ids.club_failed)).status).toBe('PENDING')
   })
 
