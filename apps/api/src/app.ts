@@ -19,6 +19,7 @@ import { filesRoutes } from './modules/files/routes.js'
 import { createScanner } from './modules/files/scan.js'
 import { createS3Storage, type FileStorage } from './modules/files/storage.js'
 import { exportsRoutes } from './modules/exports/routes.js'
+import { documentsRoutes } from './modules/documents/routes.js'
 import { memberRoutes } from './modules/members/routes.js'
 import { portalRoutes } from './modules/portal/routes.js'
 import { recruitmentRoutes } from './modules/recruitment/routes.js'
@@ -29,6 +30,7 @@ export type AppDeps = { storage?: FileStorage }
 export function buildApp(config: AppConfig, deps: AppDeps = {}) {
   const app = Fastify({ logger: config.NODE_ENV !== 'test' })
   const storage = deps.storage ?? createS3Storage(config)
+  const scanner = createScanner(config)
 
   app.register(cors, { origin: config.WEB_URL, credentials: true })
   app.register(cookie)
@@ -49,8 +51,9 @@ export function buildApp(config: AppConfig, deps: AppDeps = {}) {
   app.register(eventsRoutes(config))
   app.register(aboutRoutes)
   app.register(memberRoutes(config))
-  app.register(filesRoutes({ storage, scanner: createScanner(config) }))
+  app.register(filesRoutes({ storage, scanner }))
   app.register(exportsRoutes({ storage }))
+  app.register(documentsRoutes({ storage, scanner }))
 
   app.register(recruitmentRoutes(config, { storage }))
 

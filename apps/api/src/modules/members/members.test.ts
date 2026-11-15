@@ -141,7 +141,7 @@ describe('T5: Quản lý thành viên (FLOW-13, RP-08, QĐ-3, QĐ-8)', () => {
     })
 
     it('BOARD xem được thành viên ở tất cả các ban', async () => {
-      const res = await call('GET', '/admin/members', tokens.board)
+      const res = await call('GET', `/admin/members?q=${tag}&pageSize=100`, tokens.board)
       expect(res.statusCode).toBe(200)
       const data = res.json()
       expect(data).toHaveProperty('items')
