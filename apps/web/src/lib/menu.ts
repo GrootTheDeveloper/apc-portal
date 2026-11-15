@@ -190,7 +190,24 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
   {
     label: 'Thành viên',
     items: [
-      { label: 'Danh sách thành viên', to: '/admin/members', roles: MANAGER_OR_BOARD },
+      {
+        label: 'Danh sách thành viên',
+        to: '/admin/members',
+        roles: MANAGER_OR_BOARD,
+        page: () =>
+          import('../pages/admin/members/list/AdminMemberListPage').then((m) => ({ Component: m.AdminMemberListPage })),
+        children: [
+          {
+            label: 'Chi tiết thành viên',
+            to: '/admin/members/:id',
+            roles: MANAGER_OR_BOARD,
+            page: () =>
+              import('../pages/admin/members/detail/AdminMemberDetailPage').then((m) => ({
+                Component: m.AdminMemberDetailPage,
+              })),
+          },
+        ],
+      },
       { label: 'Nhập từ CSV', to: '/admin/members/import', roles: BOARD },
     ],
   },
@@ -232,7 +249,41 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
       },
     ],
   },
-  { label: 'Sự kiện', items: [{ label: 'Sự kiện', to: '/admin/events', roles: MANAGER_OR_BOARD }] },
+  {
+    label: 'Sự kiện',
+    items: [
+      {
+        label: 'Sự kiện',
+        to: '/admin/events',
+        roles: MANAGER_OR_BOARD,
+        page: () =>
+          import('../pages/admin/events/AdminEventListPage').then((m) => ({ Component: m.AdminEventListPage })),
+        children: [
+          {
+            label: 'Tạo sự kiện',
+            to: '/admin/events/new',
+            roles: MANAGER_OR_BOARD,
+            page: () =>
+              import('../pages/admin/events/AdminEventNewPage').then((m) => ({ Component: m.AdminEventNewPage })),
+          },
+          {
+            label: 'Chi tiết sự kiện',
+            to: '/admin/events/:id',
+            roles: MANAGER_OR_BOARD,
+            page: () =>
+              import('../pages/admin/events/AdminEventDetailPage').then((m) => ({ Component: m.AdminEventDetailPage })),
+          },
+          {
+            label: 'Xem trước sự kiện',
+            to: '/admin/events/:id/preview',
+            roles: MANAGER_OR_BOARD,
+            page: () =>
+              import('../pages/admin/events/AdminEventPreviewPage').then((m) => ({ Component: m.AdminEventPreviewPage })),
+          },
+        ],
+      },
+    ],
+  },
   {
     label: 'Bài viết và thông báo',
     items: [
@@ -266,7 +317,19 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
   },
   {
     label: 'Dự án và sản phẩm',
-    items: [{ label: 'Dự án và sản phẩm', to: '/admin/content/projects', roles: MANAGER_OR_BOARD }],
+    items: [
+      {
+        label: 'Dự án và sản phẩm',
+        to: '/admin/content/projects',
+        roles: MANAGER_OR_BOARD,
+        page: () => import('../pages/admin/content/AdminProjectListPage').then((m) => ({ Component: m.AdminProjectListPage })),
+        children: [
+          { label: 'Thêm dự án', to: '/admin/content/projects/new', roles: MANAGER_OR_BOARD, page: () => import('../pages/admin/content/AdminProjectCreatePage').then((m) => ({ Component: m.AdminProjectCreatePage })) },
+          { label: 'Sửa dự án', to: '/admin/content/projects/:id', roles: MANAGER_OR_BOARD, page: () => import('../pages/admin/content/AdminProjectEditPage').then((m) => ({ Component: m.AdminProjectEditPage })) },
+          { label: 'Xem trước', to: '/admin/content/projects/:id/preview', roles: MANAGER_OR_BOARD, page: () => import('../pages/admin/content/AdminProjectPreviewPage').then((m) => ({ Component: m.AdminProjectPreviewPage })) },
+        ],
+      },
+    ],
   },
   {
     label: 'Tài liệu',

@@ -239,11 +239,12 @@ export async function replaceDocumentFile(request: AdminActor, rawId: unknown, r
   const { id } = documentParams.parse(rawId)
   const input = fileActionSchema.parse(rawInput)
   const user = currentUser(request)
-  await assertDocumentFile(input.storedFileId, user.id)
   return db.$transaction(async (tx) => {
     const document = await tx.document.findUnique({ where: { id } })
     if (!document) throw notFound()
+    // Kiểm phạm vi trước để người ngoài ban luôn nhận 404, không nhận lỗi về tệp.
     assertManaged(user, document)
+    await assertDocumentFile(input.storedFileId, user.id)
     assertFresh(input.updatedAt, document.updatedAt)
     if (document.status !== 'ACTIVE') throw conflict('Không thể thay tệp của tài liệu đã lưu trữ.')
     const version = await nextVersion(tx, id, input.storedFileId, user.id)

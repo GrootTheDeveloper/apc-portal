@@ -231,7 +231,7 @@ describe('D4 document library', () => {
     })).statusCode).toBe(409)
   })
 
-  it('keeps club-wide documents out of department managers' hands', async () => {
+  it('keeps club-wide documents out of department managers hands', async () => {
     const departmentA = users.managerA.roles.find((role) => role.role === 'DEPARTMENT_MANAGER')?.departmentId
     const file = await makeFile(users.board.id, 'club')
     const created = await call('POST', '/admin/documents', 'board', {

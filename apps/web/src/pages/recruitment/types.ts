@@ -84,8 +84,8 @@ export type ApplicationStatusHistoryItem = {
   fromStatus: ApplicationStatus
   toStatus: ApplicationStatus
   reason: string | null
-  changedById: string
-  changedBy: { id: string; fullName: string; username: string; avatarUrl: string | null }
+  changedById: string | null
+  changedBy: { id: string; fullName: string; username: string; avatarUrl: string | null } | null
   changedAt: string
 }
 
