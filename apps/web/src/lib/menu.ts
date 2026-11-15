@@ -414,7 +414,28 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
   },
   {
     label: 'Email giao dịch',
-    items: [{ label: 'Email giao dịch', to: '/admin/email-deliveries', roles: ADMIN_AREA }],
+    items: [
+      {
+        label: 'Email giao dịch',
+        to: '/admin/email-deliveries',
+        roles: ADMIN_AREA,
+        page: () =>
+          import('../pages/admin/email-deliveries/AdminEmailDeliveriesListPage').then((m) => ({
+            Component: m.AdminEmailDeliveriesListPage,
+          })),
+        children: [
+          {
+            label: 'Chi tiết email',
+            to: '/admin/email-deliveries/:id',
+            roles: ADMIN_AREA,
+            page: () =>
+              import('../pages/admin/email-deliveries/AdminEmailDeliveryDetailPage').then((m) => ({
+                Component: m.AdminEmailDeliveryDetailPage,
+              })),
+          },
+        ],
+      },
+    ],
   },
   { label: 'Dữ liệu cá nhân', items: [{ label: 'Dữ liệu cá nhân', to: '/admin/data-requests', roles: BOARD }] },
   { label: 'Audit log', items: [{ label: 'Audit log', to: '/admin/audit-logs', roles: BOARD_OR_TECH }] },

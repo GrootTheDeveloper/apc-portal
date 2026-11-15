@@ -1,10 +1,15 @@
-import type { FastifyBaseLogger } from 'fastify'
+import type { FastifyBaseLogger, FastifyRequest } from 'fastify'
 import nodemailer from 'nodemailer'
 import { z } from 'zod'
 
 import type { AppConfig } from '../../config.js'
 import { db } from '../../db/client.js'
 import type { Prisma } from '../../db/generated/client.js'
+import { conflict, notFound } from '../../lib/errors.js'
+import { pageArgs, pageQuery, toPage } from '../../lib/pagination.js'
+import { incidentIdSchema, reasonSchema } from '../accounts/service.js'
+import { AUDIT_ACTIONS, audit, AuditCategory, AuditResult } from '../audit/service.js'
+import { type AuthUser, departmentScope, hasRole } from '../auth/rbac.js'
 import { EMAIL_TYPES, templateFor, type RenderedEmail } from './templates.js'
 
 const enqueueSchema = z.object({
@@ -160,3 +165,114 @@ export function describeError(error: unknown) {
 }
 
 const cleanMessageId = (value: string | undefined) => value?.replace(/[<>\s]/g, '').slice(0, 200) || null
+
+// ─── TRANG THEO DÕI EMAIL (O3) ─────────────────────────────────────────────
+
+const filterSchema = pageQuery.extend({
+  status: z.enum(['PENDING', 'SENDING', 'RETRY', 'SENT', 'FAILED']).optional(),
+  type: z.enum(EMAIL_TYPES).optional(),
+  from: z.iso.datetime().optional(),
+  to: z.iso.datetime().optional(),
+})
+type Filter = z.infer<typeof filterSchema>
+const incidentSchema = z.object({ incidentId: incidentIdSchema, reason: reasonSchema })
+const idParams = z.object({ id: z.string().min(1).max(64) })
+
+const deliverySelect = {
+  id: true, type: true, recipient: true, status: true, attempts: true, nextAttemptAt: true,
+  lastError: true, createdAt: true, updatedAt: true, department: { select: { id: true, name: true } },
+} satisfies Prisma.NotificationDeliverySelect
+
+type DeliveryRow = Prisma.NotificationDeliveryGetPayload<{ select: typeof deliverySelect }>
+
+/** TECH_ADMIN chỉ thấy metadata: bỏ người nhận (Vai trò & quyền §8.7). refType/refId không bao giờ trả ra. */
+function toView({ recipient, ...rest }: DeliveryRow, withRecipient: boolean) {
+  return withRecipient ? { ...rest, recipient } : rest
+}
+
+const filterWhere = (q: Filter): Prisma.NotificationDeliveryWhereInput => ({
+  ...(q.status ? { status: q.status } : {}),
+  ...(q.type ? { type: q.type } : {}),
+  ...(q.from || q.to
+    ? { createdAt: { ...(q.from ? { gte: new Date(q.from) } : {}), ...(q.to ? { lte: new Date(q.to) } : {}) } }
+    : {}),
+})
+
+async function listPage(where: Prisma.NotificationDeliveryWhereInput, query: Filter, withRecipient: boolean) {
+  const [items, total] = await db.$transaction([
+    db.notificationDelivery.findMany({ where, select: deliverySelect, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], ...pageArgs(query) }),
+    db.notificationDelivery.count({ where }),
+  ])
+  return toPage(items.map((item) => toView(item, withRecipient)), total, query)
+}
+
+/** DEPARTMENT_MANAGER: ban mình; BOARD: tất cả. Lọc phạm vi ngay trong truy vấn. */
+export function listDeliveries(user: AuthUser, rawQuery: unknown) {
+  const query = filterSchema.parse(rawQuery)
+  return listPage({ ...filterWhere(query), ...departmentScope(user) }, query, true)
+}
+
+/** Phạm vi đã được `requireScope` kiểm ở route. */
+export async function getDelivery(rawParams: unknown) {
+  const { id } = idParams.parse(rawParams)
+  const row = await db.notificationDelivery.findUnique({ where: { id }, select: deliverySelect })
+  if (!row) throw notFound()
+  return toView(row, true)
+}
+
+/** TECH_ADMIN theo quyền INCIDENT: mã sự cố + lý do (422 nếu thiếu), ghi audit SECURITY, không trả người nhận. */
+export async function searchDeliveriesAsIncident(request: FastifyRequest, rawBody: unknown) {
+  const { incidentId, reason, ...rest } = incidentSchema.extend(filterSchema.shape).parse(rawBody ?? {})
+  const query = filterSchema.parse(rest)
+  const result = await listPage(filterWhere(query), query, false)
+  await audit(request, {
+    action: AUDIT_ACTIONS.SYSTEM_INCIDENT_ACCESS, targetType: 'EMAIL_DELIVERY',
+    category: AuditCategory.SECURITY, result: AuditResult.SUCCESS, incidentId, reason,
+    metadata: { status: query.status, type: query.type, total: result.total },
+  })
+  return result
+}
+
+export async function getDeliveryAsIncident(request: FastifyRequest, rawParams: unknown, rawBody: unknown) {
+  const { id } = idParams.parse(rawParams)
+  const { incidentId, reason } = incidentSchema.parse(rawBody ?? {})
+  const row = await db.notificationDelivery.findUnique({ where: { id }, select: deliverySelect })
+  if (!row) throw notFound()
+  await audit(request, {
+    action: AUDIT_ACTIONS.SYSTEM_INCIDENT_ACCESS, targetType: 'EMAIL_DELIVERY', targetId: id,
+    category: AuditCategory.SECURITY, result: AuditResult.SUCCESS, incidentId, reason,
+  })
+  return toView(row, false)
+}
+
+/**
+ * Gửi lại: chỉ FAILED → PENDING, đặt lại số lần thử. BOARD gửi được (lý do/mã sự cố tùy chọn);
+ * TECH_ADMIN bắt buộc mã sự cố + lý do. Quyền vai trò đã chặn ở route (DEPARTMENT_MANAGER: 403).
+ */
+export async function retryDelivery(request: FastifyRequest, user: AuthUser, rawParams: unknown, rawBody: unknown) {
+  const { id } = idParams.parse(rawParams)
+  const isBoard = hasRole(user, 'BOARD')
+  const body = z
+    .object({
+      reason: isBoard ? reasonSchema.optional() : reasonSchema,
+      incidentId: isBoard ? incidentIdSchema.optional() : incidentIdSchema,
+    })
+    .parse(rawBody ?? {})
+  return db.$transaction(async (tx) => {
+    const row = await tx.notificationDelivery.findUnique({ where: { id }, select: { type: true, attempts: true } })
+    if (!row) throw notFound()
+    // Điều kiện trạng thái nằm trong câu UPDATE: hai người bấm cùng lúc thì chỉ một người thành công.
+    const { count } = await tx.notificationDelivery.updateMany({
+      where: { id, status: 'FAILED' },
+      data: { status: 'PENDING', attempts: 0, nextAttemptAt: new Date(), lockedAt: null },
+    })
+    if (count === 0) throw conflict('Chỉ gửi lại được email ở trạng thái Gửi lỗi.')
+    await audit(request, {
+      action: AUDIT_ACTIONS.EMAIL_RESEND, targetType: 'EMAIL_DELIVERY', targetId: id,
+      category: isBoard ? AuditCategory.BUSINESS : AuditCategory.SECURITY, result: AuditResult.SUCCESS,
+      reason: body.reason ?? null, incidentId: body.incidentId ?? null,
+      metadata: { type: row.type, previousAttempts: row.attempts },
+    }, tx)
+    return { id, status: 'PENDING' as const }
+  })
+}
