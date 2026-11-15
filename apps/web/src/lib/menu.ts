@@ -177,7 +177,24 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
   {
     label: 'Thành viên',
     items: [
-      { label: 'Danh sách thành viên', to: '/admin/members', roles: MANAGER_OR_BOARD },
+      {
+        label: 'Danh sách thành viên',
+        to: '/admin/members',
+        roles: MANAGER_OR_BOARD,
+        page: () =>
+          import('../pages/admin/members/list/AdminMemberListPage').then((m) => ({ Component: m.AdminMemberListPage })),
+        children: [
+          {
+            label: 'Chi tiết thành viên',
+            to: '/admin/members/:id',
+            roles: MANAGER_OR_BOARD,
+            page: () =>
+              import('../pages/admin/members/detail/AdminMemberDetailPage').then((m) => ({
+                Component: m.AdminMemberDetailPage,
+              })),
+          },
+        ],
+      },
       { label: 'Nhập từ CSV', to: '/admin/members/import', roles: BOARD },
     ],
   },
