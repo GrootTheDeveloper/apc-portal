@@ -48,7 +48,7 @@ export function buildApp(config: AppConfig, deps: AppDeps = {}) {
   app.register(filesRoutes({ storage, scanner: createScanner(config) }))
   app.register(exportsRoutes({ storage }))
 
-  app.register(recruitmentRoutes(config))
+  app.register(recruitmentRoutes(config, { storage }))
 
   return app
 }
