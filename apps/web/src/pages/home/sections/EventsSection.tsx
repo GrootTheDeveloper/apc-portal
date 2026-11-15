@@ -5,8 +5,8 @@ import { eventPhoto } from '../../../lib/eventVisual'
 import { formatDateTime, formatTime, vnParts } from '../../../lib/format'
 import { Eyebrow } from '../../../components/Eyebrow'
 import { useApi } from '../../../hooks/useApi'
-import type { Page } from '../../../lib/api'
 import type { EventListItem } from '../../events/types'
+import type { HomeData } from '../../admin/organization/types'
 
 // Màu quét ngang khi rê vào từng hàng, xoay vòng theo bộ ba màu logo (gold thay bằng xanh than để chữ trắng đọc rõ).
 const SWEEPS = ['#C23B22', '#1568C9', '#081F3D']
@@ -20,12 +20,16 @@ function followPointer(event: MouseEvent<HTMLElement>) {
   row.style.setProperty('--my', `${event.clientY - rect.top}px`)
 }
 
-export function EventsSection() {
-  // 3 sự kiện sắp diễn ra gần nhất (E2); T4 sẽ chuyển khối này sang GET /public/home (QĐ-4).
-  const { data } = useApi<Page<EventListItem>>('/public/events?pageSize=3&upcoming=1')
-  const events = data?.items ?? []
+type EventsSectionProps = {
+  items?: EventListItem[]
+}
 
-  // Đang tải, lỗi hoặc chưa có sự kiện sắp diễn ra: ẩn cả khối, không để khoảng trống (FLOW-01)
+export function EventsSection({ items }: EventsSectionProps = {}) {
+  // 3 sự kiện nổi bật hoặc sắp diễn ra gần nhất từ GET /public/home (QĐ-4).
+  const home = useApi<HomeData>(items !== undefined ? null : '/public/home')
+  const events = items ?? home.data?.events ?? []
+
+  // Đang tải, lỗi hoặc chưa có sự kiện sắp diễn ra: ẩn cả khối, không để khoảng trống (FLOW-01, QĐ-4)
   if (events.length === 0) return null
 
   return (

@@ -1,6 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 
 import { AsyncState } from '../../components/AsyncState'
+import { buttonClass } from '../../components/buttonClass'
 import { useApi } from '../../hooks/useApi'
 import { ContactSection } from './sections/ContactSection'
 import { DepartmentsSection } from './sections/DepartmentsSection'
@@ -10,32 +12,62 @@ import type { AboutData } from './types'
 const PAGE_PATH = '/about'
 const DEFAULT_TITLE = 'APC Portal - Từ ý tưởng đến sản phẩm thật'
 
-/** PAGE-PUB-02 — Trang Về APC, dữ liệu từ GET /public/about (T2). */
+/** PAGE-PUB-02 — Trang Về APC, dữ liệu từ GET /public/about (T2) hoặc chế độ preview (T4). */
 export function AboutPage() {
+  const location = useLocation()
+  const preview = location.state?.preview as Partial<AboutData> | undefined
+
   const about = useApi<AboutData>('/public/about')
 
+  const effectiveData: AboutData | undefined = useMemo(() => {
+    if (preview) {
+      return {
+        name: preview.name ?? about.data?.name ?? '',
+        description: preview.description ?? about.data?.description ?? '',
+        mission: preview.mission ?? about.data?.mission ?? '',
+        contactEmail: preview.contactEmail ?? about.data?.contactEmail ?? '',
+        fanpage: preview.fanpage ?? about.data?.fanpage ?? '',
+        officialLinks: preview.officialLinks ?? about.data?.officialLinks ?? [],
+        departments: about.data?.departments ?? [],
+      }
+    }
+    return about.data ?? undefined
+  }, [preview, about.data])
+
   useEffect(() => {
-    if (!about.data) return
-    applyAboutSeo(about.data, canonicalUrl())
+    if (!effectiveData) return
+    applyAboutSeo(effectiveData, canonicalUrl())
     return () => {
       document.title = DEFAULT_TITLE
     }
-  }, [about.data])
+  }, [effectiveData])
 
   return (
     <main>
+      {preview && (
+        <div className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b-2 border-ink bg-apc-gold px-6 py-3 font-bold text-ink">
+          <div className="flex items-center gap-3">
+            <span className="font-code text-xs uppercase text-ink/75">{'// xem trước'}</span>
+            <span>Chế độ xem trước thông tin APC (Dữ liệu chưa lưu)</span>
+          </div>
+          <Link to="/admin/organization/profile" className={buttonClass('outline')}>
+            ← Quay lại chỉnh sửa
+          </Link>
+        </div>
+      )}
+
       <AsyncState
-        loading={about.loading}
-        error={about.error}
-        empty={!about.data}
+        loading={!preview && about.loading}
+        error={preview ? undefined : about.error}
+        empty={!effectiveData}
         emptyText="Chưa có thông tin giới thiệu."
         onRetry={about.reload}
       >
-        {about.data && (
+        {effectiveData && (
           <>
-            <IntroSection data={about.data} />
-            <DepartmentsSection departments={about.data.departments} />
-            <ContactSection data={about.data} />
+            <IntroSection data={effectiveData} />
+            <DepartmentsSection departments={effectiveData.departments} />
+            <ContactSection data={effectiveData} />
           </>
         )}
       </AsyncState>
