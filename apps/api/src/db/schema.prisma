@@ -368,6 +368,9 @@ model UserRole {
   revokeReason String? // A6: lý do thu hồi (lý do cấp nằm ở `reason`)
   decisions    RoleDecision[] // A6: quyết định DUAL tạo ra (GRANT) hoặc thu hồi (REVOKE) dòng này
 
+  warnedLevel        Int? // O6: mốc cảnh báo hết hạn đã gửi gần nhất (30 hoặc 7 ngày)
+  warnedForExpiresAt DateTime? // O6: giá trị expiresAt lúc báo; khác expiresAt hiện tại (đã gia hạn) thì coi như chưa báo
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

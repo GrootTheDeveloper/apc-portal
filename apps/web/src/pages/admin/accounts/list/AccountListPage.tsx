@@ -11,7 +11,7 @@ import { api, ApiError, type Page } from '../../../../lib/api'
 import { type AccountStatus, hasRole } from '../../../../lib/auth'
 import { formatDateTime } from '../../../../lib/format'
 import { fieldErrors } from '../../../../lib/formErrors'
-import { type AccountLocationState, type AccountRow, STATUS_LABEL } from '../accountTypes'
+import { type AccountLocationState, type AccountRow, type ManagedRole, ROLE_LABEL, STATUS_LABEL } from '../accountTypes'
 import { StatusBadge } from '../shared'
 
 const PAGE_SIZE = 20
@@ -115,6 +115,40 @@ function CreateAccountForm({ onCreated, onCancel }: { onCreated: (created: Creat
   )
 }
 
+type ExpiringRole = { id: string; userId: string; username: string; fullName: string; role: ManagedRole; expiresAt: string }
+
+/** O6: vai trò đặc quyền hết hạn trong 30 ngày; tự biến mất khi đã gia hạn hoặc đã có người kế nhiệm ACTIVE. Chỉ BOARD. */
+function ExpiringRolesBox() {
+  const expiring = useApi<{ items: ExpiringRole[] }>('/admin/accounts/expiring-roles')
+  if (expiring.loading) return null
+  if (expiring.error) return <p className="text-[15px] text-muted">Không tải được cảnh báo vai trò sắp hết hạn.</p>
+  const items = expiring.data?.items ?? []
+  if (items.length === 0) return null
+  return (
+    <section aria-labelledby="expiring-roles" className="rounded-2xl bg-apc-gold-pale p-5">
+      <h2 id="expiring-roles" className="font-display text-[24px] font-extrabold">
+        Vai trò sắp hết hạn
+      </h2>
+      <p className="mt-2 text-[15px]">Bàn giao cho người kế nhiệm hoặc gia hạn trước ngày hết hạn. Danh sách tự cập nhật khi đã xử lý.</p>
+      <ul className="mt-3 flex flex-col divide-y-2 divide-ink/10">
+        {items.map((item) => (
+          <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
+            <span>
+              <strong>{item.fullName}</strong> <span className="font-code text-[14px] text-muted">{item.username}</span> · {ROLE_LABEL[item.role]}
+            </span>
+            <span className="flex items-center gap-4">
+              <span className="font-bold">hết hạn {formatDateTime(item.expiresAt)}</span>
+              <Link className="font-bold text-apc-blue underline" to={`/admin/accounts/${item.userId}/roles`}>
+                Xử lý
+              </Link>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 /** PAGE-MGT-MEM-04 — danh sách tài khoản: tìm theo tên, lọc trạng thái, phân trang; bộ lọc lưu trên URL. */
 export function AccountListPage() {
   const { user } = useAuth()
@@ -156,6 +190,8 @@ export function AccountListPage() {
         </div>
         {board && !creating && <Button onClick={() => setCreating(true)}>+ Tạo tài khoản</Button>}
       </div>
+
+      {board && <ExpiringRolesBox />}
 
       {creating && (
         <CreateAccountForm

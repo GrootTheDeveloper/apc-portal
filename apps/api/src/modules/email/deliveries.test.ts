@@ -23,6 +23,7 @@ const userIds: string[] = []
 const departmentIds: string[] = []
 let deptA = ''
 let deptB = ''
+const LEFT_FAILED = ['PENDING', 'SENDING', 'SENT', 'RETRY']
 const ids = {} as Record<'a_failed' | 'a_sent' | 'a_retry' | 'b_failed' | 'club_failed', string>
 
 app.addHook('onRequest', async (request) => {
@@ -183,7 +184,9 @@ describe('POST /admin/email-deliveries/:id/retry', () => {
   it('BOARD gửi lại email FAILED: về PENDING, đặt lại số lần thử, ghi audit', async () => {
     const response = await call('POST', `/admin/email-deliveries/${ids.b_failed}/retry`, 'board', { reason: 'Đã sửa cấu hình SMTP' })
     expect(response.statusCode).toBe(200)
-    expect(await row(ids.b_failed)).toMatchObject({ status: 'PENDING', attempts: 0, lockedAt: null })
+    expect(response.json()).toMatchObject({ status: 'PENDING' })
+    // Worker của file test khác có thể nhận ngay email vừa về PENDING, nên chỉ kiểm nó đã rời FAILED.
+    expect(LEFT_FAILED).toContain((await row(ids.b_failed)).status)
     expect(await auditOf('email.resend', ids.b_failed)).toMatchObject({
       actorId: users.board.id, category: 'BUSINESS', result: 'SUCCESS', reason: 'Đã sửa cấu hình SMTP',
     })
@@ -192,11 +195,13 @@ describe('POST /admin/email-deliveries/:id/retry', () => {
   it('BOARD gửi lại không cần lý do (form gửi chuỗi rỗng như giao diện)', async () => {
     const response = await call('POST', `/admin/email-deliveries/${ids.club_failed}/retry`, 'board', { reason: '', incidentId: '' })
     expect(response.statusCode).toBe(200)
-    expect((await row(ids.club_failed)).status).toBe('PENDING')
+    expect(LEFT_FAILED).toContain((await row(ids.club_failed)).status)
   })
 
   it('gửi lại email đang SENT (hay bất kỳ trạng thái nào khác FAILED) trả 409 và không đổi dữ liệu', async () => {
-    for (const id of [ids.a_sent, ids.a_retry, ids.b_failed]) {
+    // Dòng PENDING hẹn giờ ở tương lai: worker không nhận, nên trạng thái đứng yên trong lúc test.
+    const pending = await makeDelivery('a-pending', deptA, 'PENDING', { nextAttemptAt: new Date(Date.now() + 3_600_000) })
+    for (const id of [ids.a_sent, ids.a_retry, pending]) {
       const before = await row(id)
       const response = await call('POST', `/admin/email-deliveries/${id}/retry`, 'board', {})
       expect(response.statusCode).toBe(409)

@@ -5,6 +5,7 @@ import { config as loadEnvFile } from 'dotenv'
 import { buildApp } from './app.js'
 import { loadConfig } from './config.js'
 import { startJob, type Job } from './lib/jobs.js'
+import { runRoleExpiry } from './modules/accounts/roleExpiry.js'
 import { endPastEvents } from './modules/events/service.js'
 import { createMailer, processEmailQueue } from './modules/email/service.js'
 import { createScanner } from './modules/files/scan.js'
@@ -41,6 +42,8 @@ try {
     jobs.push(startJob('round-close', 60_000, () => closeExpiredRecruitmentRounds(), app.log))
     // Chuyển sự kiện PUBLISHED đã qua endAt sang ENDED (E2).
     jobs.push(startJob('event-end', 60_000, () => endPastEvents(app.log), app.log))
+    // Vai trò quá hạn → EXPIRED và cảnh báo 30/7 ngày (O6).
+    jobs.push(startJob('role-expiry', 60 * 60_000, () => runRoleExpiry(), app.log))
     jobs.push(startJob('export-cleanup', 60 * 60_000, () => cleanupExpiredExports({ storage }), app.log))
     // Quét lại tệp PENDING do lúc upload clamd không phản hồi (D2).
     if (config.FILE_SCAN_MODE === 'clamav') {

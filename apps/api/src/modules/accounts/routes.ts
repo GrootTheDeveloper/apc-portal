@@ -15,6 +15,7 @@ import {
   revokeSessionsFromAdmin,
   unlockAccount,
 } from './service.js'
+import { listExpiringRoles } from './roleExpiry.js'
 import { cancelDecision, changeDepartment, executeDecision, getAccountRoles, grantRole, listDecisions, revokeRole } from './roles.js'
 
 // Quyền theo Vai trò & quyền §8.2 (phiếu A5):
@@ -36,6 +37,9 @@ export function accountRoutes(config: AppConfig) {
     app.get('/admin/accounts', { preHandler: BOARD_OR_TECH }, async (request) =>
       listAccounts(currentUser(request), request.query),
     )
+
+    // O6: vai trò đặc quyền sắp hết hạn (sitemap: BOARD thấy). TECH_ADMIN nhận email, không xem danh sách chung.
+    app.get('/admin/accounts/expiring-roles', { preHandler: BOARD }, async () => ({ items: await listExpiringRoles() }))
 
     app.get('/admin/accounts/departments', { preHandler: BOARD }, async () => listActiveDepartments())
 

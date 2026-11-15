@@ -29,6 +29,7 @@ export const AUDIT_ACTIONS = {
   ROLE_GRANT: 'role.grant',
   ROLE_REVOKE: 'role.revoke',
   ROLE_UPDATE_SCOPE: 'role.update_scope',
+  ROLE_EXPIRE: 'role.expire', // O6: tác vụ role-expiry chuyển ACTIVE quá hạn sang EXPIRED
   // Tuyển thành viên
   RECRUITMENT_CREATE_ROUND: 'recruitment.create_round',
   RECRUITMENT_UPDATE_ROUND: 'recruitment.update_round',

@@ -342,7 +342,6 @@ describe('T4 - Quản lý Ban chuyên môn (/admin/organization/departments)', (
 
 describe('T4 - API GET /public/home & QĐ-4, BR-11', () => {
   let post1Id: string
-  let post2Id: string
   let event1Id: string
   let project1Id: string
 
@@ -375,7 +374,6 @@ describe('T4 - API GET /public/home & QĐ-4, BR-11', () => {
       },
     })
     post1Id = post1.id
-    post2Id = post2.id
     postIds.push(post1.id, post2.id)
 
     // Tạo sự kiện sắp diễn ra
