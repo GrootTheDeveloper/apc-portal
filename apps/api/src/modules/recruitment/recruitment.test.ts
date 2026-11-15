@@ -1582,6 +1582,31 @@ describe('Recruitment Module (R2)', () => {
       expect(resSearch.json().items).toEqual([])
     })
 
+    it('POST /admin/recruitment/:id/applications/search: 401 khi chưa đăng nhập, 403 cho MEMBER, Manager Ban A không thấy hồ sơ Ban B', async () => {
+      const url = `/admin/recruitment/${r5RoundId}/applications/search`
+      const resUnauth = await app.inject({ method: 'POST', url, headers: { origin: ORIGIN }, payload: {} })
+      expect(resUnauth.statusCode).toBe(401)
+
+      const resMember = await app.inject({
+        method: 'POST',
+        url,
+        cookies: { [SESSION_COOKIE]: memberToken },
+        headers: { origin: ORIGIN },
+        payload: {},
+      })
+      expect(resMember.statusCode).toBe(403)
+
+      const resManager = await app.inject({
+        method: 'POST',
+        url,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+        headers: { origin: ORIGIN },
+        payload: { search: `SV-B-${tag}` },
+      })
+      expect(resManager.statusCode).toBe(200)
+      expect(resManager.json().total).toBe(0)
+    })
+
     it('POST /admin/recruitment/:id/applications/search: hỗ trợ lọc từ khóa và trạng thái qua body POST (OPS-11)', async () => {
       const res = await app.inject({
         method: 'POST',
