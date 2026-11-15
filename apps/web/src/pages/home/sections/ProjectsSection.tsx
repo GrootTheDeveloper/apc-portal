@@ -86,13 +86,14 @@ export function ProjectsSection() {
             <div className="photo relative aspect-[16/10] bg-[#0D2A50]">
               {featured.map((project, index) =>
                 project.thumbnailUrl ? (
+                  // Map fileId từ D2 thành URL public để hiển thị ảnh đúng
                   <img
                     key={project.slug}
                     alt={index === active ? `Giao diện ${project.title}` : ''}
                     className={`stage-photo absolute inset-0 h-full w-full object-cover ${index === active ? 'is-on' : ''}`}
                     height={288}
                     loading="lazy"
-                    src={project.thumbnailUrl}
+                    src={`/api/public/files/${project.thumbnailUrl}`}
                     width={512}
                   />
                 ) : (

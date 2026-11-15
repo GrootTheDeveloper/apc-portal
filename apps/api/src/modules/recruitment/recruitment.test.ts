@@ -9,12 +9,13 @@ import { createSession, SESSION_COOKIE } from '../auth/session.js'
 import { closeExpiredRecruitmentRounds } from './service.js'
 import { APPLICATION_STATUS_LABELS, EMAIL_TEMPLATES } from '../email/templates.js'
 import { publicCode } from '../../lib/ids.js'
-
+import { createMemoryStorage } from '../files/storage.js'
 
 let ipCounter = 200
 const nextIp = () => `10.8.${Math.floor(++ipCounter / 250)}.${ipCounter % 250}`
 const config = loadConfig({ NODE_ENV: 'test' })
-const app = buildApp(config)
+const { storage: testStorage } = createMemoryStorage()
+const app = buildApp(config, { storage: testStorage })
 const tag = randomUUID().slice(0, 8)
 const ORIGIN = config.WEB_URL
 
@@ -137,6 +138,7 @@ afterAll(async () => {
     })
   }
   if (createdUserIds.length > 0) {
+    await db.exportFile.deleteMany({ where: { createdById: { in: createdUserIds } } })
     await db.auditLog.deleteMany({ where: { actorId: { in: createdUserIds } } })
     await db.session.deleteMany({ where: { userId: { in: createdUserIds } } })
     await db.userRole.deleteMany({ where: { userId: { in: createdUserIds } } })
@@ -1342,6 +1344,19 @@ describe('Recruitment Module (R2)', () => {
       expect(email?.status).toBe('PENDING')
       expect(email?.departmentId).toBe(deptAId) // Truyền đúng departmentId vào hàng đợi
 
+      // Lịch sử trạng thái (R4/R5): ghi nhận ứng viên tự rút đơn với changedById là null
+      const history = await db.applicationStatusHistory.findFirst({
+        where: {
+          applicationId: updated.id,
+          toStatus: 'WITHDRAWN',
+        },
+      })
+      expect(history).not.toBeNull()
+      expect(history?.fromStatus).toBe('NEW')
+      expect(history?.toStatus).toBe('WITHDRAWN')
+      expect(history?.reason).toBe('Ứng viên tự rút đơn')
+      expect(history?.changedById).toBeNull()
+
       // Kiểm tra nội dung email: không để mã trên URL hay thông báo rút (QĐ-7 & OPS-11), nhãn tiếng Việt
       const renderedEmail = await EMAIL_TEMPLATES.APPLICATION_STATUS(updated.id)
       expect(renderedEmail).not.toBeNull()
@@ -1434,6 +1449,686 @@ describe('Recruitment Module (R2)', () => {
         },
       })
       expect(emailCount).toBe(1)
+    })
+  })
+
+  describe('Xét hồ sơ ứng tuyển (R5)', () => {
+    let r5RoundId: string
+    let appDeptAId: string
+    let appDeptBId: string
+
+    beforeAll(async () => {
+      // Tạo một đợt tuyển OPEN có cả 2 ban deptAId và deptBId
+      const round = await db.recruitmentRound.create({
+        data: {
+          title: `Đợt R5 Test ${tag}`,
+          slug: `r5-round-${tag}`,
+          description: 'Mô tả đợt tuyển R5',
+          status: 'OPEN',
+          opensAt: new Date(Date.now() - 3600000),
+          closesAt: new Date(Date.now() + 86400000 * 7),
+          createdById: createdUserIds[0] as string,
+          departments: {
+            connect: [{ id: deptAId }, { id: deptBId }],
+          },
+        },
+      })
+      r5RoundId = round.id
+      createdRoundIds.push(round.id)
+
+      // Tạo hồ sơ nộp vào Ban A
+      const appA = await db.membershipApplication.create({
+        data: {
+          profileCode: publicCode(),
+          recruitmentRoundId: r5RoundId,
+          applicantName: 'Ứng viên Ban A',
+          applicantEmail: `applicant-a-${tag}@test.local`,
+          studentId: `SV-A-${tag}`,
+          desiredDepartmentId: deptAId,
+          status: 'NEW',
+        },
+      })
+      appDeptAId = appA.id
+
+      // Tạo hồ sơ nộp vào Ban B
+      const appB = await db.membershipApplication.create({
+        data: {
+          profileCode: publicCode(),
+          recruitmentRoundId: r5RoundId,
+          applicantName: 'Ứng viên Ban B',
+          applicantEmail: `applicant-b-${tag}@test.local`,
+          studentId: `SV-B-${tag}`,
+          desiredDepartmentId: deptBId,
+          status: 'NEW',
+        },
+      })
+      appDeptBId = appB.id
+    })
+
+    it('GET /admin/recruitment/:id/applications: từ chối 401 khi chưa đăng nhập, 403 cho MEMBER', async () => {
+      const resUnauth = await app.inject({
+        method: 'GET',
+        url: `/admin/recruitment/${r5RoundId}/applications`,
+      })
+      expect(resUnauth.statusCode).toBe(401)
+
+      const resMember = await app.inject({
+        method: 'GET',
+        url: `/admin/recruitment/${r5RoundId}/applications`,
+        cookies: { [SESSION_COOKIE]: memberToken },
+      })
+      expect(resMember.statusCode).toBe(403)
+    })
+
+    it('GET /admin/recruitment/:id/applications: BOARD thấy tất cả, Manager Ban A chỉ thấy hồ sơ Ban A', async () => {
+      // BOARD
+      const resBoard = await app.inject({
+        method: 'GET',
+        url: `/admin/recruitment/${r5RoundId}/applications`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+      })
+      expect(resBoard.statusCode).toBe(200)
+      const dataBoard = resBoard.json()
+      expect(dataBoard.total).toBe(2)
+      expect(dataBoard.items.some((i: any) => i.id === appDeptAId)).toBe(true)
+      expect(dataBoard.items.some((i: any) => i.id === appDeptBId)).toBe(true)
+
+      // Manager Ban A
+      const resManager = await app.inject({
+        method: 'GET',
+        url: `/admin/recruitment/${r5RoundId}/applications`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+      })
+      expect(resManager.statusCode).toBe(200)
+      const dataManager = resManager.json()
+      expect(dataManager.total).toBe(1)
+      expect(dataManager.items[0]?.id).toBe(appDeptAId)
+      expect(dataManager.items[0]?.desiredDepartmentId).toBe(deptAId)
+    })
+
+    it('Trưởng ban mở đợt tuyển chưa có hồ sơ nào nộp vào ban mình nhận danh sách rỗng 200 (total = 0, items = []) thay vì 404 (Task 6)', async () => {
+      const emptyRound = await db.recruitmentRound.create({
+        data: {
+          title: `Đợt rỗng ${tag}`,
+          slug: `round-empty-${tag}`,
+          description: 'Mô tả đợt rỗng',
+          status: 'OPEN',
+          opensAt: new Date(Date.now() - 3600000),
+          closesAt: new Date(Date.now() + 86400000),
+          createdById: createdUserIds[0]!,
+        },
+      })
+      createdRoundIds.push(emptyRound.id)
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/admin/recruitment/${emptyRound.id}/applications`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+      })
+      expect(res.statusCode).toBe(200)
+      const data = res.json()
+      expect(data.total).toBe(0)
+      expect(data.items).toEqual([])
+
+      const resSearch = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${emptyRound.id}/applications/search`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+        headers: { origin: ORIGIN },
+        payload: {},
+      })
+      expect(resSearch.statusCode).toBe(200)
+      expect(resSearch.json().total).toBe(0)
+      expect(resSearch.json().items).toEqual([])
+    })
+
+    it('POST /admin/recruitment/:id/applications/search: 401 khi chưa đăng nhập, 403 cho MEMBER, Manager Ban A không thấy hồ sơ Ban B', async () => {
+      const url = `/admin/recruitment/${r5RoundId}/applications/search`
+      const resUnauth = await app.inject({ method: 'POST', url, headers: { origin: ORIGIN }, payload: {} })
+      expect(resUnauth.statusCode).toBe(401)
+
+      const resMember = await app.inject({
+        method: 'POST',
+        url,
+        cookies: { [SESSION_COOKIE]: memberToken },
+        headers: { origin: ORIGIN },
+        payload: {},
+      })
+      expect(resMember.statusCode).toBe(403)
+
+      const resManager = await app.inject({
+        method: 'POST',
+        url,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+        headers: { origin: ORIGIN },
+        payload: { search: `SV-B-${tag}` },
+      })
+      expect(resManager.statusCode).toBe(200)
+      expect(resManager.json().total).toBe(0)
+    })
+
+    it('POST /admin/recruitment/:id/applications/search: hỗ trợ lọc từ khóa và trạng thái qua body POST (OPS-11)', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r5RoundId}/applications/search`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          search: `SV-A-${tag}`,
+          status: 'NEW',
+        },
+      })
+      expect(res.statusCode).toBe(200)
+      const data = res.json()
+      expect(data.total).toBe(1)
+      expect(data.items[0]?.id).toBe(appDeptAId)
+    })
+
+    it('GET /admin/recruitment/:id/applications/:applicationId: Manager Ban A mở hồ sơ Ban B nhận 404 (docs/02 §12)', async () => {
+      // Manager Ban A mở hồ sơ Ban A -> 200
+      const resA = await app.inject({
+        method: 'GET',
+        url: `/admin/recruitment/${r5RoundId}/applications/${appDeptAId}`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+      })
+      expect(resA.statusCode).toBe(200)
+      const dataA = resA.json()
+      expect(dataA.id).toBe(appDeptAId)
+      // Kiểm tra bảo mật: không lộ idempotencyKey hay các cột nội bộ (Task 2)
+      expect(dataA.idempotencyKey).toBeUndefined()
+      expect(Object.keys(dataA)).not.toContain('idempotencyKey')
+
+      // Manager Ban A mở hồ sơ Ban B -> 404
+      const resB = await app.inject({
+        method: 'GET',
+        url: `/admin/recruitment/${r5RoundId}/applications/${appDeptBId}`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+      })
+      expect(resB.statusCode).toBe(404)
+    })
+
+    it('PATCH /admin/recruitment/:id/applications/:applicationId/review: cập nhật ghi chú nội bộ và chống xung đột đồng thời', async () => {
+      // Manager Ban A mở hồ sơ Ban B sửa ghi chú -> 404
+      const resScopeFail = await app.inject({
+        method: 'PATCH',
+        url: `/admin/recruitment/${r5RoundId}/applications/${appDeptBId}/review`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          internalNote: 'Ghi chú thử nghiệm',
+          updatedAt: new Date().toISOString(),
+        },
+      })
+      expect(resScopeFail.statusCode).toBe(404)
+
+      // Gửi sai updatedAt -> 409
+      const resConflict = await app.inject({
+        method: 'PATCH',
+        url: `/admin/recruitment/${r5RoundId}/applications/${appDeptAId}/review`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          internalNote: 'Ghi chú thử nghiệm',
+          updatedAt: new Date(Date.now() - 100000).toISOString(),
+        },
+      })
+      expect(resConflict.statusCode).toBe(409)
+
+      // Cập nhật thành công
+      const appBeforeReview = await db.membershipApplication.findUniqueOrThrow({
+        where: { id: appDeptAId },
+      })
+      const resSuccess = await app.inject({
+        method: 'PATCH',
+        url: `/admin/recruitment/${r5RoundId}/applications/${appDeptAId}/review`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          internalNote: 'Ứng viên có kỹ năng tốt',
+          updatedAt: appBeforeReview.updatedAt.toISOString(),
+        },
+      })
+      expect(resSuccess.statusCode).toBe(200)
+      const data = resSuccess.json()
+      expect(data.internalNote).toBe('Ứng viên có kỹ năng tốt')
+      expect(data.reviewedById).toBeDefined()
+      expect(data.reviewedAt).toBeDefined()
+    })
+
+    it('POST /admin/recruitment/:id/applications/:applicationId/status: bước chuyển sai trả 409 (BR-16)', async () => {
+      // NEW -> ACCEPTED (bước chuyển sai, phải qua REVIEWING hoặc WITHDRAWN)
+      const appForInvalidTransition = await db.membershipApplication.findUniqueOrThrow({
+        where: { id: appDeptAId },
+      })
+      const res = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r5RoundId}/applications/${appDeptAId}/status`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          status: 'ACCEPTED',
+          updatedAt: appForInvalidTransition.updatedAt.toISOString(),
+        },
+      })
+      expect(res.statusCode).toBe(409)
+    })
+
+    it('POST /admin/recruitment/:id/applications/:applicationId/status: Manager Ban A chuyển NEW -> REVIEWING thành công, ghi lịch sử và KHÔNG gửi email', async () => {
+      const appBeforeReviewing = await db.membershipApplication.findUniqueOrThrow({
+        where: { id: appDeptAId },
+      })
+      const res = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r5RoundId}/applications/${appDeptAId}/status`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          status: 'REVIEWING',
+          updatedAt: appBeforeReviewing.updatedAt.toISOString(),
+        },
+      })
+      expect(res.statusCode).toBe(200)
+      const data = res.json()
+      expect(data.status).toBe('REVIEWING')
+      expect(data.history).toBeDefined()
+      expect(data.history.fromStatus).toBe('NEW')
+      expect(data.history.toStatus).toBe('REVIEWING')
+
+      // Kiểm tra database có lịch sử
+      const histories = await db.applicationStatusHistory.findMany({
+        where: { applicationId: appDeptAId },
+      })
+      expect(histories.length).toBe(1)
+      expect(histories[0]?.toStatus).toBe('REVIEWING')
+
+      // NEW -> REVIEWING KHÔNG gửi email
+      const emails = await db.notificationDelivery.findMany({
+        where: { refType: 'APPLICATION', refId: appDeptAId, type: 'APPLICATION_STATUS' },
+      })
+      expect(emails.length).toBe(0)
+    })
+
+    it('POST /admin/recruitment/:id/applications/:applicationId/status: Manager Ban A chuyển REVIEWING -> INTERVIEW gửi email thông báo', async () => {
+      const appBeforeInterview = await db.membershipApplication.findUniqueOrThrow({
+        where: { id: appDeptAId },
+      })
+      const res = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r5RoundId}/applications/${appDeptAId}/status`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          status: 'INTERVIEW',
+          reason: 'Hồ sơ đạt yêu cầu phỏng vấn',
+          updatedAt: appBeforeInterview.updatedAt.toISOString(),
+        },
+      })
+      expect(res.statusCode).toBe(200)
+      expect(res.json().status).toBe('INTERVIEW')
+
+      // CÓ gửi email thông báo cho ứng viên
+      const emails = await db.notificationDelivery.findMany({
+        where: { refType: 'APPLICATION', refId: appDeptAId, type: 'APPLICATION_STATUS' },
+      })
+      expect(emails.length).toBe(1)
+    })
+
+    it('POST /admin/recruitment/:id/applications/:applicationId/status: Manager cố chốt ACCEPTED hoặc REJECTED bị từ chối 403 (docs/02 §8.1)', async () => {
+      const appBeforeForbidden = await db.membershipApplication.findUniqueOrThrow({
+        where: { id: appDeptAId },
+      })
+      const resAccepted = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r5RoundId}/applications/${appDeptAId}/status`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          status: 'ACCEPTED',
+          updatedAt: appBeforeForbidden.updatedAt.toISOString(),
+        },
+      })
+      expect(resAccepted.statusCode).toBe(403)
+
+      const resRejected = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r5RoundId}/applications/${appDeptAId}/status`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          status: 'REJECTED',
+          updatedAt: appBeforeForbidden.updatedAt.toISOString(),
+        },
+      })
+      expect(resRejected.statusCode).toBe(403)
+    })
+
+    it('POST /admin/recruitment/:id/applications/:applicationId/status: BOARD chốt ACCEPTED thành công và ghi audit RECRUITMENT_FINALIZE', async () => {
+      const appBeforeAccept = await db.membershipApplication.findUniqueOrThrow({
+        where: { id: appDeptAId },
+      })
+      const res = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r5RoundId}/applications/${appDeptAId}/status`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          status: 'ACCEPTED',
+          updatedAt: appBeforeAccept.updatedAt.toISOString(),
+        },
+      })
+      expect(res.statusCode).toBe(200)
+      expect(res.json().status).toBe('ACCEPTED')
+
+      // Audit log chốt kết quả
+      const auditLog = await db.auditLog.findFirst({
+        where: {
+          action: AUDIT_ACTIONS.RECRUITMENT_FINALIZE,
+          targetId: appDeptAId,
+        },
+      })
+      expect(auditLog).toBeDefined()
+
+      // Hồ sơ ACCEPTED là trạng thái cuối, cố chuyển tiếp nhận 409
+      const appAfterAccept = await db.membershipApplication.findUniqueOrThrow({
+        where: { id: appDeptAId },
+      })
+      const resPostTerminal = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r5RoundId}/applications/${appDeptAId}/status`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          status: 'REJECTED',
+          updatedAt: appAfterAccept.updatedAt.toISOString(),
+        },
+      })
+      expect(resPostTerminal.statusCode).toBe(409)
+    })
+
+    it('POST /admin/recruitment/:id/applications/:applicationId/status: BOARD rút đơn thay ứng viên bắt buộc lý do (reason)', async () => {
+      const appDeptBRecord = await db.membershipApplication.findUniqueOrThrow({
+        where: { id: appDeptBId },
+      })
+      // Rút đơn trên appDeptB (đang ở NEW) nhưng không có lý do -> 422
+      const resNoReason = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r5RoundId}/applications/${appDeptBId}/status`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          status: 'WITHDRAWN',
+          reason: '',
+          updatedAt: appDeptBRecord.updatedAt.toISOString(),
+        },
+      })
+      expect(resNoReason.statusCode).toBe(422)
+
+      // Rút đơn kèm lý do -> 200
+      const resWithReason = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r5RoundId}/applications/${appDeptBId}/status`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          status: 'WITHDRAWN',
+          reason: 'Ứng viên gửi email yêu cầu rút đơn',
+          updatedAt: appDeptBRecord.updatedAt.toISOString(),
+        },
+      })
+      expect(resWithReason.statusCode).toBe(200)
+      expect(resWithReason.json().status).toBe('WITHDRAWN')
+
+      // Kiểm tra lịch sử có ghi lý do
+      const history = await db.applicationStatusHistory.findFirst({
+        where: { applicationId: appDeptBId, toStatus: 'WITHDRAWN' },
+      })
+      expect(history?.reason).toBe('Ứng viên gửi email yêu cầu rút đơn')
+    })
+
+    it('POST /admin/recruitment/:id/applications/export: xuất CSV danh sách hồ sơ bằng createExport (D6) và tải file bảo vệ', async () => {
+      // Manager Ban A chỉ xuất hồ sơ Ban A
+      const resManager = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r5RoundId}/applications/export`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+        headers: { origin: ORIGIN },
+      })
+      expect(resManager.statusCode).toBe(200)
+      const dataManager = resManager.json()
+      expect(dataManager.rowCount).toBe(1)
+      expect(dataManager.status).toBe('READY')
+      expect(dataManager.id).toBeDefined()
+      expect(dataManager.filename).toBeDefined()
+
+      // Tải file export qua endpoint bảo vệ D6 (/portal/exports/:id/download)
+      const dlManager = await app.inject({
+        method: 'GET',
+        url: `/portal/exports/${dataManager.id}/download`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+      })
+      expect(dlManager.statusCode).toBe(200)
+      expect(dlManager.headers['content-type']).toContain('text/csv')
+      expect(dlManager.body.startsWith('\uFEFF')).toBe(true)
+      expect(dlManager.body).toContain('Ứng viên Ban A')
+      expect(dlManager.body).not.toContain('Ứng viên Ban B')
+
+      // BOARD xuất được cả Ban A và Ban B
+      const resBoard = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r5RoundId}/applications/export`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+        headers: { origin: ORIGIN },
+      })
+      expect(resBoard.statusCode).toBe(200)
+      const dataBoard = resBoard.json()
+      expect(dataBoard.rowCount).toBe(2)
+      expect(dataBoard.status).toBe('READY')
+      expect(dataBoard.id).toBeDefined()
+
+      const dlBoard = await app.inject({
+        method: 'GET',
+        url: `/portal/exports/${dataBoard.id}/download`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+      })
+      expect(dlBoard.statusCode).toBe(200)
+      expect(dlBoard.body.startsWith('\uFEFF')).toBe(true)
+      expect(dlBoard.body).toContain('Ứng viên Ban A')
+      expect(dlBoard.body).toContain('Ứng viên Ban B')
+
+      // Người dùng chưa đăng nhập không tải được
+      const dlNoAuth = await app.inject({
+        method: 'GET',
+        url: `/portal/exports/${dataBoard.id}/download`,
+      })
+      expect(dlNoAuth.statusCode).toBe(401)
+
+      // Route GET export bị bỏ theo OPS-11 (trả về 404), web chỉ dùng POST
+      const resGet = await app.inject({
+        method: 'GET',
+        url: `/admin/recruitment/${r5RoundId}/applications/export`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+      })
+      expect(resGet.statusCode).toBe(404)
+    })
+
+    it('Tích hợp Email & Audit (QĐ-7, NTF-01, B1): mẫu email tiếng Việt không lộ mã hồ sơ, audit không lưu thông tin nhạy cảm', async () => {
+      // 1. Kiểm tra mẫu email APPLICATION_STATUS
+      const emailContent = await EMAIL_TEMPLATES.APPLICATION_STATUS(appDeptAId)
+      expect(emailContent).toBeDefined()
+      expect(emailContent?.subject).toContain('Cập nhật trạng thái hồ sơ tuyển thành viên')
+      expect(emailContent?.text).toContain('Đã chấp nhận')
+      expect(emailContent?.text).toContain('/recruitment/application-lookup')
+      // Tuyệt đối không chứa mã tra cứu profileCode hay ghi chú nội bộ (BR-07, QĐ-7)
+      const appRecord = await db.membershipApplication.findUniqueOrThrow({
+        where: { id: appDeptAId },
+        select: { profileCode: true, internalNote: true },
+      })
+      expect(emailContent?.text).not.toContain(appRecord.profileCode)
+      expect(emailContent?.html).not.toContain(appRecord.profileCode)
+      if (appRecord.internalNote) {
+        expect(emailContent?.text).not.toContain(appRecord.internalNote)
+        expect(emailContent?.html).not.toContain(appRecord.internalNote)
+      }
+
+      // 2. Kiểm tra Audit logs liên quan đến hồ sơ: không chứa mã hồ sơ trong metadata (B1, docs/02 §11)
+      const audits = await db.auditLog.findMany({
+        where: {
+          targetType: 'APPLICATION',
+          targetId: appDeptAId,
+        },
+      })
+      expect(audits.length).toBeGreaterThan(0)
+      for (const a of audits) {
+        const metaStr = JSON.stringify(a.metadata ?? {})
+        expect(metaStr).not.toContain(appRecord.profileCode)
+        if (appRecord.internalNote) {
+          expect(metaStr).not.toContain(appRecord.internalNote)
+        }
+      }
+    })
+
+    it('Mỗi bước chuyển hợp lệ tạo đúng một dòng lịch sử trong database với đầy đủ thông tin', async () => {
+      const histories = await db.applicationStatusHistory.findMany({
+        where: { applicationId: appDeptAId },
+        orderBy: { changedAt: 'asc' },
+      })
+      // 3 bước chuyển: NEW -> REVIEWING -> INTERVIEW -> ACCEPTED
+      expect(histories.length).toBe(3)
+      expect(histories[0]?.fromStatus).toBe('NEW')
+      expect(histories[0]?.toStatus).toBe('REVIEWING')
+      expect(histories[1]?.fromStatus).toBe('REVIEWING')
+      expect(histories[1]?.toStatus).toBe('INTERVIEW')
+      expect(histories[2]?.fromStatus).toBe('INTERVIEW')
+      expect(histories[2]?.toStatus).toBe('ACCEPTED')
+      expect(histories.every((h) => Boolean(h.changedById))).toBe(true)
+    })
+
+    it('Ghi chú nội bộ và thông tin đánh giá không bị lộ trong API tra cứu công khai POST /public/applications/lookup (BR-07)', async () => {
+      const appRecord = await db.membershipApplication.findUniqueOrThrow({
+        where: { id: appDeptAId },
+        select: { applicantEmail: true, profileCode: true, internalNote: true },
+      })
+      expect(appRecord.internalNote).toBeTruthy()
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/public/applications/lookup',
+        headers: { origin: ORIGIN, 'x-forwarded-for': nextIp() },
+        payload: {
+          email: appRecord.applicantEmail,
+          code: appRecord.profileCode,
+        },
+      })
+
+      expect(res.statusCode).toBe(200)
+      const data = res.json()
+      expect(data.internalNote).toBeUndefined()
+      expect(data.reviewedById).toBeUndefined()
+      expect(data.reviewedAt).toBeUndefined()
+      expect(data.answers).toBeUndefined()
+      expect(Object.keys(data)).not.toContain('internalNote')
+    })
+
+    it('Hai người cùng sửa một hồ sơ đồng thời: người lưu sau nhận 409 (chuyển trạng thái & ghi chú)', async () => {
+      // 1. Race condition trên chuyển trạng thái (POST /status)
+      const concurrentApp = await db.membershipApplication.create({
+        data: {
+          profileCode: publicCode(),
+          recruitmentRoundId: r5RoundId,
+          applicantName: 'Ứng viên Concurrency',
+          applicantEmail: `applicant-race-${tag}@test.local`,
+          studentId: `SV-RACE-${tag}`,
+          desiredDepartmentId: deptAId,
+          status: 'NEW',
+        },
+      })
+
+      // Cả hai người đồng thời gửi request chuyển NEW -> REVIEWING kèm cùng updatedAt
+      const [statusRes1, statusRes2] = await Promise.all([
+        app.inject({
+          method: 'POST',
+          url: `/admin/recruitment/${r5RoundId}/applications/${concurrentApp.id}/status`,
+          cookies: { [SESSION_COOKIE]: boardToken },
+          headers: { origin: ORIGIN },
+          payload: {
+            status: 'REVIEWING',
+            updatedAt: concurrentApp.updatedAt.toISOString(),
+          },
+        }),
+        app.inject({
+          method: 'POST',
+          url: `/admin/recruitment/${r5RoundId}/applications/${concurrentApp.id}/status`,
+          cookies: { [SESSION_COOKIE]: boardToken },
+          headers: { origin: ORIGIN },
+          payload: {
+            status: 'REVIEWING',
+            updatedAt: concurrentApp.updatedAt.toISOString(),
+          },
+        }),
+      ])
+
+      const statusCodes = [statusRes1.statusCode, statusRes2.statusCode].sort()
+      // Một người thành công (200), người lưu sau nhận xung đột (409)
+      expect(statusCodes).toEqual([200, 409])
+
+      // 2. Concurrency trên sửa ghi chú nội bộ (PATCH /review)
+      const freshApp = await db.membershipApplication.findUniqueOrThrow({
+        where: { id: concurrentApp.id },
+      })
+      const staleUpdatedAt = freshApp.updatedAt.toISOString()
+
+      // Người thứ nhất lưu ghi chú thành công
+      const reviewRes1 = await app.inject({
+        method: 'PATCH',
+        url: `/admin/recruitment/${r5RoundId}/applications/${concurrentApp.id}/review`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          internalNote: 'Ghi chú của người 1',
+          updatedAt: staleUpdatedAt,
+        },
+      })
+      expect(reviewRes1.statusCode).toBe(200)
+
+      // Người thứ hai gửi lưu ghi chú dựa trên dữ liệu cũ trước khi tải lại -> nhận 409
+      const reviewRes2 = await app.inject({
+        method: 'PATCH',
+        url: `/admin/recruitment/${r5RoundId}/applications/${concurrentApp.id}/review`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          internalNote: 'Ghi chú của người 2',
+          updatedAt: staleUpdatedAt,
+        },
+      })
+      expect(reviewRes2.statusCode).toBe(409)
+      expect(reviewRes2.json().error).toBe('conflict')
+    })
+
+    it('Bắt buộc có updatedAt khi đổi trạng thái hoặc cập nhật đánh giá (STATE-09), thiếu trả 422', async () => {
+      // 1. POST /status thiếu updatedAt -> 422
+      const resStatusNoUpdatedAt = await app.inject({
+        method: 'POST',
+        url: `/admin/recruitment/${r5RoundId}/applications/${appDeptAId}/status`,
+        cookies: { [SESSION_COOKIE]: boardToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          status: 'REVIEWING',
+        },
+      })
+      expect(resStatusNoUpdatedAt.statusCode).toBe(422)
+
+      // 2. PATCH /review thiếu updatedAt -> 422
+      const resReviewNoUpdatedAt = await app.inject({
+        method: 'PATCH',
+        url: `/admin/recruitment/${r5RoundId}/applications/${appDeptAId}/review`,
+        cookies: { [SESSION_COOKIE]: managerAToken },
+        headers: { origin: ORIGIN },
+        payload: {
+          internalNote: 'Thiếu updatedAt',
+        },
+      })
+      expect(resReviewNoUpdatedAt.statusCode).toBe(422)
     })
   })
 })

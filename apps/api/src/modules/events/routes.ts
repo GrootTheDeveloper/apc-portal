@@ -7,19 +7,23 @@ import {
   createLookupAttemptLimiter,
   createSourceIpLimiter,
 } from '../../lib/rateLimit.js'
-import { requireRole, requireScope } from '../auth/rbac.js'
+import { requireAuth, requireRole, requireScope } from '../auth/rbac.js'
 import {
   archiveEvent,
   cancelEvent,
   cancelGuestRegistration,
+  cancelMemberRegistration,
   createEvent,
   getAdminEvent,
+  getPortalEvent,
   getPublicEventBySlug,
   listAdminEvents,
+  listPortalEvents,
   listPublicEvents,
   lookupGuestRegistration,
   publishEvent,
   registerGuest,
+  registerMember,
   updateEvent,
 } from './service.js'
 
@@ -101,6 +105,39 @@ export function eventsRoutes(config: AppConfig) {
       { preHandler: [limitPerSourceIp, guestAttempts.limit] },
       guestAttempts.wrap(async (request) => cancelGuestRegistration(request.body)),
     )
+
+    // ─── PORTAL: THÀNH VIÊN (E5) ───────────────────────────────────────────
+    // Thành viên đã đăng nhập (requireAuth — tài khoản chờ kích hoạt bị chặn 403). Phạm vi xem lọc
+    // ngay trong truy vấn theo docs/plan E5: PUBLIC, CLUB, và DEPARTMENT của ban mình; mở thẳng link
+    // ngoài phạm vi trả 404, không trả 403 (docs/02 mục 12). Không cần giới hạn tần suất như các
+    // route công khai: mỗi lượt đều gắn tài khoản, lạm dụng truy được về người.
+
+    /** Danh sách sự kiện cho thành viên (PAGE-MEM-04). Query: page, pageSize, type (tùy chọn), month=YYYY-MM (chế độ lịch). */
+    app.get('/portal/events', { preHandler: requireAuth }, async (request) =>
+      listPortalEvents(request, request.query),
+    )
+
+    /** Chi tiết sự kiện cho thành viên (PAGE-MEM-05), kèm đăng ký hiện có của chính người xem. */
+    app.get('/portal/events/:id', { preHandler: requireAuth }, async (request) => {
+      const { id } = request.params as { id: string }
+      return getPortalEvent(request, id)
+    })
+
+    /**
+     * Thành viên đăng ký sự kiện (FLOW-14 luồng 1): gắn userId, cùng các kiểm tra với khách (thời gian,
+     * sức chứa, phạm vi xem). Idempotent: đã đăng ký trả 200 kèm trạng thái hiện tại, chưa thì 201.
+     */
+    app.post('/portal/events/:id/registrations', { preHandler: requireAuth }, async (request, reply) => {
+      const { id } = request.params as { id: string }
+      const result = await registerMember(request, id)
+      return reply.code(result.alreadyRegistered ? 200 : 201).send(result)
+    })
+
+    /** Thành viên hủy đăng ký (AC-09): chỉ đến hết registrationClosesAt (BR-08); trả về bản ghi vừa cập nhật. */
+    app.post('/portal/events/:id/registrations/cancel', { preHandler: requireAuth }, async (request) => {
+      const { id } = request.params as { id: string }
+      return cancelMemberRegistration(request, id)
+    })
 
     // ─── QUẢN TRỊ (E4) ─────────────────────────────────────────────────────
     // Vai trò theo docs/02 §8.3: DEPARTMENT_MANAGER làm được với sự kiện ban mình (requireScope → 404

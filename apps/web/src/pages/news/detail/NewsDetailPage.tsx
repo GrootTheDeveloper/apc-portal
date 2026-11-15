@@ -27,11 +27,12 @@ export function NewsDetailPage() {
         {item && (
           <article>
             {/* metaTitle/metaDescription để trống thì dùng tiêu đề/tóm tắt */}
+            {/* Map fileId từ D2 thành URL public để hiển thị ảnh đúng */}
             <Seo
               title={item.metaTitle || item.title}
               description={item.metaDescription || item.summary}
               path={`/news/${slug}`}
-              imageUrl={item.thumbnailUrl}
+              imageUrl={item.thumbnailUrl ? `/api/public/files/${item.thumbnailUrl}` : null}
             />
             <PageHero
               tone="gold"
@@ -56,7 +57,8 @@ export function NewsDetailPage() {
               <div className="mx-auto w-full max-w-[760px]">
                 {item.thumbnailUrl && (
                   <div data-rv className="photo mb-10 aspect-[16/9] bg-soft">
-                    <img alt="" className="h-full" src={item.thumbnailUrl} />
+                    {/* Map fileId từ D2 thành URL public để hiển thị ảnh đúng */}
+                    <img alt="" className="h-full" src={`/api/public/files/${item.thumbnailUrl}`} />
                   </div>
                 )}
                 {/* Tách đoạn theo dòng trống, giữ xuống dòng trong đoạn */}
