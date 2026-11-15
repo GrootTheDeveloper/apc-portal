@@ -188,4 +188,68 @@ describe('D4 document library', () => {
     const auditLog = await db.auditLog.findFirst({ where: { actorId: users.tech.id, targetId: document.currentVersion.id } })
     expect(auditLog).toMatchObject({ action: 'system.incident_access', category: 'SECURITY', incidentId: 'INC-20261111-01' })
   })
+  it('rejects unauthenticated, members, other managers, stale updates and invalid transitions', async () => {
+    const departmentA = users.managerA.roles.find((role) => role.role === 'DEPARTMENT_MANAGER')?.departmentId
+    const file = await makeFile(users.board.id, 'denied')
+    const created = await call('POST', '/admin/documents', 'board', {
+      title: 'Tài liệu kiểm quyền', category: 'Quy trình', departmentId: departmentA,
+      scope: 'DEPARTMENT', allowedRoles: [], storedFileId: file.id, reason: 'Tạo tài liệu thử nghiệm',
+    })
+    expect(created.statusCode).toBe(201)
+    const document = created.json<{ id: string; currentVersion: { id: string }; updatedAt: string }>()
+    documentIds.push(document.id)
+    const body = { reason: 'Thao tác thử nghiệm', updatedAt: document.updatedAt, storedFileId: file.id }
+    const endpoints: [method: 'GET' | 'POST', url: string][] = [
+      ['GET', `/admin/documents/${document.id}/versions`],
+      ['POST', `/admin/documents/${document.id}/versions`],
+      ['POST', `/admin/documents/${document.id}/versions/${document.currentVersion.id}/restore`],
+      ['POST', `/admin/documents/${document.id}/archive`],
+      ['POST', `/admin/documents/${document.id}/restore`],
+    ]
+    for (const [method, url] of endpoints) {
+      const payload = method === 'GET' ? undefined : body
+      expect((await call(method, url, null, payload)).statusCode, `${url} chưa đăng nhập`).toBe(401)
+      expect((await call(method, url, 'memberA', payload)).statusCode, `${url} member`).toBe(403)
+      expect((await call(method, url, 'managerB', payload)).statusCode, `${url} trưởng ban B`).toBe(404)
+    }
+    expect((await call('POST', '/admin/documents', null, {})).statusCode).toBe(401)
+    expect((await call('POST', '/admin/documents', 'memberA', {})).statusCode).toBe(403)
+    expect((await call('GET', '/portal/documents', null)).statusCode).toBe(401)
+    expect((await call('GET', `/admin/documents/${document.id}/versions`, 'managerA')).statusCode).toBe(200)
+
+    // STATE-09: updatedAt cũ trả 409.
+    const stale = new Date(new Date(document.updatedAt).getTime() - 60_000).toISOString()
+    expect((await call('POST', `/admin/documents/${document.id}/archive`, 'managerA', { reason: 'Lưu trữ bản cũ', updatedAt: stale })).statusCode).toBe(409)
+
+    // Bước chuyển sai: lưu trữ tài liệu đã lưu trữ, khôi phục phiên bản của tài liệu đã lưu trữ.
+    const archived = await call('POST', `/admin/documents/${document.id}/archive`, 'managerA', { reason: 'Lưu trữ tài liệu', updatedAt: document.updatedAt })
+    expect(archived.statusCode).toBe(200)
+    const archivedAt = archived.json<{ updatedAt: string }>().updatedAt
+    expect((await call('POST', `/admin/documents/${document.id}/archive`, 'managerA', { reason: 'Lưu trữ lần nữa', updatedAt: archivedAt })).statusCode).toBe(409)
+    expect((await call('POST', `/admin/documents/${document.id}/versions/${document.currentVersion.id}/restore`, 'managerA', {
+      reason: 'Khôi phục khi đã lưu trữ', updatedAt: archivedAt,
+    })).statusCode).toBe(409)
+  })
+
+  it('keeps club-wide documents out of department managers' hands', async () => {
+    const departmentA = users.managerA.roles.find((role) => role.role === 'DEPARTMENT_MANAGER')?.departmentId
+    const file = await makeFile(users.board.id, 'club')
+    const created = await call('POST', '/admin/documents', 'board', {
+      title: 'Nội quy CLB', category: 'Quy chế', departmentId: departmentA,
+      scope: 'CLUB', allowedRoles: [], storedFileId: file.id, reason: 'Tạo tài liệu toàn CLB',
+    })
+    expect(created.statusCode).toBe(201)
+    const document = created.json<{ id: string; updatedAt: string }>()
+    documentIds.push(document.id)
+
+    expect((await call('GET', `/admin/documents/${document.id}`, 'managerA')).statusCode).toBe(404)
+    const list = await call('GET', '/admin/documents?page=1&pageSize=100', 'managerA')
+    expect(list.json<{ items: { id: string }[] }>().items.some((item) => item.id === document.id)).toBe(false)
+    expect((await call('PATCH', `/admin/documents/${document.id}`, 'managerA', {
+      title: 'Thu hẹp về ban', category: 'Quy chế', departmentId: departmentA, scope: 'DEPARTMENT', allowedRoles: [],
+      reason: 'Thử thu hẹp phạm vi', updatedAt: document.updatedAt,
+    })).statusCode).toBe(404)
+    expect((await call('POST', `/admin/documents/${document.id}/archive`, 'managerA', { reason: 'Thử lưu trữ', updatedAt: document.updatedAt })).statusCode).toBe(404)
+    expect((await call('GET', `/portal/documents/${document.id}`, 'memberB')).statusCode).toBe(200)
+  })
 })

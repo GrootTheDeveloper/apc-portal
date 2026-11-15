@@ -51,9 +51,15 @@ function managedDepartmentIds(user: AuthUser) {
   return departmentScope(user).departmentId?.in ?? []
 }
 
-function assertManaged(user: AuthUser, document: Pick<DocumentRecord, 'departmentId'>) {
+// Quản lý Ban chỉ quản lý tài liệu phạm vi ban mình; tài liệu toàn CLB chỉ BOARD quản lý.
+function assertManaged(user: AuthUser, document: Pick<DocumentRecord, 'departmentId' | 'scope'>) {
   if (hasRole(user, 'BOARD')) return
-  if (!hasRole(user, 'DEPARTMENT_MANAGER') || !document.departmentId || !canAccessDepartment(user, document.departmentId)) {
+  if (
+    !hasRole(user, 'DEPARTMENT_MANAGER') ||
+    document.scope !== 'DEPARTMENT' ||
+    !document.departmentId ||
+    !canAccessDepartment(user, document.departmentId)
+  ) {
     throw notFound()
   }
 }
@@ -143,7 +149,7 @@ export async function listAdminDocuments(user: AuthUser, rawQuery: unknown) {
   const query = listQuerySchema.parse(rawQuery)
   const where: Prisma.DocumentWhereInput = {
     ...(query.status === 'ALL' ? {} : { status: query.status }),
-    ...(!hasRole(user, 'BOARD') ? { departmentId: { in: managedDepartmentIds(user) } } : {}),
+    ...(!hasRole(user, 'BOARD') ? { scope: 'DEPARTMENT' as const, departmentId: { in: managedDepartmentIds(user) } } : {}),
   }
   const [items, total] = await db.$transaction([
     db.document.findMany({ where, include: adminInclude, orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }], ...pageArgs(query) }),
@@ -277,6 +283,7 @@ export async function restoreDocumentVersion(request: AdminActor, rawParams: unk
     if (!document) throw notFound()
     assertManaged(user, document)
     assertFresh(input.updatedAt, document.updatedAt)
+    if (document.status === 'ARCHIVED') throw conflict('Tài liệu đã được lưu trữ, khôi phục tài liệu trước.')
     const old = await tx.documentVersion.findFirst({
       where: { id: versionId, documentId: id, storedFile: { scanStatus: 'CLEAN' } },
       select: { storedFileId: true },
