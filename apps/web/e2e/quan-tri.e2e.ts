@@ -19,7 +19,7 @@ test.describe('Quản trị & Phân quyền (docs/qa/06-quan-tri.md)', () => {
     await expect(page.getByRole('link', { name: 'Quản trị' })).toHaveCount(0);
   });
 
-  test('KB-06-01 & KB-06-04: Ban Chủ nhiệm (board) đăng nhập vào /admin và quản lý tuyển thành viên', async ({ page }) => {
+  test('Ban Chủ nhiệm (board) đăng nhập vào /admin và mở được trang tuyển thành viên', async ({ page }) => {
     await loginAsAdmin(page, 'board');
 
     // Truy cập trang quản trị
@@ -31,4 +31,10 @@ test.describe('Quản trị & Phân quyền (docs/qa/06-quan-tri.md)', () => {
     await page.goto('/admin/recruitment');
     await expect(page.getByRole('link', { name: /\+ Tạo đợt tuyển mới/i })).toBeVisible();
   });
+
+  // Chưa tự động hóa: chạy tay theo docs/qa/06-quan-tri.md cho tới khi có test.
+  test.fixme('KB-06-01: board soạn, công bố bài, thấy ở /news rồi gỡ bài', async () => {});
+  test.fixme('KB-06-02: manager.a chỉ quản lý bài của Ban A, không thấy nút công bố', async () => {});
+  test.fixme('KB-06-04: board xét hồ sơ Mới → Đang xét → Mời phỏng vấn → Đã chấp nhận', async () => {});
+  test.fixme('KB-06-06: techadmin không xem được nội dung nghiệp vụ', async () => {});
 });

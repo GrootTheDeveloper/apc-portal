@@ -3,9 +3,11 @@ import * as OTPAuth from 'otpauth';
 
 // Khớp với SEED_PASSWORD trong .github/workflows/ci.yml
 export const SEED_PASSWORD = process.env.SEED_PASSWORD || 'e2e_ci_only';
-export const SEED_TOTP_SECRET = process.env.SEED_TOTP_SECRET || 'JBSWY3DPEHPK3PXP';
+// Secret TOTP cố định của dữ liệu mẫu (B3). Không đặt giá trị mặc định tự bịa: thiếu thì báo lỗi rõ.
+export const SEED_TOTP_SECRET = process.env.SEED_TOTP_SECRET;
 
-export function generateTotpCode(secret: string = SEED_TOTP_SECRET): string {
+export function generateTotpCode(secret: string | undefined = SEED_TOTP_SECRET): string {
+  if (!secret) throw new Error('Thiếu SEED_TOTP_SECRET (secret TOTP của dữ liệu mẫu) để đăng nhập tài khoản cần mã 2 lớp.');
   const totp = new OTPAuth.TOTP({
     issuer: 'APC Portal',
     label: 'board',
