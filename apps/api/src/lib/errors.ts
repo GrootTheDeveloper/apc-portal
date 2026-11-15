@@ -34,9 +34,9 @@ export function registerErrorHandler(app: FastifyInstance) {
   app.setErrorHandler((error: FastifyError, request, reply) => {
     if (error instanceof AppError) {
       return reply.code(error.statusCode).send({
+        ...error.details,
         error: error.code,
         message: error.message,
-        ...error.details,
       })
     }
     if (error instanceof ZodError || error.statusCode === 400) {
