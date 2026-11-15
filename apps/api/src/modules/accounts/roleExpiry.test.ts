@@ -85,8 +85,8 @@ afterAll(async () => {
 describe('role-expiry job', () => {
   it('moves an overdue ACTIVE role to EXPIRED with one SERVICE audit row, once', async () => {
     const { row } = await createExpiring('overdue', -1 / 24) // hết hạn 1 giờ trước
-    await runRoleExpiry()
-    await runRoleExpiry()
+    await runRoleExpiry(undefined, [row.id])
+    await runRoleExpiry(undefined, [row.id])
     expect((await db.userRole.findUniqueOrThrow({ where: { id: row.id } })).status).toBe('EXPIRED')
     const logs = await db.auditLog.findMany({ where: { targetId: row.id, action: 'role.expire' } })
     expect(logs).toHaveLength(1)
@@ -96,37 +96,46 @@ describe('role-expiry job', () => {
   it('warns once at 29 days: holder plus every active BOARD, none on the second run', async () => {
     const now = new Date()
     const { holder, row } = await createExpiring('warn30', 29, now)
-    await runRoleExpiry(now)
+    await runRoleExpiry(now, [row.id])
     const expected = await expectedRecipients(holder.email, now)
     const first = await deliveries(row.id)
     expect(first).toHaveLength(expected.size)
     expect(new Set(first.map((d) => d.recipient))).toEqual(expected)
-    await runRoleExpiry(now)
+    await runRoleExpiry(now, [row.id])
     expect(await deliveries(row.id)).toHaveLength(expected.size)
   })
 
   it('sends the 7-day round after the 30-day one, once', async () => {
     const now = new Date()
     const { holder, row } = await createExpiring('warn7', 29, now)
-    await runRoleExpiry(now)
+    await runRoleExpiry(now, [row.id])
     const size = (await expectedRecipients(holder.email, now)).size
     const later = new Date(now.getTime() + 23 * DAY) // còn 6 ngày
-    await runRoleExpiry(later)
+    await runRoleExpiry(later, [row.id])
     expect(await deliveries(row.id)).toHaveLength(size * 2)
-    await runRoleExpiry(later)
+    await runRoleExpiry(later, [row.id])
     expect(await deliveries(row.id)).toHaveLength(size * 2)
+    expect(await db.userRole.findUniqueOrThrow({ where: { id: row.id }, select: { warnedLevel: true } })).toEqual({ warnedLevel: 7 })
+  })
+
+  it('a row first seen at 6 days gets only the 7-day round, once', async () => {
+    const now = new Date()
+    const { holder, row } = await createExpiring('first7', 6, now)
+    await runRoleExpiry(now, [row.id])
+    await runRoleExpiry(now, [row.id])
+    expect(await deliveries(row.id)).toHaveLength((await expectedRecipients(holder.email, now)).size)
     expect(await db.userRole.findUniqueOrThrow({ where: { id: row.id }, select: { warnedLevel: true } })).toEqual({ warnedLevel: 7 })
   })
 
   it('warns again at the 30-day mark of a renewed expiry date', async () => {
     const now = new Date()
     const { holder, row } = await createExpiring('renew', 29, now)
-    await runRoleExpiry(now)
+    await runRoleExpiry(now, [row.id])
     const size = (await expectedRecipients(holder.email, now)).size
     await db.userRole.update({ where: { id: row.id }, data: { expiresAt: new Date(now.getTime() + 100 * DAY) } })
-    await runRoleExpiry(new Date(now.getTime() + 50 * DAY)) // còn 50 ngày: chưa tới mốc
+    await runRoleExpiry(new Date(now.getTime() + 50 * DAY), [row.id]) // còn 50 ngày: chưa tới mốc
     expect(await deliveries(row.id)).toHaveLength(size)
-    await runRoleExpiry(new Date(now.getTime() + 75 * DAY)) // còn 25 ngày: báo lại mốc 30
+    await runRoleExpiry(new Date(now.getTime() + 75 * DAY), [row.id]) // còn 25 ngày: báo lại mốc 30
     expect(await deliveries(row.id)).toHaveLength(size * 2)
   })
 })

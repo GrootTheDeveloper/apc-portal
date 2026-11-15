@@ -18,9 +18,9 @@ const expiringWhere = (now: Date) => ({
 })
 
 /** ACTIVE quá hạn → EXPIRED. Cập nhật có điều kiện nên hai lượt chạy song song không audit trùng. */
-async function expireOverdueRoles(now: Date) {
+async function expireOverdueRoles(now: Date, only?: string[]) {
   const overdue = await db.userRole.findMany({
-    where: { status: 'ACTIVE', expiresAt: { lte: now } },
+    where: { status: 'ACTIVE', expiresAt: { lte: now }, ...(only ? { id: { in: only } } : {}) },
     select: { id: true, userId: true, role: true, expiresAt: true },
   })
   let expired = 0
@@ -50,9 +50,9 @@ async function expireOverdueRoles(now: Date) {
 }
 
 /** Gửi cảnh báo mốc 30/7 ngày: mỗi mốc một lần cho mỗi dòng (theo warnedLevel + warnedForExpiresAt). */
-async function warnExpiringRoles(now: Date) {
+async function warnExpiringRoles(now: Date, only?: string[]) {
   const rows = await db.userRole.findMany({
-    where: expiringWhere(now),
+    where: { ...expiringWhere(now), ...(only ? { id: { in: only } } : {}) },
     select: { id: true, expiresAt: true, user: { select: { email: true } } },
   })
   let warned = 0
@@ -83,10 +83,13 @@ async function warnExpiringRoles(now: Date) {
   return warned
 }
 
-/** Một lượt của `startJob('role-expiry', ...)`. Test truyền `now`. */
-export async function runRoleExpiry(now = new Date()) {
-  const expired = await expireOverdueRoles(now)
-  const warned = await warnExpiringRoles(now)
+/**
+ * Một lượt của `startJob('role-expiry', ...)`. Test truyền `now` và `only` (id các dòng test tạo) để không chạm
+ * vào vai trò thật trong DB dùng chung khi giả lập thời điểm ở tương lai.
+ */
+export async function runRoleExpiry(now = new Date(), only?: string[]) {
+  const expired = await expireOverdueRoles(now, only)
+  const warned = await warnExpiringRoles(now, only)
   return { expired, warned }
 }
 
