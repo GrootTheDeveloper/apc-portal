@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { db } from '../../db/client.js'
 import { ContentScope, ContentStatus } from '../../db/generated/client.js'
 import { conflict, forbidden, notFound } from '../../lib/errors.js'
-import { slugify } from '../../lib/ids.js'
+import { buildUniqueSlug, slugify } from '../../lib/ids.js'
 import { pageArgs, pageQuery } from '../../lib/pagination.js'
 import { AUDIT_ACTIONS, audit, AuditCategory, AuditResult } from '../audit/service.js'
 import { type AuthUser, assertInScope, departmentScope, hasRole } from '../auth/rbac.js'
@@ -57,17 +57,6 @@ export const changeStatusBody = z.object({
 })
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
-
-/** Tạo slug duy nhất: thử base slug, nếu trùng thêm hậu tố ngẫu nhiên. */
-async function buildUniqueSlug(title: string): Promise<string> {
-  const base = slugify(title)
-  // Thử slug gốc trước
-  const existing = await db.post.findUnique({ where: { slug: base }, select: { id: true } })
-  if (!existing) return base
-  // Thêm hậu tố 6 ký tự ngẫu nhiên để đảm bảo duy nhất
-  const suffix = Math.random().toString(36).slice(2, 8)
-  return `${base}-${suffix}`
-}
 
 /** Trả về departmentId phù hợp với user: DEPARTMENT_MANAGER lấy ban đầu tiên họ quản lý,
  *  BOARD không ép ban nào (bài viết toàn CLB). */
@@ -150,7 +139,9 @@ export async function getAdminPost(user: AuthUser, id: string) {
 /** Tạo bài viết mới với trạng thái DRAFT. authorId = user hiện tại. */
 export async function createAdminPost(user: AuthUser, rawBody: unknown) {
   const body = createPostBody.parse(rawBody)
-  const slug = await buildUniqueSlug(body.title)
+  const slug = await buildUniqueSlug(slugify(body.title), (candidate) =>
+    db.post.findUnique({ where: { slug: candidate }, select: { id: true } }).then(Boolean),
+  )
   const departmentId = resolveAuthorDepartmentId(user)
 
   const post = await db.post.create({
@@ -205,7 +196,9 @@ export async function updateAdminPost(user: AuthUser, id: string, rawBody: unkno
   // Nếu title thay đổi, tạo slug mới
   let titleUpdate: { title: string; slug: string } | undefined
   if (fields.title) {
-    const newSlug = await buildUniqueSlug(fields.title)
+    const newSlug = await buildUniqueSlug(slugify(fields.title), (candidate) =>
+      db.post.findUnique({ where: { slug: candidate }, select: { id: true } }).then(Boolean),
+    )
     titleUpdate = { title: fields.title, slug: newSlug }
   }
 

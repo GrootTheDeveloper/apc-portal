@@ -234,3 +234,16 @@ export type AdminApplicationExportInput = z.infer<typeof AdminApplicationExportS
 export const AdminApplicationExportQuerySchema = AdminApplicationExportSchema
 export type AdminApplicationExportQueryInput = AdminApplicationExportInput
 
+// ─── CONVERT APPLICATION SCHEMAS (R6, FLOW-08, BR-06) ─────────────────────────
+
+export const ConvertApplicationSchema = z.object({
+  username: z
+    .string({ error: 'Nhập tên đăng nhập.' })
+    .trim()
+    .min(3, 'Tên đăng nhập ít nhất 3 ký tự.')
+    .max(50, 'Tên đăng nhập tối đa 50 ký tự.')
+    .regex(/^[a-z0-9._-]+$/, 'Tên đăng nhập chỉ gồm chữ thường không dấu, số, dấu chấm, gạch dưới, gạch ngang.'),
+  departmentId: z.string().trim().min(1, 'Ban chuyên môn không hợp lệ.').nullish(),
+})
+export type ConvertApplicationInput = z.infer<typeof ConvertApplicationSchema>
+
