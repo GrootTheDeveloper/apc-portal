@@ -178,6 +178,26 @@ describe('T4 - Phân quyền quản trị thông tin APC', () => {
     const resFeatured = await get('manager', '/admin/organization/featured-content')
     expect(resFeatured.statusCode).toBe(403)
   })
+
+  it('Mọi route BOARD: chưa đăng nhập 401, manager.a 403', async () => {
+    const routes: [string, string][] = [
+      ['GET', '/admin/organization/profile'],
+      ['PUT', '/admin/organization/profile'],
+      ['GET', '/admin/organization/departments'],
+      ['POST', '/admin/organization/departments'],
+      ['PUT', '/admin/organization/departments/order'],
+      ['GET', `/admin/organization/departments/${deptActive1}`],
+      ['PATCH', `/admin/organization/departments/${deptActive1}`],
+      ['GET', '/admin/organization/featured-content'],
+      ['PUT', '/admin/organization/featured-content'],
+    ]
+    for (const [method, url] of routes) {
+      const send = (user: UserKey | null) =>
+        method === 'GET' ? get(user, url) : method === 'POST' ? post(user, url, {}) : method === 'PUT' ? put(user, url, {}) : patchReq(user, url, {})
+      expect((await send(null)).statusCode, `${method} ${url} chưa đăng nhập`).toBe(401)
+      expect((await send('manager')).statusCode, `${method} ${url} manager`).toBe(403)
+    }
+  })
 })
 
 describe('T4 - Quản lý thông tin APC & termEndsAt (/admin/organization/profile)', () => {
@@ -237,6 +257,21 @@ describe('T4 - Quản lý thông tin APC & termEndsAt (/admin/organization/profi
 })
 
 describe('T4 - Quản lý Ban chuyên môn (/admin/organization/departments)', () => {
+  it('Ban không tồn tại trả 404; đổi thứ tự với id lạ hoặc trùng trả 422', async () => {
+    expect((await get('board', '/admin/organization/departments/khong-ton-tai')).statusCode).toBe(404)
+    expect((await patchReq('board', '/admin/organization/departments/khong-ton-tai', { name: 'Ban X' })).statusCode).toBe(404)
+    expect((await put('board', '/admin/organization/departments/order', { departmentIds: [deptActive1, 'khong-ton-tai'] })).statusCode).toBe(422)
+    expect((await put('board', '/admin/organization/departments/order', { departmentIds: [deptActive1, deptActive1] })).statusCode).toBe(422)
+  })
+
+  it('Khôi phục ban đã lưu trữ trùng tên ban đang hoạt động trả 409; tên được trim', async () => {
+    const active = await db.department.findUniqueOrThrow({ where: { id: deptActive1 } })
+    const archived = await db.department.create({ data: { name: active.name, code: `arch-${tag}`, status: 'ARCHIVED' } })
+    departmentIds.push(archived.id)
+    expect((await patchReq('board', `/admin/organization/departments/${archived.id}`, { status: 'ACTIVE' })).statusCode).toBe(409)
+    expect((await patchReq('board', `/admin/organization/departments/${deptActive2}`, { name: `${active.name}  ` })).statusCode).toBe(409)
+  })
+
   it('Tạo ban trùng tên một ban đang hoạt động bị từ chối (409 Conflict)', async () => {
     const res = await post('board', '/admin/organization/departments', {
       name: `Ban Chuyên Môn 1 ${tag}`, // Trùng với deptActive1
@@ -412,7 +447,22 @@ describe('T4 - API GET /public/home & QĐ-4, BR-11', () => {
     const homeRes2 = await app.inject({ method: 'GET', url: '/public/home' })
     expect(homeRes2.statusCode).toBe(200)
     const data2 = homeRes2.json()
-    expect(data2.news[0].id).toBe(post2Id)
+    // Chạy cả bộ test thì có thể có bài công khai khác mới hơn post2, nên chỉ kiểm post1 đã bị bỏ.
+    expect(data2.news.map((n: { id: string }) => n.id)).not.toContain(post1Id)
+    expect(data2.news.length).toBeGreaterThan(0)
+  })
+
+  it('Mục đã chọn bị gỡ công khai không còn trong selected, lưu lại không bị 409 (BR-11)', async () => {
+    // post1 đã bị gỡ ở test trước nhưng vẫn nằm trong cấu hình đã lưu.
+    await db.post.update({ where: { id: post1Id }, data: { status: 'DRAFT' } })
+    const res = await get('board', '/admin/organization/featured-content')
+    expect(res.statusCode).toBe(200)
+    const { selected } = res.json()
+    expect(selected.postIds).not.toContain(post1Id)
+    expect(selected.eventIds).toContain(event1Id)
+
+    const save = await put('board', '/admin/organization/featured-content', selected)
+    expect(save.statusCode).toBe(200)
   })
 
   it('Từ chối chọn nội dung không công khai vào featured-content (409 Conflict)', async () => {

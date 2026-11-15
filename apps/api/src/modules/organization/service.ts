@@ -6,48 +6,61 @@ import { conflict, notFound } from '../../lib/errors.js'
 import { slugify } from '../../lib/ids.js'
 import { AUDIT_ACTIONS, AuditCategory, AuditResult, audit } from '../audit/service.js'
 
-const httpUrl = z.string().regex(/^https?:\/\//i, 'Liên kết phải bắt đầu bằng http:// hoặc https://')
+const httpUrl = z
+  .string()
+  .trim()
+  .max(2048)
+  .refine((value) => {
+    try {
+      const url = new URL(value)
+      return (url.protocol === 'http:' || url.protocol === 'https:') && url.hostname.length > 0
+    } catch {
+      return false
+    }
+  }, 'Liên kết phải là địa chỉ http:// hoặc https:// hợp lệ')
+const idList = z.array(z.string().min(1).max(100)).max(100)
 
 export const organizationProfileSchema = z.object({
-  name: z.string().min(1, 'Tên không được để trống'),
-  description: z.string().min(1, 'Mô tả không được để trống'),
-  mission: z.string().min(1, 'Sứ mệnh không được để trống'),
-  contactEmail: z.string().email('Email không đúng định dạng'),
+  name: z.string().trim().min(1, 'Tên không được để trống').max(200),
+  description: z.string().trim().min(1, 'Mô tả không được để trống').max(5000),
+  mission: z.string().trim().min(1, 'Sứ mệnh không được để trống').max(5000),
+  contactEmail: z.string().trim().email('Email không đúng định dạng').max(200),
   fanpage: httpUrl,
   officialLinks: z
     .array(
       z.object({
-        label: z.string().min(1, 'Tên liên kết không được để trống'),
+        label: z.string().trim().min(1, 'Tên liên kết không được để trống').max(100),
         url: httpUrl,
       }),
     )
+    .max(20)
     .default([]),
   termEndsAt: z.string().datetime().nullable().optional(),
 })
 
 export const createDepartmentSchema = z.object({
-  name: z.string().min(1, 'Tên ban không được để trống'),
-  code: z.string().min(1).optional(),
-  description: z.string().optional().nullable(),
-  contactPoint: z.string().optional().nullable(),
+  name: z.string().trim().min(1, 'Tên ban không được để trống').max(200),
+  code: z.string().trim().min(1).max(50).optional(),
+  description: z.string().trim().max(5000).optional().nullable(),
+  contactPoint: z.string().trim().max(500).optional().nullable(),
 })
 
 export const updateDepartmentSchema = z.object({
-  name: z.string().min(1).optional(),
-  description: z.string().optional().nullable(),
-  contactPoint: z.string().optional().nullable(),
+  name: z.string().trim().min(1, 'Tên ban không được để trống').max(200).optional(),
+  description: z.string().trim().max(5000).optional().nullable(),
+  contactPoint: z.string().trim().max(500).optional().nullable(),
   status: z.enum(['ACTIVE', 'ARCHIVED']).optional(),
   order: z.number().int().optional(),
 })
 
 export const reorderDepartmentsSchema = z.object({
-  departmentIds: z.array(z.string()),
+  departmentIds: idList.refine((ids) => new Set(ids).size === ids.length, 'Danh sách ban bị trùng.'),
 })
 
 export const featuredContentSchema = z.object({
-  postIds: z.array(z.string()).default([]),
-  eventIds: z.array(z.string()).default([]),
-  projectIds: z.array(z.string()).default([]),
+  postIds: idList.default([]),
+  eventIds: idList.default([]),
+  projectIds: idList.default([]),
 })
 
 type FeaturedStored = {
@@ -424,66 +437,58 @@ export async function getAdminDepartment(id: string) {
 export async function updateAdminDepartment(request: FastifyRequest, id: string, rawBody: unknown) {
   const body = updateDepartmentSchema.parse(rawBody)
 
-  const current = await db.department.findUnique({ where: { id } })
-  if (!current) throw notFound('Không tìm thấy ban.')
+  // Kiểm tra và ghi trong cùng transaction, khóa dòng ban để hai người sửa cùng lúc không lọt qua phép kiểm.
+  const updated = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM departments WHERE id = ${id} FOR UPDATE`
+    const current = await tx.department.findUnique({ where: { id } })
+    if (!current) throw notFound('Không tìm thấy ban.')
 
-  // Nếu đổi tên, kiểm tra trùng tên với ban ACTIVE khác
-  if (body.name && body.name !== current.name) {
-    const existingActive = await db.department.findFirst({
-      where: {
-        id: { not: id },
-        name: body.name,
-        status: 'ACTIVE',
-      },
-    })
-    if (existingActive) {
-      throw conflict('Tên ban đã tồn tại trong các ban đang hoạt động.')
-    }
-  }
-
-  // Nếu chuyển trạng thái sang ARCHIVED: kiểm tra thành viên memberStatus = ACTIVE (FLOW-24, ORG-03)
-  if (body.status === 'ARCHIVED' && current.status === 'ACTIVE') {
-    const activeMembers = await db.user.findMany({
-      where: {
-        departmentId: id,
-        memberStatus: 'ACTIVE',
-      },
-      select: {
-        id: true,
-        fullName: true,
-        studentId: true,
-        email: true,
-      },
-    })
-
-    if (activeMembers.length > 0) {
-      throw conflict('Không thể lưu trữ ban còn thành viên đang hoạt động.', {
-        members: activeMembers,
+    const nextName = body.name ?? current.name
+    const nextStatus = body.status ?? current.status
+    // Tên không được trùng ban ACTIVE khác: kiểm cả khi đổi tên lẫn khi khôi phục ban đã lưu trữ.
+    if (nextStatus === 'ACTIVE' && (nextName !== current.name || current.status !== 'ACTIVE')) {
+      const existingActive = await tx.department.findFirst({
+        where: { id: { not: id }, name: { equals: nextName, mode: 'insensitive' }, status: 'ACTIVE' },
+        select: { id: true },
       })
+      if (existingActive) throw conflict('Tên ban đã tồn tại trong các ban đang hoạt động.')
     }
-  }
 
-  const updated = await db.department.update({
-    where: { id },
-    data: {
-      ...(body.name !== undefined ? { name: body.name } : {}),
-      ...(body.description !== undefined ? { description: body.description } : {}),
-      ...(body.contactPoint !== undefined ? { contactPoint: body.contactPoint } : {}),
-      ...(body.status !== undefined ? { status: body.status } : {}),
-      ...(body.order !== undefined ? { order: body.order } : {}),
-    },
-  })
+    // Nếu chuyển trạng thái sang ARCHIVED: kiểm tra thành viên memberStatus = ACTIVE (FLOW-24, ORG-03)
+    if (body.status === 'ARCHIVED' && current.status === 'ACTIVE') {
+      const activeMembers = await tx.user.findMany({
+        where: { departmentId: id, memberStatus: 'ACTIVE' },
+        select: { id: true, fullName: true, studentId: true, email: true },
+      })
+      if (activeMembers.length > 0) {
+        throw conflict('Không thể lưu trữ ban còn thành viên đang hoạt động.', { members: activeMembers })
+      }
+    }
 
-  await audit(request, {
-    action: AUDIT_ACTIONS.ORG_UPDATE_DEPARTMENTS,
-    targetType: 'DEPARTMENT',
-    targetId: id,
-    category: AuditCategory.BUSINESS,
-    result: AuditResult.SUCCESS,
-    metadata: {
-      action: 'update',
-      changes: body,
-    },
+    const result = await tx.department.update({
+      where: { id },
+      data: {
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        ...(body.description !== undefined ? { description: body.description } : {}),
+        ...(body.contactPoint !== undefined ? { contactPoint: body.contactPoint } : {}),
+        ...(body.status !== undefined ? { status: body.status } : {}),
+        ...(body.order !== undefined ? { order: body.order } : {}),
+      },
+    })
+
+    await audit(
+      request,
+      {
+        action: AUDIT_ACTIONS.ORG_UPDATE_DEPARTMENTS,
+        targetType: 'DEPARTMENT',
+        targetId: id,
+        category: AuditCategory.BUSINESS,
+        result: AuditResult.SUCCESS,
+        metadata: { action: 'update', changes: body },
+      },
+      tx,
+    )
+    return result
   })
 
   return {
@@ -504,6 +509,11 @@ export async function reorderAdminDepartments(request: FastifyRequest, rawBody: 
   const body = reorderDepartmentsSchema.parse(rawBody)
 
   await db.$transaction(async (tx) => {
+    // Id lạ trả 422 thay vì 500 (P2025).
+    const found = await tx.department.count({ where: { id: { in: body.departmentIds } } })
+    if (found !== body.departmentIds.length) {
+      throw new z.ZodError([{ code: 'custom', path: ['departmentIds'], message: 'Danh sách có ban không tồn tại.', input: undefined }])
+    }
     for (let i = 0; i < body.departmentIds.length; i++) {
       const deptId = body.departmentIds[i]
       if (!deptId) continue
@@ -581,11 +591,35 @@ export async function getAdminFeaturedContent() {
   const info = (setting?.info as Record<string, unknown> | null) ?? {}
   const featured = ((info.featured as FeaturedStored) ?? {}) as FeaturedStored
 
+  // Mục đã chọn còn công khai nhưng nằm ngoài top 20 vẫn phải hiện để bỏ chọn được. Mục đã bị gỡ công khai
+  // thì bỏ khỏi `selected`, để lần lưu sau không bị 409 vì một id người dùng không thấy (BR-11).
+  const missing = <T extends { id: string }>(ids: string[] | undefined, shown: T[]) =>
+    (ids ?? []).filter((id) => !shown.some((item) => item.id === id))
+  const [extraPosts, extraEvents, extraProjects] = await Promise.all([
+    db.post.findMany({
+      where: { id: { in: missing(featured.postIds, publicPosts) }, status: 'PUBLISHED', scope: 'PUBLIC' },
+      select: { id: true, title: true, slug: true, category: true, publishedAt: true },
+    }),
+    db.event.findMany({
+      where: { id: { in: missing(featured.eventIds, publicEvents) }, audience: 'PUBLIC', status: { in: ['PUBLISHED', 'ENDED'] } },
+      select: { id: true, title: true, slug: true, eventType: true, status: true, startAt: true, endAt: true },
+    }),
+    db.project.findMany({
+      where: { id: { in: missing(featured.projectIds, publicProjects) }, status: 'PUBLISHED' },
+      select: { id: true, title: true, slug: true, publishedAt: true },
+    }),
+  ])
+  publicPosts.push(...extraPosts)
+  publicEvents.push(...extraEvents)
+  publicProjects.push(...extraProjects)
+  const stillPublic = (ids: string[] | undefined, items: { id: string }[]) =>
+    (ids ?? []).filter((id) => items.some((item) => item.id === id))
+
   return {
     selected: {
-      postIds: featured.postIds ?? [],
-      eventIds: featured.eventIds ?? [],
-      projectIds: featured.projectIds ?? [],
+      postIds: stillPublic(featured.postIds, publicPosts),
+      eventIds: stillPublic(featured.eventIds, publicEvents),
+      projectIds: stillPublic(featured.projectIds, publicProjects),
     },
     candidates: {
       posts: publicPosts.map((p) => ({
