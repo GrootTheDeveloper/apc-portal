@@ -177,20 +177,7 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
   {
     label: 'Thành viên',
     items: [
-      {
-        label: 'Danh sách thành viên',
-        to: '/admin/members',
-        roles: MANAGER_OR_BOARD,
-        children: [
-          {
-            label: 'Chi tiết thành viên',
-            to: '/admin/members/:id',
-            roles: MANAGER_OR_BOARD,
-            page: () =>
-              import('../pages/admin/accounts/detail/AccountDetailPage').then((m) => ({ Component: m.AccountDetailPage })),
-          },
-        ],
-      },
+      { label: 'Danh sách thành viên', to: '/admin/members', roles: MANAGER_OR_BOARD },
       { label: 'Nhập từ CSV', to: '/admin/members/import', roles: BOARD },
     ],
   },
@@ -232,7 +219,41 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
       },
     ],
   },
-  { label: 'Sự kiện', items: [{ label: 'Sự kiện', to: '/admin/events', roles: MANAGER_OR_BOARD }] },
+  {
+    label: 'Sự kiện',
+    items: [
+      {
+        label: 'Sự kiện',
+        to: '/admin/events',
+        roles: MANAGER_OR_BOARD,
+        page: () =>
+          import('../pages/admin/events/AdminEventListPage').then((m) => ({ Component: m.AdminEventListPage })),
+        children: [
+          {
+            label: 'Tạo sự kiện',
+            to: '/admin/events/new',
+            roles: MANAGER_OR_BOARD,
+            page: () =>
+              import('../pages/admin/events/AdminEventNewPage').then((m) => ({ Component: m.AdminEventNewPage })),
+          },
+          {
+            label: 'Chi tiết sự kiện',
+            to: '/admin/events/:id',
+            roles: MANAGER_OR_BOARD,
+            page: () =>
+              import('../pages/admin/events/AdminEventDetailPage').then((m) => ({ Component: m.AdminEventDetailPage })),
+          },
+          {
+            label: 'Xem trước sự kiện',
+            to: '/admin/events/:id/preview',
+            roles: MANAGER_OR_BOARD,
+            page: () =>
+              import('../pages/admin/events/AdminEventPreviewPage').then((m) => ({ Component: m.AdminEventPreviewPage })),
+          },
+        ],
+      },
+    ],
+  },
   {
     label: 'Bài viết và thông báo',
     items: [

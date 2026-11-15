@@ -189,7 +189,7 @@ export function AdminApplicationDetailPage() {
               {/* Cột trái: Thông tin ứng viên & Câu trả lời */}
               <div className="space-y-10 lg:col-span-2">
                 {/* 1. Thông tin cá nhân & Học tập */}
-                <div className="rounded-[20px] border-2 border-ink bg-soft p-8">
+                <div className="rounded-[20px] bg-soft p-8">
                   <h2 className="font-display text-xl font-bold text-ink">
                     1. Thông tin cá nhân & Học tập
                   </h2>
@@ -236,7 +236,7 @@ export function AdminApplicationDetailPage() {
                 </div>
 
                 {/* 2. Câu hỏi bổ sung của đợt tuyển */}
-                <div className="rounded-[20px] border-2 border-ink bg-soft p-8">
+                <div className="rounded-[20px] bg-soft p-8">
                   <h2 className="font-display text-xl font-bold text-ink">
                     2. Câu hỏi bổ sung của đợt tuyển
                   </h2>
@@ -245,7 +245,7 @@ export function AdminApplicationDetailPage() {
                       {app.recruitmentRound.questions.map((q, idx) => (
                         <div
                           key={q.id}
-                          className="rounded-xl border-2 border-ink bg-paper p-5 transition-colors"
+                          className="rounded-xl border-2 border-ink bg-paper p-5"
                         >
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <span className="font-code text-xs font-bold text-muted">
@@ -275,7 +275,7 @@ export function AdminApplicationDetailPage() {
                 </div>
 
                 {/* 3. Lịch sử thay đổi trạng thái (Timeline) */}
-                <div className="rounded-[20px] border-2 border-ink bg-soft p-8">
+                <div className="rounded-[20px] bg-soft p-8">
                   <h2 className="font-display text-xl font-bold text-ink">
                     3. Lịch sử thay đổi trạng thái
                   </h2>
@@ -310,7 +310,7 @@ export function AdminApplicationDetailPage() {
                               </p>
                             )}
                             <div className="mt-2 flex items-center gap-2 text-xs text-muted">
-                              <span>Bởi: <strong className="text-ink">{hist.changedBy.fullName}</strong></span>
+                              <span>Bởi: <strong className="text-ink">{hist.changedBy?.fullName ?? 'Ứng viên'}</strong></span>
                               <span>&bull;</span>
                               <span>{formatDateTime(hist.changedAt)}</span>
                             </div>
@@ -647,7 +647,7 @@ function InternalNoteCard({
   }
 
   return (
-    <div className="rounded-[20px] border-2 border-ink bg-soft p-6">
+    <div className="rounded-[20px] bg-soft p-6">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-lg font-bold text-ink">Ghi chú nội bộ</h2>
         <span className="font-code text-[11px] font-bold uppercase text-apc-red">Nội bộ APC</span>
