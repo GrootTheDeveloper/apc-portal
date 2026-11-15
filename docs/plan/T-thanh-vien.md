@@ -184,14 +184,14 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.2, §8.7:
 
 **Xong khi:**
 
-- [ ] Chỉ `BOARD` sửa được MSSV, ban và trạng thái; `manager.a` gọi `PATCH` nhận 403.
-- [ ] `manager.a` chỉ thấy thành viên Ban A; mở thành viên Ban B nhận 404.
-- [ ] Bước chuyển sai (ví dụ Ngừng tham gia → Đang hoạt động) trả 409.
-- [ ] Chuyển `manager.a` sang Ban B thì vai trò quản lý Ban A của người đó chuyển `REVOKED`.
-- [ ] Chuyển `manager.b` sang Ngừng tham gia: tài khoản `INACTIVE`, phiên đang mở nhận 401, vai trò quản lý `REVOKED`. Chuyển Tạm ngưng: tài khoản vẫn đăng nhập được.
-- [ ] Đổi `email` trùng email của thành viên khác trả 409.
-- [ ] `manager.a` không thấy nút Xuất CSV.
-- [ ] Đã nhắn Phạm Đăng Hoàng Thiên chỗ gắn nút Xuất CSV.
+- [x] Chỉ `BOARD` sửa được MSSV, ban và trạng thái; `manager.a` gọi `PATCH` nhận 403.
+- [x] `manager.a` chỉ thấy thành viên Ban A; mở thành viên Ban B nhận 404.
+- [x] Bước chuyển sai (ví dụ Ngừng tham gia → Đang hoạt động) trả 409.
+- [x] Chuyển `manager.a` sang Ban B thì vai trò quản lý Ban A của người đó chuyển `REVOKED`.
+- [x] Chuyển `manager.b` sang Ngừng tham gia: tài khoản `INACTIVE`, phiên đang mở nhận 401, vai trò quản lý `REVOKED`. Chuyển Tạm ngưng: tài khoản vẫn đăng nhập được.
+- [x] Đổi `email` trùng email của thành viên khác trả 409.
+- [x] `manager.a` không thấy nút Xuất CSV.
+- [x] Đã nhắn Phạm Đăng Hoàng Thiên chỗ gắn nút Xuất CSV.
 
 ### T6. Danh bạ thành viên — hạn CN 22/11
 
