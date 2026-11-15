@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../../components/AsyncState'
 import { Breadcrumb } from '../../../../components/Breadcrumb'
 import { buttonClass, pillClass } from '../../../../components/buttonClass'
+import { ExportStatus, type ExportStatusValue } from '../../../../components/ExportStatus'
 import { inputClass } from '../../../../components/formClass'
 import { PageHero } from '../../../../components/PageHero'
 import { Pagination } from '../../../../components/Pagination'
@@ -54,23 +55,33 @@ export function AdminApplicationListPage() {
   const [searchInput, setSearchInput] = useState(searchParam)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [exportResult, setExportResult] = useState<{
+    id: string
+    status: ExportStatusValue
+    filename: string
+    expiresAt: string
+    rowCount: number
+  } | null>(null)
 
   // Tải thông tin đợt tuyển
   const { data: round } = useApi<RecruitmentRound>(
     id ? `/admin/recruitment/${id}` : null,
   )
 
-  // Query API danh sách hồ sơ
-  const queryParts = [
-    `page=${page}`,
-    'pageSize=20',
-    statusParam !== 'ALL' ? `status=${statusParam}` : null,
-    departmentIdParam ? `departmentId=${departmentIdParam}` : null,
-    searchParam ? `search=${encodeURIComponent(searchParam)}` : null,
-  ].filter(Boolean)
+  // Tìm kiếm danh sách hồ sơ: gửi qua body POST /admin/recruitment/:id/applications/search (OPS-11)
+  const apiPath = id ? `/admin/recruitment/${id}/applications/search` : null
+  const searchOptions = useMemo(() => ({
+    method: 'POST' as const,
+    body: {
+      page,
+      pageSize: 20,
+      status: statusParam !== 'ALL' ? statusParam : undefined,
+      departmentId: departmentIdParam || undefined,
+      search: searchParam || undefined,
+    },
+  }), [page, statusParam, departmentIdParam, searchParam])
 
-  const apiPath = id ? `/admin/recruitment/${id}/applications?${queryParts.join('&')}` : null
-  const { data, loading, error, reload } = useApi<Page<ApplicationListItem>>(apiPath)
+  const { data, loading, error, reload } = useApi<Page<ApplicationListItem>>(apiPath, searchOptions)
 
   function updateQuery(updates: Record<string, string | null>) {
     const next = new URLSearchParams(searchParams)
@@ -115,7 +126,13 @@ export function AdminApplicationListPage() {
       if (departmentIdParam) payload.departmentId = departmentIdParam
       if (searchParam) payload.search = searchParam
 
-      const result = await api<{ filename: string; csv: string; rowCount: number }>(
+      const result = await api<{
+        id: string
+        status: ExportStatusValue
+        filename: string
+        expiresAt: string
+        rowCount: number
+      }>(
         `/admin/recruitment/${id}/applications/export`,
         {
           method: 'POST',
@@ -123,16 +140,15 @@ export function AdminApplicationListPage() {
         },
       )
 
-      // Tạo Blob và kích hoạt tải về
-      const blob = new Blob([result.csv], { type: 'text/csv; charset=utf-8' })
-      const url = URL.createObjectURL(blob)
+      setExportResult(result)
+
+      // Kích hoạt tải về tự động qua route tải bảo vệ D6 (RP-17)
       const a = document.createElement('a')
-      a.href = url
+      a.href = `/api/portal/exports/${encodeURIComponent(result.id)}/download`
       a.download = result.filename
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      URL.revokeObjectURL(url)
     } catch (err) {
       if (err instanceof ApiError) {
         setExportError(err.message)
@@ -187,6 +203,17 @@ export function AdminApplicationListPage() {
         {exportError && (
           <div className="mb-6 rounded-xl border-2 border-apc-red bg-apc-red-pale/50 p-4 font-bold text-apc-red">
             {exportError}
+          </div>
+        )}
+
+        {exportResult && (
+          <div className="mb-6">
+            <ExportStatus
+              id={exportResult.id}
+              status={exportResult.status}
+              filename={exportResult.filename}
+              expiresAt={exportResult.expiresAt}
+            />
           </div>
         )}
 
@@ -265,7 +292,7 @@ export function AdminApplicationListPage() {
             emptyText="Không tìm thấy hồ sơ ứng tuyển nào phù hợp với bộ lọc."
             onRetry={reload}
           >
-            <div className="overflow-x-auto rounded-[20px] border-2 border-ink bg-paper shadow-sm">
+            <div className="overflow-x-auto rounded-[20px] border-2 border-ink bg-paper">
               <table className="w-full text-left text-sm text-ink">
                 <thead className="border-b-2 border-ink bg-soft font-code text-xs font-bold uppercase text-muted">
                   <tr>

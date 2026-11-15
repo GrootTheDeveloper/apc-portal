@@ -38,7 +38,7 @@ erDiagram
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
   application_status_histories }o--|| membership_applications : "application"
-  application_status_histories }o--|| users : "changedBy"
+  application_status_histories }o--|o users : "changedBy"
   notification_deliveries }o--|o departments : "department"
   audit_logs }o--|o users : "actor"
   stored_files }o--|| users : "uploadedBy"
@@ -263,7 +263,7 @@ erDiagram
     ApplicationStatus fromStatus "NEW / REVIEWING / INTERVIEW / ACCEPTED / REJECTED / WITHDRAWN"
     ApplicationStatus toStatus "NEW / REVIEWING / INTERVIEW / ACCEPTED / REJECTED / WITHDRAWN"
     String reason "tùy chọn. Bắt buộc khi Ban Chủ nhiệm rút đơn thay ứng viên"
-    String changedById FK
+    String changedById FK "tùy chọn"
     DateTime changedAt
   }
   notification_deliveries {
@@ -366,7 +366,7 @@ erDiagram
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
   application_status_histories }o--|| membership_applications : "application"
-  application_status_histories }o--|| users : "changedBy"
+  application_status_histories }o--|o users : "changedBy"
   notification_deliveries }o--|o departments : "department"
   audit_logs }o--|o users : "actor"
   stored_files }o--|| users : "uploadedBy"
