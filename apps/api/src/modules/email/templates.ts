@@ -1,5 +1,6 @@
 import { db } from '../../db/client.js'
 import { loadConfig } from '../../config.js'
+import { ROLE_LABEL } from '../accounts/privileged.js'
 import { formatVnDateTime } from '../../lib/vnTime.js'
 
 export type RenderedEmail = { subject: string; text: string; html: string }
@@ -279,6 +280,27 @@ export const EMAIL_TEMPLATES = {
 <p>Hồ sơ ứng tuyển của bạn cho đợt tuyển <strong>${roundTitle}</strong> đã được chuyển sang trạng thái: <strong>${escapeHtml(statusText)}</strong>.</p>
 <p>Bạn có thể kiểm tra chi tiết tại: <a href="${escapeHtml(lookupUrl)}">${escapeHtml(lookupUrl)}</a></p>
 <p>Trân trọng,<br>Câu lạc bộ Lập trình ứng dụng (APC)</p>`,
+    }
+  },
+  /** Cảnh báo vai trò đặc quyền sắp hết hạn (O6, RP-03, NTF-01); refId là id UserRole. Không kèm link đăng nhập. */
+  ROLE_EXPIRING: async (refId) => {
+    const row = await db.userRole.findUnique({
+      where: { id: refId },
+      select: { role: true, expiresAt: true, user: { select: { fullName: true } } },
+    })
+    if (!row?.expiresAt) return null
+    const role = ROLE_LABEL[row.role]
+    const name = row.user.fullName
+    const date = formatVnDateTime(row.expiresAt)
+    const action = 'Vui lòng bàn giao cho người kế nhiệm hoặc gia hạn vai trò theo quy trình của Ban Chủ nhiệm trước ngày này.'
+    return {
+      subject: `[APC] Vai trò ${role} sắp hết hạn: ${name}`,
+      text: [`Vai trò ${role} của ${name} sẽ hết hạn lúc ${date}.`, action, 'Email gửi tự động, vui lòng không trả lời.'].join('\n'),
+      html: [
+        `<p>Vai trò <strong>${escapeHtml(role)}</strong> của <strong>${escapeHtml(name)}</strong> sẽ hết hạn lúc <strong>${escapeHtml(date)}</strong>.</p>`,
+        `<p>${action}</p>`,
+        '<p><small>Email gửi tự động, vui lòng không trả lời.</small></p>',
+      ].join('\n'),
     }
   },
 } satisfies Record<string, Template>

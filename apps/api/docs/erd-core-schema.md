@@ -129,6 +129,8 @@ erDiagram
     String revokedById FK "tùy chọn"
     DateTime revokedAt "tùy chọn"
     String revokeReason "tùy chọn. A6: lý do thu hồi (lý do cấp nằm ở `reason`)"
+    Int warnedLevel "tùy chọn. O6: mốc cảnh báo hết hạn đã gửi gần nhất (30 hoặc 7 ngày)"
+    DateTime warnedForExpiresAt "tùy chọn. O6: giá trị expiresAt lúc báo; khác expiresAt hiện tại (đã gia hạn) thì coi như chưa báo"
     DateTime createdAt
     DateTime updatedAt
   }
