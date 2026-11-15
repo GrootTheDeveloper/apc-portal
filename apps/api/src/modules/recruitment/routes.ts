@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { FastifyInstance } from 'fastify'
 import type { AppConfig } from '../../config.js'
+import { createS3Storage, type FileStorage } from '../files/storage.js'
 import { currentUser, requireAuth, requireRole } from '../auth/rbac.js'
 import {
   createBodyEmailRateLimitKey,
@@ -8,19 +9,27 @@ import {
   createSourceIpLimiter,
 } from '../../lib/rateLimit.js'
 import {
+  changeApplicationStatus,
   changeRecruitmentRoundStatus,
+  convertApplicationToMember,
   createRecruitmentRound,
+  exportApplicationsCsv,
+  getAdminApplicationById,
   getAdminRecruitmentRoundById,
   getPublicRecruitmentRoundBySlug,
+  listAdminApplications,
   listAdminRecruitmentRounds,
   listPublicRecruitmentRounds,
   lookupApplication,
   submitApplication,
+  suggestApplicationUsername,
+  updateApplicationReview,
   updateRecruitmentRound,
   withdrawApplication,
 } from './service.js'
 
-export function recruitmentRoutes(config: AppConfig) {
+export function recruitmentRoutes(config: AppConfig, deps?: { storage?: FileStorage }) {
+  const storage = deps?.storage ?? createS3Storage(config)
   return async function registerRecruitmentRoutes(app: FastifyInstance) {
     /**
      * Lớp 2 của chặn lạm dụng (SEC-05): Giới hạn theo mỗi địa chỉ nguồn (IP) —
@@ -154,6 +163,114 @@ export function recruitmentRoutes(config: AppConfig) {
     async (request) => {
       const { id } = request.params as { id: string }
       return changeRecruitmentRoundStatus(request, id, request.body)
+    },
+  )
+
+  // ─── ADMIN APPLICATION ROUTES (R5) ──────────────────────────────────────────
+
+  // Danh sách hồ sơ đợt tuyển (PAGE-MGT-REC-06, FLOW-07) - Query không chứa PII (OPS-11)
+  app.get(
+    '/admin/recruitment/:id/applications',
+    { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
+    async (request) => {
+      const { id } = request.params as { id: string }
+      const user = currentUser(request)
+      return listAdminApplications(user, id, request.query)
+    },
+  )
+
+  // Tìm kiếm hồ sơ đợt tuyển qua body POST (họ tên, email, MSSV gửi trong body theo OPS-11)
+  app.post(
+    '/admin/recruitment/:id/applications/search',
+    { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
+    async (request) => {
+      const { id } = request.params as { id: string }
+      const user = currentUser(request)
+      return listAdminApplications(user, id, request.body)
+    },
+  )
+
+  // Xuất CSV danh sách hồ sơ (REC-11) - Chỉ dùng POST, nhận bộ lọc qua body (OPS-11)
+  app.post(
+    '/admin/recruitment/:id/applications/export',
+    { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
+    async (request) => {
+      const { id } = request.params as { id: string }
+      const user = currentUser(request)
+      return exportApplicationsCsv(request, id, request.body, user, { storage })
+    },
+  )
+
+  // Chi tiết hồ sơ ứng tuyển (PAGE-MGT-REC-07, FLOW-07)
+  app.get(
+    '/admin/recruitment/:id/applications/:applicationId',
+    { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
+    async (request) => {
+      const { id, applicationId } = request.params as { id: string; applicationId: string }
+      const user = currentUser(request)
+      return getAdminApplicationById(user, id, applicationId)
+    },
+  )
+
+  // Cập nhật đánh giá & ghi chú nội bộ (REC-10)
+  app.patch(
+    '/admin/recruitment/:id/applications/:applicationId/review',
+    { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
+    async (request) => {
+      const { id, applicationId } = request.params as { id: string; applicationId: string }
+      const user = currentUser(request)
+      return updateApplicationReview(request, id, applicationId, request.body, user)
+    },
+  )
+
+  // Chuyển trạng thái hồ sơ ứng tuyển (REC-08, BR-16, STATE-09)
+  app.post(
+    '/admin/recruitment/:id/applications/:applicationId/status',
+    { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
+    async (request) => {
+      const { id, applicationId } = request.params as { id: string; applicationId: string }
+      const user = currentUser(request)
+      return changeApplicationStatus(request, id, applicationId, request.body, user)
+    },
+  )
+
+  // ─── CHUYỂN HỒ SƠ THÀNH THÀNH VIÊN (R6, FLOW-08, BR-06, STATE-03) ────────────
+
+  // Đề xuất tên đăng nhập duy nhất: Chỉ BOARD
+  app.get(
+    '/admin/recruitment/:id/applications/:applicationId/suggest-username',
+    { preHandler: [requireAuth, requireRole('BOARD')] },
+    async (request) => {
+      const { id, applicationId } = request.params as { id: string; applicationId: string }
+      return suggestApplicationUsername(id, applicationId)
+    },
+  )
+
+  app.get(
+    '/admin/recruitment/rounds/:id/applications/:applicationId/suggest-username',
+    { preHandler: [requireAuth, requireRole('BOARD')] },
+    async (request) => {
+      const { id, applicationId } = request.params as { id: string; applicationId: string }
+      return suggestApplicationUsername(id, applicationId)
+    },
+  )
+
+  // Chuyển ứng viên thành thành viên: Chỉ BOARD
+  app.post(
+    '/admin/recruitment/:id/applications/:applicationId/convert',
+    { preHandler: [requireAuth, requireRole('BOARD')] },
+    async (request) => {
+      const { id, applicationId } = request.params as { id: string; applicationId: string }
+      return convertApplicationToMember(request, id, applicationId, request.body)
+    },
+  )
+
+  app.post(
+    '/admin/recruitment/rounds/:id/applications/:applicationId/convert',
+    { preHandler: [requireAuth, requireRole('BOARD')] },
+    async (request) => {
+      const { id, applicationId } = request.params as { id: string; applicationId: string }
+      return convertApplicationToMember(request, id, applicationId, request.body)
     },
   )
   }

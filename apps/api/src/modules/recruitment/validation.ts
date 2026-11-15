@@ -188,3 +188,62 @@ export type LookupApplicationInput = z.infer<typeof LookupApplicationSchema>
 
 export const WithdrawApplicationSchema = LookupApplicationSchema
 export type WithdrawApplicationInput = LookupApplicationInput
+
+// ─── ADMIN SCHEMAS (R5) ────────────────────────────────────────────────────────
+
+export const AdminApplicationQuerySchema = z.object({
+  status: z.enum(['NEW', 'REVIEWING', 'INTERVIEW', 'ACCEPTED', 'REJECTED', 'WITHDRAWN']).optional(),
+  departmentId: z.string().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+})
+export type AdminApplicationQueryInput = z.infer<typeof AdminApplicationQuerySchema>
+
+export const AdminApplicationSearchSchema = AdminApplicationQuerySchema.extend({
+  search: z.string().trim().optional(),
+})
+export type AdminApplicationSearchInput = z.infer<typeof AdminApplicationSearchSchema>
+
+export const UpdateApplicationReviewSchema = z.object({
+  internalNote: z.string().max(5000, 'Ghi chú tối đa 5000 ký tự').nullable().optional(),
+  updatedAt: z.string().datetime({ message: 'Thời điểm cập nhật không hợp lệ' }),
+})
+export type UpdateApplicationReviewInput = z.infer<typeof UpdateApplicationReviewSchema>
+
+export const ChangeApplicationStatusSchema = z.object({
+  status: z.enum(['NEW', 'REVIEWING', 'INTERVIEW', 'ACCEPTED', 'REJECTED', 'WITHDRAWN']),
+  reason: z.string().trim().max(1000, 'Lý do tối đa 1000 ký tự').optional().nullable(),
+  updatedAt: z.string().datetime({ message: 'Thời điểm cập nhật không hợp lệ' }),
+}).superRefine((data, ctx) => {
+  if (data.status === 'WITHDRAWN' && (!data.reason || data.reason.trim() === '')) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Lý do rút đơn không được để trống khi rút đơn ứng viên',
+      path: ['reason'],
+    })
+  }
+})
+export type ChangeApplicationStatusInput = z.infer<typeof ChangeApplicationStatusSchema>
+
+export const AdminApplicationExportSchema = z.object({
+  status: z.enum(['NEW', 'REVIEWING', 'INTERVIEW', 'ACCEPTED', 'REJECTED', 'WITHDRAWN']).optional(),
+  departmentId: z.string().optional(),
+  search: z.string().trim().optional(),
+})
+export type AdminApplicationExportInput = z.infer<typeof AdminApplicationExportSchema>
+export const AdminApplicationExportQuerySchema = AdminApplicationExportSchema
+export type AdminApplicationExportQueryInput = AdminApplicationExportInput
+
+// ─── CONVERT APPLICATION SCHEMAS (R6, FLOW-08, BR-06) ─────────────────────────
+
+export const ConvertApplicationSchema = z.object({
+  username: z
+    .string({ error: 'Nhập tên đăng nhập.' })
+    .trim()
+    .min(3, 'Tên đăng nhập ít nhất 3 ký tự.')
+    .max(50, 'Tên đăng nhập tối đa 50 ký tự.')
+    .regex(/^[a-z0-9._-]+$/, 'Tên đăng nhập chỉ gồm chữ thường không dấu, số, dấu chấm, gạch dưới, gạch ngang.'),
+  departmentId: z.string().trim().min(1, 'Ban chuyên môn không hợp lệ.').nullish(),
+})
+export type ConvertApplicationInput = z.infer<typeof ConvertApplicationSchema>
+

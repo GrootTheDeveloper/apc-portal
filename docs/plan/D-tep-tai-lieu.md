@@ -196,12 +196,12 @@ Mảng này làm các phần cả nhóm dùng chung và các chức năng quanh 
 
 **Xong khi:**
 
-- [ ] `member.b` mở link tải tài liệu chỉ dành cho Ban A nhận 404, kể cả khi có link đúng.
-- [ ] Thu hồi quyền của một thành viên xong, link tải cũ của người đó trả 404 ngay.
-- [ ] Thay tệp mới xong, tải được cả phiên bản mới và phiên bản trước; khôi phục bản trước thành bản hiện hành được.
-- [ ] Tài liệu `ARCHIVED` không hiện ở `/portal/documents` và thành viên không tải được.
-- [ ] `manager.a` không sửa được tài liệu của Ban B (404); chọn phạm vi toàn CLB nhận 403.
-- [ ] `techadmin` gọi API tài liệu nhận 404; gọi API metadata không kèm mã sự cố nhận 422, kèm mã sự cố thì xem được và có dòng nhật ký.
+- [X] `member.b` mở link tải tài liệu chỉ dành cho Ban A nhận 404, kể cả khi có link đúng.
+- [X] Thu hồi quyền của một thành viên xong, link tải cũ của người đó trả 404 ngay.
+- [X] Thay tệp mới xong, tải được cả phiên bản mới và phiên bản trước; khôi phục bản trước thành bản hiện hành được.
+- [X] Tài liệu `ARCHIVED` không hiện ở `/portal/documents` và thành viên không tải được.
+- [X] `manager.a` không sửa được tài liệu của Ban B (404); chọn phạm vi toàn CLB nhận 403.
+- [X] `techadmin` gọi API tài liệu nhận 404; gọi API metadata không kèm mã sự cố nhận 422, kèm mã sự cố thì xem được và có dòng nhật ký.
 
 ### D5. Nhập/xuất CSV thành viên — hạn CN 22/11
 

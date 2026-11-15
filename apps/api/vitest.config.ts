@@ -9,6 +9,5 @@ config({ path: path.resolve(import.meta.dirname, '../../.env'), quiet: true })
 export default defineConfig({
   test: {
     exclude: ['dist/**', 'node_modules/**'],
-    fileParallelism: false,
   },
 })

@@ -47,6 +47,7 @@ const STATUS_DETAILS: Record<ApplicationStatus, { label: string; badgeClass: str
 export function RecruitmentLookupPage() {
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
+  const [credentials, setCredentials] = useState<{ email: string; code: string } | null>(null)
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -68,10 +69,14 @@ export function RecruitmentLookupPage() {
     setConfirming(false)
     setLoading(true)
 
+    const trimmed = { email: email.trim(), code: code.trim().toUpperCase() }
+
     try {
-      const res = await performLookup(email, code)
+      const res = await performLookup(trimmed.email, trimmed.code)
+      setCredentials(trimmed)
       setResult(res)
     } catch (err) {
+      setCredentials(null)
       setResult(null)
       if (err instanceof ApiError) {
         setErrorMessage(err.message)
@@ -84,20 +89,17 @@ export function RecruitmentLookupPage() {
   }
 
   async function handleWithdraw() {
-    if (!result) return
+    if (!credentials || !result) return
     setWithdrawing(true)
     setErrorMessage(null)
     setSuccessMessage(null)
-
-    const targetEmail = email.trim()
-    const targetCode = (code.trim() || result.profileCode).trim()
 
     try {
       const res = await api<{ success: boolean; status: ApplicationStatus; updatedAt: string }>(
         '/public/applications/withdraw',
         {
           method: 'POST',
-          body: { email: targetEmail, code: targetCode },
+          body: credentials,
         },
       )
       setResult({
@@ -114,9 +116,9 @@ export function RecruitmentLookupPage() {
         setErrorMessage(err.message)
         if (err.status === 409) {
           // Trạng thái hồ sơ đã thay đổi (hoặc đã được rút / duyệt trước đó - BR-16)
-          // Tự động tra cứu lại từ máy chủ để hiển thị trạng thái mới nhất và ẩn nút rút đơn
+          // Tự động tra cứu lại từ máy chủ bằng chính credentials đã dùng để hiển thị trạng thái mới nhất và ẩn nút rút đơn
           try {
-            const fresh = await performLookup(targetEmail, targetCode)
+            const fresh = await performLookup(credentials.email, credentials.code)
             setResult(fresh)
           } catch {
             // Giữ nguyên thông báo lỗi nếu tra cứu lại gặp sự cố mạng

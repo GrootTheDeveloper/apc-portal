@@ -9,6 +9,8 @@ import { aboutRoutes } from './modules/about/routes.js'
 import { registerAuth } from './modules/auth/rbac.js'
 import { accountRoutes } from './modules/accounts/routes.js'
 import { authRoutes } from './modules/auth/routes.js'
+import { adminPostsRoutes } from './modules/content/admin-posts.routes.js'
+import { adminProjectsRoutes } from './modules/content/admin-projects.routes.js'
 import { contentRoutes } from './modules/content/routes.js'
 import { registerSession } from './modules/auth/session.js'
 import { emailRoutes } from './modules/email/routes.js'
@@ -17,6 +19,10 @@ import { filesRoutes } from './modules/files/routes.js'
 import { createScanner } from './modules/files/scan.js'
 import { createS3Storage, type FileStorage } from './modules/files/storage.js'
 import { organizationRoutes } from './modules/organization/routes.js'
+import { exportsRoutes } from './modules/exports/routes.js'
+import { documentsRoutes } from './modules/documents/routes.js'
+import { memberRoutes } from './modules/members/routes.js'
+import { portalRoutes } from './modules/portal/routes.js'
 import { recruitmentRoutes } from './modules/recruitment/routes.js'
 
 /** Phụ thuộc thay được khi test (vd kho tệp trong bộ nhớ: `createMemoryStorage()`). */
@@ -25,6 +31,7 @@ export type AppDeps = { storage?: FileStorage }
 export function buildApp(config: AppConfig, deps: AppDeps = {}) {
   const app = Fastify({ logger: config.NODE_ENV !== 'test' })
   const storage = deps.storage ?? createS3Storage(config)
+  const scanner = createScanner(config)
 
   app.register(cors, { origin: config.WEB_URL, credentials: true })
   app.register(cookie)
@@ -38,13 +45,19 @@ export function buildApp(config: AppConfig, deps: AppDeps = {}) {
   app.register(authRoutes(config))
   app.register(accountRoutes(config))
   app.register(emailRoutes)
-  app.register(contentRoutes())
+  app.register(portalRoutes)
+  app.register(contentRoutes({ storage, scanner: createScanner(config) }))
+  app.register(adminPostsRoutes())
+  app.register(adminProjectsRoutes())
   app.register(eventsRoutes(config))
   app.register(aboutRoutes)
   app.register(organizationRoutes)
-  app.register(filesRoutes({ storage, scanner: createScanner(config) }))
+  app.register(memberRoutes(config))
+  app.register(filesRoutes({ storage, scanner }))
+  app.register(exportsRoutes({ storage }))
+  app.register(documentsRoutes({ storage, scanner }))
 
-  app.register(recruitmentRoutes(config))
+  app.register(recruitmentRoutes(config, { storage }))
 
   return app
 }

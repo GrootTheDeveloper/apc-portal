@@ -17,22 +17,24 @@ const STATUS_CHIP: Record<EventListItem['status'], string> = {
 const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
 const MAX_CHIPS_PER_DAY = 2
 
-type EventCalendarProps = {
+type EventCalendarProps<T extends EventListItem> = {
   monthKey: string
-  events: EventListItem[]
+  events: readonly T[]
   onMonthChange: (monthKey: string) => void
+  /** Đích của ô sự kiện: mặc định trang công khai theo slug; portal trỏ tới /portal/events/:id (E5). */
+  to?: (event: T) => string
 }
 
 /**
  * Lưới tháng tự dựng bằng CSS grid (PUB-04), không dùng thư viện lịch.
  * Mỗi ngày liệt kê tên sự kiện theo ngày Việt Nam (BR-14); đổi tháng do trang cha ghi lên URL (?month=).
  */
-export function EventCalendar({ monthKey, events, onMonthChange }: EventCalendarProps) {
+export function EventCalendar<T extends EventListItem>({ monthKey, events, onMonthChange, to }: EventCalendarProps<T>) {
   const parsed = parseMonthKey(monthKey)
   if (!parsed) return null
   const { year, month } = parsed
 
-  const eventsByDay = new Map<number, EventListItem[]>()
+  const eventsByDay = new Map<number, T[]>()
   for (const event of events) {
     const { year: eventYear, month: eventMonth, day } = vnParts(event.startAt)
     if (eventYear !== year || eventMonth !== month) continue
@@ -85,7 +87,7 @@ export function EventCalendar({ monthKey, events, onMonthChange }: EventCalendar
               {dayEvents.slice(0, MAX_CHIPS_PER_DAY).map((event) => (
                 <Link
                   key={event.slug}
-                  to={`/events/${event.slug}`}
+                  to={to ? to(event) : `/events/${event.slug}`}
                   title={event.title}
                   className={`block truncate rounded-md px-1.5 py-0.5 text-[11px] font-bold leading-tight transition-colors ${STATUS_CHIP[event.status]}`}
                 >

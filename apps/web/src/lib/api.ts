@@ -12,9 +12,9 @@ export class ApiError extends Error {
   readonly status: number
   readonly code: string
   readonly issues: unknown[]
-  readonly data?: any
+  readonly data?: Record<string, unknown>
 
-  constructor(status: number, code: string, message: string, issues: unknown[] = [], data?: any) {
+  constructor(status: number, code: string, message: string, issues: unknown[] = [], data?: Record<string, unknown>) {
     super(message)
     this.status = status
     this.code = code
@@ -28,11 +28,12 @@ export function endsSession(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401
 }
 
-type Options = {
+export type ApiOptions = {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
   body?: unknown
   headers?: Record<string, string>
 }
+type Options = ApiOptions
 
 // Phiên hết hạn hoặc bị thu hồi giữa chừng: mọi 401 báo về đây một lần, AuthProvider đăng ký xử lý
 // (về trạng thái chưa đăng nhập → route guard đưa sang /login?returnTo=<trang đang mở>). Trang không tự xử lý 401.

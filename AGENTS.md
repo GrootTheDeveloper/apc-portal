@@ -8,35 +8,39 @@ Monorepo pnpm: `apps/web` (React 19 + Vite + Tailwind 3 + react-router 7), `apps
 Nguồn sự thật nghiệp vụ: `docs/01-prd.md` (yêu cầu), `docs/02-roles-permissions.md` (quyền), `docs/03-user-flows.md` (luồng), `docs/04-sitemap.md` (route/trang). Thiết kế: `DESIGN.md`.
 
 ## Lệnh
-- `pnpm install` · `pnpm infra:up` (Postgres/Mailpit/SeaweedFS) · `pnpm --filter @apc/api db:migrate` · `pnpm dev`
-- `pnpm --filter @apc/api db:migrate` (tạo migration) · `pnpm --filter @apc/api db:studio` (xem/sửa dữ liệu) · `pnpm --filter @apc/api test`
+- `pnpm install` · `pnpm infra:up` (Postgres/Mailpit/SeaweedFS) · `pnpm dev` (web + api song song)
+- API (`pnpm --filter @apc/api <script>`): `db:migrate` (tạo migration) · `db:deploy` (CI dùng) · `db:studio` (xem/sửa dữ liệu) · `db:seed` · `db:erd` · `bootstrap` · `test`
+- Test đơn: `pnpm --filter @apc/api exec vitest run src/modules/events/admin.test.ts` · `pnpm --filter @apc/web exec vitest run src/lib/menu.test.ts`
+- Web: `pnpm --filter @apc/web test` (vitest) · `pnpm --filter @apc/web test:e2e` (Playwright, tự khởi động web + api)
+- Lint là **oxlint** (`pnpm lint`), không có ESLint/Prettier; cấu hình web ở `apps/web/.oxlintrc.json`.
 - File `.env` duy nhất ở gốc repo; API, Prisma và test đều đọc từ đó.
 - **Trước khi mở PR: `pnpm check` phải xanh.**
 
 ## Quy ước API (`apps/api`)
-- Mỗi mảng một thư mục: `src/modules/<mảng>/` gồm `routes.ts`, `service.ts`, `*.test.ts`. Đăng ký route trong `app.ts`.
-- Có sẵn, dùng lại, không viết bản khác: `db` trong `src/db/client.ts`; `notFound()`, `forbidden()`, `conflict()`… trong `src/lib/errors.ts`; `hashPassword`/`verifyPassword` trong `src/lib/password.ts`; `pageQuery`/`pageArgs`/`toPage` trong `src/lib/pagination.ts`; `publicCode()`/`slugify()` trong `src/lib/ids.ts`; `startJob(...)` trong `src/lib/jobs.ts` cho mọi tác vụ định kỳ.
+- Mỗi mảng một thư mục: `src/modules/<mảng>/` gồm `routes.ts`, `service.ts`, `*.test.ts`; nghiệp vụ phụ tách file theo tên (`content/admin-posts.routes.ts` + `admin-posts.service.ts`, `recruitment/validation.ts`, `files/storage.ts` + `files/scan.ts`). Mảng chỉ có service, không có route: `audit`, `consent`. Đăng ký route trong `app.ts` (`buildApp(config, deps)`).
+- Có sẵn, dùng lại, không viết bản khác: `db` trong `src/db/client.ts`; `unauthenticated()`/`forbidden()`/`notFound()`/`conflict()`/`rateLimited()` trong `src/lib/errors.ts`; `hashPassword`/`verifyPassword` trong `src/lib/password.ts`; `pageQuery`/`pageArgs`/`toPage` trong `src/lib/pagination.ts`; `publicCode()`/`slugify()` trong `src/lib/ids.ts`; `startJob(...)` trong `src/lib/jobs.ts` cho mọi tác vụ định kỳ; `formatVnDateTime()` trong `src/lib/vnTime.ts` cho ngày giờ giờ VN trong email/thông báo; `createBodyEmailRateLimitKey()`, `createSourceIpLimiter()`, `createLookupAttemptLimiter()` trong `src/lib/rateLimit.ts` cho giới hạn theo IP, email hoặc mã tra cứu.
 - Tra cứu bằng mã (mã hồ sơ, mã đăng ký) gửi qua body `POST`, không đặt mã hay email trong URL vì URL bị ghi log (OPS-11).
-- `@fastify/rate-limit` chỉ đăng ký 1 lần trong `app.ts` với `global: false`; route cần giới hạn tự khai báo `config.rateLimit`.
+- `@fastify/rate-limit` chỉ đăng ký 1 lần trong `app.ts` với `global: false`; route cần giới hạn tự khai báo `config.rateLimit`, lấy key/limiter từ `src/lib/rateLimit.ts` thay vì tự dựng bộ đếm.
 - Nhóm route theo người gọi:
   - `/public/*` — không cần đăng nhập
   - `/auth/*` — đăng nhập/tài khoản
   - `/portal/*` — thành viên đã đăng nhập
   - `/admin/*` — quản trị (luôn kèm `requireRole`/`requireScope`)
 - Phiên đăng nhập: cookie `apc_session`, lưu ở bảng `sessions` (docs/06 §5). Không dùng JWT, không lưu token ở `localStorage`.
-- User đã đăng nhập: `request.user = { id, departmentId, roles }`; `roles` là các dòng `ACTIVE` trong bảng `user_roles` (`{ role, departmentId }`). Mọi tài khoản mặc định có vai trò nền `MEMBER`. Chặn quyền bằng `requireAuth`, `requireRole(...)`, `requireScope(...)` trong `src/modules/auth/rbac.ts`. **Không tự viết kiểm quyền riêng.**
+- User đã đăng nhập: `request.user = { id, departmentId, roles }`; `roles` là các dòng `ACTIVE` trong bảng `user_roles` (`{ role, departmentId }`), riêng vai trò nền `MEMBER` là ảo — không có dòng nào trong `user_roles`. Chặn quyền bằng `requireAuth`, `requireRole(...)`, `requireScope(...)`; đọc quyền bằng `currentUser(request)`, `hasRole(...)`, `canAccessDepartment(...)`; lọc dữ liệu theo ban bằng `departmentScope(user)` (đưa vào `where`) hoặc `assertInScope(...)` — tất cả trong `src/modules/auth/rbac.ts`. **Không tự viết kiểm quyền riêng, không tự so sánh `request.user.roles` rải rác.**
 - Tài khoản chờ kích hoạt hoặc đang dùng mật khẩu tạm (`status = PENDING_ACTIVATION` hoặc `mustChangePassword`) có `request.user.pendingActivation = true`; `requireAuth` trả 403 cho tài khoản này. `requireSession` (chỉ cần phiên hợp lệ, cho qua tài khoản pending) **chỉ dùng cho `/auth/me`, `/auth/logout`, `/auth/activate`**; route mới luôn dùng `requireAuth`/`requireRole`/`requireScope`.
-- Vai trò `BOARD`/`TECH_ADMIN` chỉ có trong `roles` khi phiên đã nhập mã 2 lớp (`request.twoFactorVerified`); không tự đọc bảng `user_roles` để kiểm quyền.
-- Request `POST`/`PATCH`/`PUT`/`DELETE` phải có header `Origin` trùng `WEB_URL` (chống CSRF), thiếu thì 403. Web gọi qua `api(...)` đã tự có; test gửi `headers: { origin: 'http://localhost:5173' }`.
-- Validate mọi input bằng Zod (`schema.parse(...)`). Lỗi trả `{ error: '<code>', message: '<tiếng Việt>' }` theo docs/03 §14: 401 `unauthenticated`, 403 `forbidden`, 404 `not_found`, 409 `conflict`, 422 `validation` (kèm `issues`), 429 `rate_limited`. Chỉ cần `throw`; `src/lib/errors.ts` tự đổi ZodError → 422, trùng unique (P2002) → 409, lỗi khác → 500 kèm mã tham chiếu.
+- Vai trò `BOARD`/`TECH_ADMIN` chỉ có trong `roles` khi phiên đã nhập mã 2 lớp (`request.twoFactorVerified`); không tự đọc bảng `user_roles` để kiểm quyền. Bản phát triển đang tắt bước nhập mã: `NEW_SESSION_TWO_FACTOR_VERIFIED = true` trong `src/modules/auth/session.ts` (TODO B3), đừng viết test giả định tài khoản BOARD chưa xác thực 2 lớp.
+- Request `POST`/`PATCH`/`PUT`/`DELETE` phải có header `Origin` trùng `WEB_URL` (chống CSRF), thiếu thì 403. Trình duyệt tự gửi `Origin` khi web gọi qua `api(...)` — không tự thêm header này trong `src/lib/api.ts`; test gọi thẳng app thì gửi `headers: { origin: 'http://localhost:5173' }`.
+- Validate mọi input bằng Zod (`schema.parse(...)`). Lỗi trả `{ error: '<code>', message: '<tiếng Việt>' }` theo docs/03 §14: 401 `unauthenticated`, 403 `forbidden`, 404 `not_found`, 409 `conflict`, 422 `validation` (kèm `issues`), 429 `rate_limited`. Chỉ cần `throw`; `registerErrorHandler` trong `src/lib/errors.ts` tự đổi ZodError → 422, trùng unique (P2002) → 409, bản ghi không còn (P2025) → 404, lỗi khác → 500 kèm mã tham chiếu `request.id`.
 - Truy cập dữ liệu ngoài phạm vi ban (người dùng không được biết dữ liệu tồn tại) trả 404, không trả 403 (docs/02 §12).
 - Danh sách có phân trang: `?page=1&pageSize=20` → `{ items, total, page, pageSize }`.
-- Thao tác nhạy cảm (tạo/sửa quyền, công bố, xử lý đơn, import/export, tài liệu) gọi `audit(...)` (docs/02 §11).
-- Email: gọi `enqueueEmail(tx, { type, to, refType, refId })` (`src/modules/email/service.ts`) trong cùng transaction với thao tác nghiệp vụ; chỉ truyền tham chiếu, không truyền mã hồ sơ/mã đăng ký. Không gửi SMTP trực tiếp, không gửi mật khẩu/mã khôi phục qua email.
-- Tệp: dùng module `files` (S3 API). Không trả URL kho tệp trực tiếp cho tài liệu nội bộ.
+- Thao tác nhạy cảm (tạo/sửa quyền, công bố, xử lý đơn, import/export, tài liệu) gọi `audit(request, { action, targetType, targetId, category, result, reason }, tx)` trong `src/modules/audit/service.ts` (docs/02 §11). `action` lấy từ `AUDIT_ACTIONS`, không tự đặt chuỗi mới; tác vụ nền không có request thì truyền `{ service: '<tên>' }`. Mật khẩu/token/mã tự bị ẩn, không cần lọc tay.
+- Email: gọi `enqueueEmail(tx, { type, to, refType, refId })` (`src/modules/email/service.ts`) trong cùng transaction với thao tác nghiệp vụ; chỉ truyền tham chiếu, không truyền mã hồ sơ/mã đăng ký. Loại email mới thì thêm một khoá vào `EMAIL_TEMPLATES` (`src/modules/email/templates.ts`) — danh sách `type` hợp lệ sinh từ khoá đó. Không gửi SMTP trực tiếp, không gửi mật khẩu/mã khôi phục qua email.
+- Tệp: dùng module `files` (S3 API): `uploadFile`/`sendStoredFile`, giới hạn 20MB (`MAX_FILE_SIZE`), virus scan qua `files/scan.ts`. Không trả URL kho tệp trực tiếp cho tài liệu nội bộ. Test upload thì `buildApp(config, { storage: createMemoryStorage() })`.
 
 ## Quy ước DB
 - Sửa `src/db/schema.prisma` rồi `db:migrate` để **tạo migration mới**, sau đó `db:erd` để cập nhật sơ đồ `apps/api/docs/erd-core-schema.md`. Không bao giờ sửa migration đã merge.
+- Không sửa tay `apps/api/docs/erd-core-schema.md` — file do `scripts/erd.mjs` sinh từ schema; chỉ đổi bằng cách chạy `db:erd`.
 - Mỗi PR tối đa 1 migration. Pull `main` ngay trước khi tạo migration.
 - `main` có migration mới sau khi bạn đã tạo migration: xóa thư mục migration của bạn, merge `main`, chạy lại `db:migrate`.
 - CI có Postgres và chạy `db:deploy` trước test, nên test được dùng database thật.
@@ -46,19 +50,22 @@ Nguồn sự thật nghiệp vụ: `docs/01-prd.md` (yêu cầu), `docs/02-roles
 - Mã công khai (mã hồ sơ, mã đăng ký) sinh bằng `crypto.randomBytes`/`randomUUID`, không tuần tự.
 
 ## Quy ước Web (`apps/web`)
-- Trang: `src/pages/<khu>/<trang>/`. Gọi API qua `api(...)` trong `src/lib/api.ts` (không `fetch` rải rác); lỗi là `ApiError` có `status`, `code`, `message`, `issues`.
-- Component dùng chung ở `src/components/`: `Button`/`buttonClass`/`pillClass`, `Eyebrow`, `PageHero` (đầu mỗi trang con), `Breadcrumb`, `Pagination`, `StatusScreen` (`compact` trong khung portal/quản trị), `inputClass`/`labelClass` (`formClass.ts`), `PasswordField`, `ConfirmDialog` (xác nhận hành động nhạy cảm, hỏi lý do, 409 có nút Tải lại), `EventCard`/`NewsCard`/`ProjectCard`. Navbar/Footer ở `src/layouts/`.
-- Hiệu ứng hiện dần: gắn `data-rv` cho phần tử trong `<section>` (độ trễ `style={{ '--d': '90ms' }}`), không tự viết IntersectionObserver.
-- Mọi trang có đủ 4 trạng thái: loading / empty / error / success. Dùng `useApi(...)` (`src/hooks/useApi.ts`) và `<AsyncState>` (`src/components/AsyncState.tsx`).
-- Ngày giờ hiển thị bằng `formatDate`/`formatDateTime` trong `src/lib/format.ts` (giờ Việt Nam), không tự `toLocaleString`.
-- Dữ liệu lặp khai báo mảng rồi `map`. Class Tailwind viết literal đầy đủ (không `text-${x}`).
+- Trang: `src/pages/<khu>/<trang>/`, tên thư mục tiếng Anh, file trang là PascalCase và **export có tên** (`export function AdminEventListPage(...)`) vì menu import theo `m.TenTrang`. Gọi API qua `api(...)` trong `src/lib/api.ts` (không `fetch` rải rác); lỗi là `ApiError` có `status`, `code`, `message`, `issues`; kiểu danh sách phân trang dùng `Page<T>`; chỉ 401 mới kết thúc phiên — dùng `endsSession(error)`; cần tự đăng nhập khi API báo hết phiên thì đăng ký qua `onUnauthorized(...)` (`AuthProvider` đã làm).
+- Component dùng chung ở `src/components/`: `Button`/`buttonClass`/`pillClass`, `Eyebrow`, `PageHero` (đầu mỗi trang con), `Breadcrumb`, `Pagination`, `StatusScreen` (`compact` trong khung portal/quản trị, `inline` trong khối nhỏ), `inputClass`/`labelClass` (`formClass.ts`), `PasswordField`, `ConfirmDialog` (xác nhận hành động nhạy cảm, hỏi lý do, 409 có nút Tải lại), `EventCard`/`NewsCard`/`ProjectCard`, `SearchBox`, `FileUpload`, `Seo` (title/canonical/OG cho mọi trang mới), `AsyncState`, `AuthProvider`, `RequireAuth`. Layout ở `src/layouts/`: `RootLayout` (khung chung, gắn reveal), `Navbar`, `SiteFooter`, `AreaLayout` — `PortalLayout`/`AdminLayout` chỉ là wrapper, đừng nhân bản khung trang.
+- Hiệu ứng hiện dần: gắn `data-rv` cho phần tử trong `<section>` (độ trễ `style={{ '--d': '90ms' }} as CSSProperties`), không tự viết IntersectionObserver và **không gọi `useReveal` trong trang** — hook này chỉ chạy một lần ở `RootLayout`.
+- Mọi trang có đủ 4 trạng thái: loading / empty / error / success. Dùng `useApi(...)` (`src/hooks/useApi.ts`, trả `{ data, error, loading, reload }` — nút "Thử lại" gọi `reload()`, truyền `null` khi chưa đủ điều kiện gọi) và `<AsyncState>` (`src/components/AsyncState.tsx`).
+- Ngày giờ hiển thị bằng `src/lib/format.ts` (giờ Việt Nam): `formatDate`/`formatDateTime`/`formatTime`, ô `datetime-local` thì `toVnDatetimeInput`/`fromVnDatetimeInput`; không tự `toLocaleString`.
+- Lỗi form 422 gắn từng ô bằng `fieldErrors(error)` (`src/lib/formErrors.ts`), không tự đọc `error.issues`.
+- Dữ liệu lặp khai báo mảng rồi `map`. Nhãn/màu theo trạng thái hoặc danh mục lấy từ map có sẵn: `src/lib/content.ts` (`NEWS_CATEGORIES`, `newsCategoryStyle`, `safeHttpUrl`), `src/lib/eventVisual.ts` (`eventPhoto`, `EVENT_STATUS_STYLES`), `src/lib/vnTime.ts` (lịch tháng). Class Tailwind viết literal đầy đủ (không `text-${x}`).
 - Màu/chữ/nút/chuyển động theo `DESIGN.md`: mảng màu đặc, không card viền mảnh, không đổ bóng, không gradient; dùng lại component có sẵn trước khi tạo mới.
 - Route theo `docs/04-sitemap.md`, URL tiếng Anh.
-- Thêm trang portal/quản trị: **không** sửa `src/routes.tsx`. Thêm một mục vào `PORTAL_MENU`/`ADMIN_MENU` trong `src/lib/menu.ts` với `roles` (ai được mở) và `page: () => import('…').then((m) => ({ Component: m.TenTrang }))`. Router tự sinh route, tự bọc `<RequireAuth roles>` và tự hiện menu theo vai trò. Trang chi tiết/tạo mới/sửa không nằm trong menu thì khai báo trong `children` của mục cha. Trang công khai mới mới khai báo trực tiếp trong `src/routes.tsx`.
-- Thứ tự chặn route (phiên → kích hoạt → 2 lớp → vai trò) nằm trong `guardRedirect` (`src/lib/auth.ts`); `<RequireAuth>` chỉ gọi hàm này. Lỗi API 403/404 để `<AsyncState>` tự hiện màn "không có quyền"/"không tìm thấy".
+- Thêm trang portal/quản trị: **không** sửa `src/routes.tsx`. Thêm một mục vào `PORTAL_MENU`/`ADMIN_MENU` trong `src/lib/menu.ts` (`MenuGroup → items: MenuItem[]`, mỗi mục là `MenuPage { label, to, roles, page }`) với `roles` (ai được mở, lấy kiểu `Role`/nhóm vai trò `ADMIN_ROLES` từ `src/lib/auth.ts`) và `page: () => import('…').then((m) => ({ Component: m.TenTrang }))`. Router tự sinh route, tự bọc `<RequireAuth roles>` và tự hiện menu theo vai trò (`visibleMenu`, `menuPages`). Trang chi tiết/tạo mới/sửa không nằm trong menu thì khai báo trong `children` của mục cha. Trang công khai mới mới khai báo trực tiếp trong `src/routes.tsx`.
+- Thứ tự chặn route (phiên → kích hoạt → 2 lớp → vai trò) nằm trong `guardRedirect` (`src/lib/auth.ts`); `<RequireAuth>` chỉ gọi hàm này. Kiểm vai trò trong UI bằng `hasRole`/`hasAnyRole`/`needsActivation` cùng file, không tự đọc `me.roles`. Đường dẫn quay lại sau đăng nhập chỉ nhận path nội bộ mà `isAppPath` (`src/routes.tsx`) công nhận — trang thêm qua menu tự nhiên hợp lệ, không tự nối `?returnTo`. Lỗi API 403/404 để `<AsyncState>` tự hiện màn "không có quyền"/"không tìm thấy".
 
 ## Test tối thiểu
+- Runner ở cả hai app là **vitest**; API: test đặt cạnh source `src/modules/<mảng>/*.test.ts`, hàm dùng chung cross-cutting ở `apps/api/test/`, chạy trên Postgres thật đọc từ `.env` (không mock `db`).
 - API: mỗi endpoint có 1 test thành công và 1 test **bị từ chối** (401/403, hoặc 404 khi sai phạm vi ban).
+- Web: hàm thuần trong `src/lib` có test vitest; luồng người dùng chính có test Playwright trong `apps/web/e2e/*.e2e.ts`.
 - Nghiệp vụ có trạng thái: test 1 bước chuyển hợp lệ và 1 bước không hợp lệ.
 
 ## Không được làm
