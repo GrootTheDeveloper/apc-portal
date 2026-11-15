@@ -194,23 +194,26 @@ export type WithdrawApplicationInput = LookupApplicationInput
 export const AdminApplicationQuerySchema = z.object({
   status: z.enum(['NEW', 'REVIEWING', 'INTERVIEW', 'ACCEPTED', 'REJECTED', 'WITHDRAWN']).optional(),
   departmentId: z.string().optional(),
-  search: z.string().trim().optional(),
-  q: z.string().trim().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 })
 export type AdminApplicationQueryInput = z.infer<typeof AdminApplicationQuerySchema>
 
+export const AdminApplicationSearchSchema = AdminApplicationQuerySchema.extend({
+  search: z.string().trim().optional(),
+})
+export type AdminApplicationSearchInput = z.infer<typeof AdminApplicationSearchSchema>
+
 export const UpdateApplicationReviewSchema = z.object({
   internalNote: z.string().max(5000, 'Ghi chú tối đa 5000 ký tự').nullable().optional(),
-  updatedAt: z.string().datetime({ message: 'Thời điểm cập nhật không hợp lệ' }).optional(),
+  updatedAt: z.string().datetime({ message: 'Thời điểm cập nhật không hợp lệ' }),
 })
 export type UpdateApplicationReviewInput = z.infer<typeof UpdateApplicationReviewSchema>
 
 export const ChangeApplicationStatusSchema = z.object({
   status: z.enum(['NEW', 'REVIEWING', 'INTERVIEW', 'ACCEPTED', 'REJECTED', 'WITHDRAWN']),
   reason: z.string().trim().max(1000, 'Lý do tối đa 1000 ký tự').optional().nullable(),
-  updatedAt: z.string().datetime({ message: 'Thời điểm cập nhật không hợp lệ' }).optional(),
+  updatedAt: z.string().datetime({ message: 'Thời điểm cập nhật không hợp lệ' }),
 }).superRefine((data, ctx) => {
   if (data.status === 'WITHDRAWN' && (!data.reason || data.reason.trim() === '')) {
     ctx.addIssue({
@@ -222,11 +225,12 @@ export const ChangeApplicationStatusSchema = z.object({
 })
 export type ChangeApplicationStatusInput = z.infer<typeof ChangeApplicationStatusSchema>
 
-export const AdminApplicationExportQuerySchema = z.object({
+export const AdminApplicationExportSchema = z.object({
   status: z.enum(['NEW', 'REVIEWING', 'INTERVIEW', 'ACCEPTED', 'REJECTED', 'WITHDRAWN']).optional(),
   departmentId: z.string().optional(),
   search: z.string().trim().optional(),
-  q: z.string().trim().optional(),
 })
-export type AdminApplicationExportQueryInput = z.infer<typeof AdminApplicationExportQuerySchema>
+export type AdminApplicationExportInput = z.infer<typeof AdminApplicationExportSchema>
+export const AdminApplicationExportQuerySchema = AdminApplicationExportSchema
+export type AdminApplicationExportQueryInput = AdminApplicationExportInput
 

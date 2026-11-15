@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { FastifyInstance } from 'fastify'
 import type { AppConfig } from '../../config.js'
+import { createS3Storage, type FileStorage } from '../files/storage.js'
 import { currentUser, requireAuth, requireRole } from '../auth/rbac.js'
 import {
   createBodyEmailRateLimitKey,
@@ -25,7 +26,8 @@ import {
   withdrawApplication,
 } from './service.js'
 
-export function recruitmentRoutes(config: AppConfig) {
+export function recruitmentRoutes(config: AppConfig, deps?: { storage?: FileStorage }) {
+  const storage = deps?.storage ?? createS3Storage(config)
   return async function registerRecruitmentRoutes(app: FastifyInstance) {
     /**
      * Lớp 2 của chặn lạm dụng (SEC-05): Giới hạn theo mỗi địa chỉ nguồn (IP) —
@@ -164,7 +166,7 @@ export function recruitmentRoutes(config: AppConfig) {
 
   // ─── ADMIN APPLICATION ROUTES (R5) ──────────────────────────────────────────
 
-  // Danh sách hồ sơ đợt tuyển (PAGE-MGT-REC-06, FLOW-07)
+  // Danh sách hồ sơ đợt tuyển (PAGE-MGT-REC-06, FLOW-07) - Query không chứa PII (OPS-11)
   app.get(
     '/admin/recruitment/:id/applications',
     { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
@@ -175,28 +177,25 @@ export function recruitmentRoutes(config: AppConfig) {
     },
   )
 
-  // Xuất CSV danh sách hồ sơ (REC-11)
+  // Tìm kiếm hồ sơ đợt tuyển qua body POST (họ tên, email, MSSV gửi trong body theo OPS-11)
+  app.post(
+    '/admin/recruitment/:id/applications/search',
+    { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
+    async (request) => {
+      const { id } = request.params as { id: string }
+      const user = currentUser(request)
+      return listAdminApplications(user, id, request.body)
+    },
+  )
+
+  // Xuất CSV danh sách hồ sơ (REC-11) - Chỉ dùng POST, nhận bộ lọc qua body (OPS-11)
   app.post(
     '/admin/recruitment/:id/applications/export',
     { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
     async (request) => {
       const { id } = request.params as { id: string }
       const user = currentUser(request)
-      return exportApplicationsCsv(request, id, request.body ?? request.query, user)
-    },
-  )
-
-  app.get(
-    '/admin/recruitment/:id/applications/export',
-    { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
-    async (request, reply) => {
-      const { id } = request.params as { id: string }
-      const user = currentUser(request)
-      const result = await exportApplicationsCsv(request, id, request.query, user)
-      return reply
-        .type('text/csv; charset=utf-8')
-        .header('Content-Disposition', `attachment; filename="${result.filename}"`)
-        .send(result.csv)
+      return exportApplicationsCsv(request, id, request.body, user, { storage })
     },
   )
 
@@ -214,17 +213,6 @@ export function recruitmentRoutes(config: AppConfig) {
   // Cập nhật đánh giá & ghi chú nội bộ (REC-10)
   app.patch(
     '/admin/recruitment/:id/applications/:applicationId/review',
-    { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
-    async (request) => {
-      const { id, applicationId } = request.params as { id: string; applicationId: string }
-      const user = currentUser(request)
-      return updateApplicationReview(request, id, applicationId, request.body, user)
-    },
-  )
-
-  // Alias cập nhật ghi chú nội bộ không kèm đuôi /review
-  app.patch(
-    '/admin/recruitment/:id/applications/:applicationId',
     { preHandler: [requireAuth, requireRole('BOARD', 'DEPARTMENT_MANAGER')] },
     async (request) => {
       const { id, applicationId } = request.params as { id: string; applicationId: string }
