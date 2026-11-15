@@ -81,6 +81,12 @@ async function call(method: 'GET' | 'POST' | 'PATCH', url: string, token: string
   })
 }
 
+/** PATCH kèm `updatedAt` đang có trong DB (như form gửi bản đang xem). */
+async function patch(id: string, token: string, payload: Record<string, unknown>) {
+  const current = await db.user.findUnique({ where: { id }, select: { updatedAt: true } })
+  return call('PATCH', `/admin/members/${id}`, token, { updatedAt: current?.updatedAt.toISOString(), ...payload })
+}
+
 let deptA: { id: string }
 let deptB: { id: string }
 let deptArchived: { id: string }
@@ -161,6 +167,12 @@ describe('T5: Quản lý thành viên (FLOW-13, RP-08, QĐ-3, QĐ-8)', () => {
       expect(data.items.some((i: any) => i.id === memberAUser.id)).toBe(true)
       expect(data.items.some((i: any) => i.id === memberBUser.id)).toBe(false)
     })
+
+    it('không tìm theo email (OPS-11)', async () => {
+      const res = await call('GET', `/admin/members?q=${encodeURIComponent(`mem-a-${tag}@test.local`)}`, tokens.board)
+      expect(res.statusCode).toBe(200)
+      expect(res.json().total).toBe(0)
+    })
   })
 
   describe('GET /admin/members/:id', () => {
@@ -187,7 +199,7 @@ describe('T5: Quản lý thành viên (FLOW-13, RP-08, QĐ-3, QĐ-8)', () => {
 
   describe('PATCH /admin/members/:id', () => {
     it('manager.a gọi PATCH nhận 403', async () => {
-      const res = await call('PATCH', `/admin/members/${memberAUser.id}`, tokens.managerA, {
+      const res = await patch(memberAUser.id, tokens.managerA, {
         studentId: 'NEW-ID',
         reason: 'Sửa thử',
       })
@@ -195,12 +207,12 @@ describe('T5: Quản lý thành viên (FLOW-13, RP-08, QĐ-3, QĐ-8)', () => {
     })
 
     it('yêu cầu lý do và ít nhất một trường thay đổi (422)', async () => {
-      const missingReason = await call('PATCH', `/admin/members/${memberAUser.id}`, tokens.board, {
+      const missingReason = await patch(memberAUser.id, tokens.board, {
         studentId: 'NEW-ID',
       })
       expect(missingReason.statusCode).toBe(422)
 
-      const noFields = await call('PATCH', `/admin/members/${memberAUser.id}`, tokens.board, {
+      const noFields = await patch(memberAUser.id, tokens.board, {
         reason: 'Chỉ có lý do',
       })
       expect(noFields.statusCode).toBe(422)
@@ -208,16 +220,51 @@ describe('T5: Quản lý thành viên (FLOW-13, RP-08, QĐ-3, QĐ-8)', () => {
 
     it('QĐ-8: đổi email trùng email của thành viên khác trả 409', async () => {
       const userB = await db.user.findUnique({ where: { id: memberBUser.id }, select: { email: true } })
-      const res = await call('PATCH', `/admin/members/${memberAUser.id}`, tokens.board, {
+      const res = await patch(memberAUser.id, tokens.board, {
         email: userB?.email,
         reason: 'Đổi trùng email',
       })
       expect(res.statusCode).toBe(409)
     })
 
+    it('STATE-09: updatedAt cũ trả 409, thiếu updatedAt trả 422', async () => {
+      const target = await createUser('occ-test', undefined, deptA.id)
+      const stale = new Date(Date.now() - 60_000).toISOString()
+      const res = await call('PATCH', `/admin/members/${target.id}`, tokens.board, {
+        studentId: `SV-occ-new-${tag}`,
+        reason: 'Sửa bằng bản cũ',
+        updatedAt: stale,
+      })
+      expect(res.statusCode).toBe(409)
+      const missing = await call('PATCH', `/admin/members/${target.id}`, tokens.board, {
+        studentId: `SV-occ-new-${tag}`,
+        reason: 'Thiếu updatedAt',
+      })
+      expect(missing.statusCode).toBe(422)
+    })
+
+    it('RP-05: BOARD tự sửa tài khoản của mình nhận 403', async () => {
+      const res = await patch(boardUser.id, tokens.board, { memberStatus: 'LEFT', reason: 'Tự rời CLB' })
+      expect(res.statusCode).toBe(403)
+    })
+
+    it('không đổi email của tài khoản BOARD/TECH_ADMIN khác (403)', async () => {
+      const tech = await createUser('tech-email', 'TECH_ADMIN')
+      const res = await patch(tech.id, tokens.board, { email: `takeover-${tag}@test.local`, reason: 'Đổi email quản trị' })
+      expect(res.statusCode).toBe(403)
+      const after = await db.user.findUnique({ where: { id: tech.id }, select: { email: true } })
+      expect(after?.email).toBe(`tech-email-${tag}@test.local`)
+    })
+
+    it('email được chuẩn hóa chữ thường: viết hoa email đã có vẫn trả 409', async () => {
+      const userB = await db.user.findUnique({ where: { id: memberBUser.id }, select: { email: true } })
+      const res = await patch(memberAUser.id, tokens.board, { email: userB?.email.toUpperCase(), reason: 'Đổi email viết hoa' })
+      expect(res.statusCode).toBe(409)
+    })
+
     it('đổi studentId trùng sinh viên khác trả 409', async () => {
       const userB = await db.user.findUnique({ where: { id: memberBUser.id }, select: { studentId: true } })
-      const res = await call('PATCH', `/admin/members/${memberAUser.id}`, tokens.board, {
+      const res = await patch(memberAUser.id, tokens.board, {
         studentId: userB?.studentId,
         reason: 'Đổi trùng MSSV',
       })
@@ -225,7 +272,7 @@ describe('T5: Quản lý thành viên (FLOW-13, RP-08, QĐ-3, QĐ-8)', () => {
     })
 
     it('đổi ban: không chuyển vào ban ARCHIVED (409)', async () => {
-      const res = await call('PATCH', `/admin/members/${memberAUser.id}`, tokens.board, {
+      const res = await patch(memberAUser.id, tokens.board, {
         departmentId: deptArchived.id,
         reason: 'Chuyển vào ban cũ đã lưu trữ',
       })
@@ -234,7 +281,7 @@ describe('T5: Quản lý thành viên (FLOW-13, RP-08, QĐ-3, QĐ-8)', () => {
 
     it('RP-08: chuyển manager.a sang Ban B thì vai trò quản lý Ban A chuyển REVOKED trong cùng tx', async () => {
       const target = await createUser('mng-test-transfer', 'DEPARTMENT_MANAGER', deptA.id)
-      const res = await call('PATCH', `/admin/members/${target.id}`, tokens.board, {
+      const res = await patch(target.id, tokens.board, {
         departmentId: deptB.id,
         reason: 'Điều động sang ban B',
       })
@@ -261,7 +308,7 @@ describe('T5: Quản lý thành viên (FLOW-13, RP-08, QĐ-3, QĐ-8)', () => {
       const tokenTarget = (await login(target.username)).token
 
       // Chuyển sang PAUSED
-      const pauseRes = await call('PATCH', `/admin/members/${target.id}`, tokens.board, {
+      const pauseRes = await patch(target.id, tokens.board, {
         memberStatus: 'PAUSED',
         reason: 'Nghỉ tạm thời 1 học kỳ',
       })
@@ -276,7 +323,7 @@ describe('T5: Quản lý thành viên (FLOW-13, RP-08, QĐ-3, QĐ-8)', () => {
       expect(checkAuth.statusCode).toBe(200)
 
       // Chuyển lại sang ACTIVE
-      const activeRes = await call('PATCH', `/admin/members/${target.id}`, tokens.board, {
+      const activeRes = await patch(target.id, tokens.board, {
         memberStatus: 'ACTIVE',
         reason: 'Quay lại hoạt động',
       })
@@ -286,14 +333,14 @@ describe('T5: Quản lý thành viên (FLOW-13, RP-08, QĐ-3, QĐ-8)', () => {
     it('bước chuyển sai (LEFT → ACTIVE) trả 409', async () => {
       const target = await createUser('left-state-test', undefined, deptA.id)
       // Chuyển sang LEFT hợp lệ
-      const leftRes = await call('PATCH', `/admin/members/${target.id}`, tokens.board, {
+      const leftRes = await patch(target.id, tokens.board, {
         memberStatus: 'LEFT',
         reason: 'Rời câu lạc bộ',
       })
       expect(leftRes.statusCode).toBe(200)
 
       // Cố tình chuyển LEFT -> ACTIVE
-      const invalidRes = await call('PATCH', `/admin/members/${target.id}`, tokens.board, {
+      const invalidRes = await patch(target.id, tokens.board, {
         memberStatus: 'ACTIVE',
         reason: 'Cố kích hoạt lại',
       })
@@ -309,7 +356,7 @@ describe('T5: Quản lý thành viên (FLOW-13, RP-08, QĐ-3, QĐ-8)', () => {
       expect(beforeAuth.statusCode).toBe(200)
 
       // Chuyển sang LEFT
-      const res = await call('PATCH', `/admin/members/${target.id}`, tokens.board, {
+      const res = await patch(target.id, tokens.board, {
         memberStatus: 'LEFT',
         reason: 'Tốt nghiệp ra trường',
       })

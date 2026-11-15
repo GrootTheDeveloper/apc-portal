@@ -74,7 +74,7 @@ function MemberEditForm({
     try {
       await api(`/admin/members/${detail.profile.id}`, {
         method: 'PATCH',
-        body: payload,
+        body: { ...payload, updatedAt: detail.profile.updatedAt },
       })
       setSuccessMessage('Cập nhật thông tin thành viên thành công.')
       onReload()

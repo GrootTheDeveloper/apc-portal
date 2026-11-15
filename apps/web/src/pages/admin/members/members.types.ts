@@ -59,6 +59,7 @@ export type MemberDetail = {
     interestAreas: unknown
     accountStatus: AccountStatus
     createdAt: string
+    updatedAt: string
     deactivatedAt: string | null
   }
   organization: {

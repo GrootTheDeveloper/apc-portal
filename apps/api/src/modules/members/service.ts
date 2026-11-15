@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { Prisma } from '../../db/generated/client.js'
 import type { MemberStatus, Role } from '../../db/generated/enums.js'
 import { db } from '../../db/client.js'
-import { conflict, notFound } from '../../lib/errors.js'
+import { conflict, forbidden, notFound } from '../../lib/errors.js'
 import { pageArgs, pageQuery, toPage } from '../../lib/pagination.js'
 import { AUDIT_ACTIONS, audit, AuditCategory, AuditResult, type AuditRequestLike } from '../audit/service.js'
 import { deactivateAccount } from '../accounts/service.js'
@@ -24,10 +24,12 @@ export type ListMembersQuery = z.infer<typeof listMembersQuerySchema>
 export const updateMemberSchema = z
   .object({
     studentId: z.string().trim().nullable().optional(),
-    email: z.string().trim().email('Email không đúng định dạng.').optional(),
+    email: z.string().trim().toLowerCase().email('Email không đúng định dạng.').optional(),
     departmentId: z.string().trim().nullable().optional(),
     memberStatus: z.enum(['ACTIVE', 'PAUSED', 'LEFT']).optional(),
     reason: z.string({ error: 'Nhập lý do.' }).trim().min(3, 'Nhập lý do (ít nhất 3 ký tự).').max(500, 'Lý do tối đa 500 ký tự.'),
+    /** `updatedAt` của bản đang xem: khác bản trên server thì 409, không ghi đè (STATE-09). */
+    updatedAt: z.iso.datetime({ error: 'Thiếu thời điểm cập nhật. Vui lòng tải lại trang.' }),
   })
   .refine(
     (data) =>
@@ -68,12 +70,11 @@ export async function listMembers(actor: Actor, rawQuery: unknown, now = new Dat
     where.departmentId = query.departmentId
   }
 
-  // Lọc theo từ khóa (họ tên, MSSV, email)
+  // Lọc theo từ khóa (họ tên, MSSV). Không tìm theo email vì từ khóa nằm trên URL (OPS-11).
   if (query.q) {
     where.OR = [
       { fullName: { contains: query.q, mode: 'insensitive' } },
       { studentId: { contains: query.q, mode: 'insensitive' } },
-      { email: { contains: query.q, mode: 'insensitive' } },
     ]
   }
 
@@ -181,6 +182,7 @@ export async function getMemberDetail(actor: Actor, id: string) {
       memberStatus: true,
       status: true,
       createdAt: true,
+      updatedAt: true,
       deactivatedAt: true,
       departmentId: true,
       department: { select: { id: true, name: true, code: true, status: true } },
@@ -240,6 +242,7 @@ export async function getMemberDetail(actor: Actor, id: string) {
       interestAreas: target.interestAreas,
       accountStatus: target.status,
       createdAt: target.createdAt,
+      updatedAt: target.updatedAt,
       deactivatedAt: target.deactivatedAt,
     },
     organization: {
@@ -277,6 +280,8 @@ export async function updateMember(
   const body = updateMemberSchema.parse(rawInput)
 
   return db.$transaction(async (tx) => {
+    // Khóa dòng để kiểm `updatedAt` và ghi trong cùng một bước (STATE-09).
+    await tx.$queryRaw`SELECT id FROM users WHERE id = ${id} FOR UPDATE`
     const user = await tx.user.findUnique({
       where: { id },
       select: {
@@ -286,9 +291,20 @@ export async function updateMember(
         departmentId: true,
         memberStatus: true,
         status: true,
+        updatedAt: true,
+        roles: { where: { status: 'ACTIVE', role: { in: ['BOARD', 'TECH_ADMIN'] } }, select: { id: true } },
       },
     })
     if (!user) throw notFound()
+    // RP-05: không tự thao tác trên tài khoản của chính mình.
+    if (actor.user?.id === id) throw forbidden('Không thể thực hiện thao tác này trên tài khoản của chính bạn.')
+    if (new Date(body.updatedAt).getTime() !== user.updatedAt.getTime()) {
+      throw conflict('Thành viên vừa được người khác cập nhật. Vui lòng tải lại.')
+    }
+    // Email đăng nhập của tài khoản đặc quyền là đường chiếm quyền: không đổi ở trang thành viên.
+    if (body.email && body.email !== user.email && user.roles.length > 0) {
+      throw forbidden('Không đổi email của tài khoản BOARD hoặc TECH_ADMIN tại trang thành viên.')
+    }
 
     // 1. Kiểm tra MSSV trùng
     if (body.studentId !== undefined && body.studentId !== user.studentId) {
