@@ -4,22 +4,25 @@ import { Link } from 'react-router-dom'
 import { buttonClass } from '../../../components/buttonClass'
 import { Eyebrow } from '../../../components/Eyebrow'
 import { useApi } from '../../../hooks/useApi'
-import type { Page } from '../../../lib/api'
 import type { ProjectItem } from '../../../lib/content'
+import type { HomeData } from '../../admin/organization/types'
 
 const delay = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties
 
-export function ProjectsSection() {
-  // 3 dự án mới nhất xem từng cái trong khung ảnh có nút chọn; các dự án kế tiếp liệt kê như `ls` trong terminal.
-  // T4 đổi sang GET /public/home (ưu tiên dự án nổi bật).
-  const { data } = useApi<Page<ProjectItem>>('/public/projects?page=1&pageSize=8')
-  const projects = data?.items ?? []
+type ProjectsSectionProps = {
+  items?: ProjectItem[]
+}
+
+export function ProjectsSection({ items }: ProjectsSectionProps = {}) {
+  // 3 dự án nổi bật / mới nhất (T4 đọc từ GET /public/home, QĐ-4)
+  const home = useApi<HomeData>(items !== undefined ? null : '/public/home')
+  const projects = items ?? home.data?.projects ?? []
   const featured = projects.slice(0, 3)
   const others = projects.slice(3)
   const [active, setActive] = useState(0)
   const current = featured[active]
 
-  // Đang tải, lỗi hoặc chưa có dự án công bố: ẩn cả khối, không để khoảng trống (FLOW-01)
+  // Đang tải, lỗi hoặc chưa có dự án công bố: ẩn cả khối, không để khoảng trống (FLOW-01, QĐ-4)
   if (!current) return null
 
   return (
@@ -86,13 +89,14 @@ export function ProjectsSection() {
             <div className="photo relative aspect-[16/10] bg-[#0D2A50]">
               {featured.map((project, index) =>
                 project.thumbnailUrl ? (
+                  // Map fileId từ D2 thành URL public để hiển thị ảnh đúng
                   <img
                     key={project.slug}
                     alt={index === active ? `Giao diện ${project.title}` : ''}
                     className={`stage-photo absolute inset-0 h-full w-full object-cover ${index === active ? 'is-on' : ''}`}
                     height={288}
                     loading="lazy"
-                    src={project.thumbnailUrl}
+                    src={`/api/public/files/${project.thumbnailUrl}`}
                     width={512}
                   />
                 ) : (

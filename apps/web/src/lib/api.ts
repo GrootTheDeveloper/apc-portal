@@ -12,24 +12,46 @@ export class ApiError extends Error {
   readonly status: number
   readonly code: string
   readonly issues: unknown[]
+  readonly data?: Record<string, unknown>
 
-  constructor(status: number, code: string, message: string, issues: unknown[] = []) {
+  constructor(status: number, code: string, message: string, issues: unknown[] = [], data?: Record<string, unknown>) {
     super(message)
     this.status = status
     this.code = code
     this.issues = issues
+    this.data = data
   }
 }
 
-type Options = { method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'; body?: unknown }
+/** Chỉ 401 nghĩa là phiên đã hết hạn hoặc bị thu hồi; lỗi mạng hay 502/503 thì không đăng xuất người dùng. */
+export function endsSession(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401
+}
 
-export async function api<T = unknown>(path: string, { method, body }: Options = {}): Promise<T> {
-  const init: RequestInit = { method: method ?? (body === undefined ? 'GET' : 'POST') }
+export type ApiOptions = {
+  method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
+  body?: unknown
+  headers?: Record<string, string>
+}
+type Options = ApiOptions
+
+// Phiên hết hạn hoặc bị thu hồi giữa chừng: mọi 401 báo về đây một lần, AuthProvider đăng ký xử lý
+// (về trạng thái chưa đăng nhập → route guard đưa sang /login?returnTo=<trang đang mở>). Trang không tự xử lý 401.
+let unauthorizedHandler: (() => void) | null = null
+export function onUnauthorized(handler: (() => void) | null) {
+  unauthorizedHandler = handler
+}
+
+export async function api<T = unknown>(path: string, { method, body, headers }: Options = {}): Promise<T> {
+  const init: RequestInit = {
+    method: method ?? (body === undefined ? 'GET' : 'POST'),
+    headers: headers ? { ...headers } : undefined,
+  }
   if (body instanceof FormData) {
     // Upload tệp (D2): để trình duyệt tự đặt Content-Type kèm boundary multipart.
     init.body = body
   } else if (body !== undefined) {
-    init.headers = { 'Content-Type': 'application/json' }
+    init.headers = { 'Content-Type': 'application/json', ... (headers ?? {}) }
     init.body = JSON.stringify(body)
   }
 
@@ -44,12 +66,15 @@ export async function api<T = unknown>(path: string, { method, body }: Options =
   if (!response.ok && data === undefined && response.status >= 502) {
     throw new ApiError(response.status, 'network', 'Không kết nối được máy chủ. Vui lòng thử lại.')
   }
+  // Sai mật khẩu ở /auth/login cũng là 401 nhưng không phải phiên hết hạn.
+  if (response.status === 401 && path !== '/auth/login') unauthorizedHandler?.()
   if (!response.ok) {
     throw new ApiError(
       response.status,
       data?.error ?? 'unknown',
       data?.message ?? 'Đã có lỗi xảy ra. Vui lòng thử lại.',
       data?.issues,
+      data,
     )
   }
   return data as T

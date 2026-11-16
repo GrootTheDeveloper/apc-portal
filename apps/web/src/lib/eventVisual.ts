@@ -1,7 +1,7 @@
 // Ảnh minh hoạ theo loại sự kiện và nhãn trạng thái — dùng chung cho trang chủ, EventCard và trang chi tiết.
 // Tách khỏi EventCard.tsx để file đó chỉ export component (react-refresh/only-export-components).
 
-export type EventCardStatus = 'PUBLISHED' | 'CANCELLED' | 'ENDED'
+export type EventCardStatus = 'PUBLISHED' | 'CANCELLED' | 'ENDED' | 'ARCHIVED'
 
 // Ảnh minh hoạ theo loại, dùng khi sự kiện chưa có ảnh bìa.
 const TYPE_PHOTOS: Record<string, string> = {
@@ -17,6 +17,8 @@ export const EVENT_STATUS_STYLES: Record<EventCardStatus, { label: string; chipC
   PUBLISHED: { label: 'Sắp diễn ra', chipClass: 'bg-apc-blue text-paper' },
   CANCELLED: { label: 'Đã hủy', chipClass: 'bg-apc-red text-paper' },
   ENDED: { label: 'Đã kết thúc', chipClass: 'bg-ink text-paper' },
+  // Lưu trữ chỉ gặp ở dữ liệu tra cứu — trang công khai đã gỡ sự kiện này
+  ARCHIVED: { label: 'Đã lưu trữ', chipClass: 'bg-muted text-paper' },
 }
 
 /** Ảnh bìa của sự kiện, chưa có thì lấy ảnh minh hoạ theo loại. */

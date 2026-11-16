@@ -1,8 +1,8 @@
-import type { RecruitmentRoundItem } from './mock'
+import type { RecruitmentRound } from './types'
 
 export type RoundPhase = 'open' | 'upcoming' | 'closed'
 
-type RoundTiming = Pick<RecruitmentRoundItem, 'status' | 'opensAt' | 'closesAt'>
+type RoundTiming = Pick<RecruitmentRound, 'status' | 'opensAt' | 'closesAt'>
 
 /** Đợt OPEN đang trong khoảng opensAt–closesAt là đang nhận đơn; OPEN mà chưa tới giờ là sắp mở; còn lại là đã đóng. */
 export function roundPhase(round: RoundTiming, now = new Date()): RoundPhase {

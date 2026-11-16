@@ -11,6 +11,10 @@ Chỉ có tên bảng và quan hệ, để nhìn nhanh bảng nào nối với b
 ```mermaid
 erDiagram
   users }o--|o departments : "department"
+  role_decisions }o--|| users : "user"
+  role_decisions }o--|o user_roles : "userRole"
+  role_decisions }o--|| users : "decidedBy"
+  role_decisions }o--|o users : "executedBy"
   user_roles }o--|| users : "user"
   user_roles }o--|o departments : "department"
   user_roles }o--|o users : "grantedBy"
@@ -22,16 +26,30 @@ erDiagram
   posts }o--|o users : "publishedBy"
   events }o--|o departments : "department"
   events }o--|| users : "createdBy"
+  events }o--|o users : "attendanceFinalizedBy"
+  event_registrations }o--|| events : "event"
+  event_registrations }o--|o users : "user"
   projects }o--|o departments : "department"
   projects }o--|| users : "createdBy"
+  project_members }o--|| projects : "project"
+  project_members }o--|| users : "user"
   recruitment_rounds }o--|| users : "createdBy"
   membership_applications }o--|| recruitment_rounds : "recruitmentRound"
   membership_applications }o--|o departments : "desiredDepartment"
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
+  application_status_histories }o--|| membership_applications : "application"
+  application_status_histories }o--|o users : "changedBy"
   notification_deliveries }o--|o departments : "department"
   audit_logs }o--|o users : "actor"
   stored_files }o--|| users : "uploadedBy"
+  documents }o--|o departments : "department"
+  documents }o--|| users : "createdBy"
+  document_versions }o--|| documents : "document"
+  document_versions }o--|| stored_files : "storedFile"
+  document_versions }o--|| users : "uploadedBy"
+  export_files }o--|| users : "createdBy"
+  export_files }o--|| users : "downloader"
 ```
 
 ## Chi tiết từng bảng
@@ -59,6 +77,7 @@ erDiagram
     String id PK
     String username UK "Tên đăng nhập (AUTH-02, BR-02)"
     String email UK
+    String contactEmail "tùy chọn. Email liên hệ tùy chọn (QĐ-8, MEM-03)"
     String passwordHash "Băm Argon2id (SEC-02)"
     AccountStatus status "PENDING_ACTIVATION / ACTIVE / LOCKED / INACTIVE"
     Boolean mustChangePassword
@@ -81,6 +100,23 @@ erDiagram
     Json interestAreas "tùy chọn"
     String departmentId FK "tùy chọn. Ban đang hoạt động; khác phạm vi quản lý trong user_roles"
     MemberStatus memberStatus "ACTIVE / PAUSED / LEFT. MEM-11: độc lập AccountStatus, trừ LEFT kéo theo INACTIVE"
+    DateTime deactivatedAt "tùy chọn. A5: lúc chuyển INACTIVE; B7 dùng để tính hạn lưu giữ dữ liệu"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  role_decisions {
+    String id PK
+    RoleDecisionAction action "GRANT / REVOKE"
+    Role role "MEMBER / DEPARTMENT_MANAGER / BOARD / TECH_ADMIN. hiện chỉ dùng cho TECH_ADMIN"
+    String userId FK
+    String userRoleId FK "tùy chọn. REVOKE: dòng user_roles bị thu hồi; GRANT: dòng được tạo khi thực hiện"
+    DateTime expiresAt "tùy chọn. GRANT: ngày hết hạn của vai trò, không muộn hơn SiteSetting.termEndsAt (RP-03)"
+    String reason
+    RoleDecisionStatus status "PENDING / EXECUTED / CANCELLED"
+    String decidedById FK
+    String executedById FK "tùy chọn"
+    DateTime executedAt "tùy chọn"
+    DateTime cancelledAt "tùy chọn"
     DateTime createdAt
     DateTime updatedAt
   }
@@ -96,6 +132,9 @@ erDiagram
     String grantedById FK "tùy chọn. null khi tạo bằng bootstrap (RP-15)"
     String revokedById FK "tùy chọn"
     DateTime revokedAt "tùy chọn"
+    String revokeReason "tùy chọn. A6: lý do thu hồi (lý do cấp nằm ở `reason`)"
+    Int warnedLevel "tùy chọn. O6: mốc cảnh báo hết hạn đã gửi gần nhất (30 hoặc 7 ngày)"
+    DateTime warnedForExpiresAt "tùy chọn. O6: giá trị expiresAt lúc báo; khác expiresAt hiện tại (đã gia hạn) thì coi như chưa báo"
     DateTime createdAt
     DateTime updatedAt
   }
@@ -144,14 +183,36 @@ erDiagram
     String coverImageUrl "tùy chọn"
     String eventType "Loại/chuyên mục: Workshop, Training, Contest..."
     EventStatus status "DRAFT / PUBLISHED / CANCELLED / ENDED / ARCHIVED"
+    EventAudience audience "EVT-02; departmentId bên dưới là ban quản lý, không phải đối tượng"
     String departmentId FK "tùy chọn"
     String contactPoint "tùy chọn"
     String createdById FK
     String location "tùy chọn"
+    String onlineUrl "tùy chọn. Link trực tuyến khi không dùng địa điểm; chỉ nhận http/https (FLOW-18)"
     DateTime startAt
     DateTime endAt
+    DateTime registrationOpensAt "tùy chọn"
+    DateTime registrationClosesAt "tùy chọn"
+    Int capacity "tùy chọn. null = không giới hạn"
+    Boolean allowGuestRegistration "Người ngoài APC đăng ký được; chỉ áp dụng khi audience = PUBLIC"
+    String cancelReason "tùy chọn"
+    DateTime attendanceFinalizedAt "tùy chọn"
+    String attendanceFinalizedById FK "tùy chọn"
     DateTime createdAt
     DateTime updatedAt
+  }
+  event_registrations {
+    String id PK
+    String eventId FK
+    String userId FK "tùy chọn"
+    String guestFullName "tùy chọn"
+    String guestEmail "tùy chọn"
+    String guestStudentId "tùy chọn"
+    String registrationCode UK
+    EventRegistrationStatus status "REGISTERED / CANCELLED"
+    EventAttendanceStatus attendanceStatus "NOT_MARKED / PRESENT / EXCUSED / ABSENT"
+    DateTime registeredAt
+    DateTime cancelledAt "tùy chọn"
   }
   projects {
     String id PK
@@ -162,6 +223,7 @@ erDiagram
     Json technologies "tùy chọn. ['React', 'Node.js', 'PostgreSQL']"
     String projectUrl "tùy chọn"
     String sourceUrl "tùy chọn"
+    ProjectType type "PROJECT / PRODUCT"
     ContentStatus status "DRAFT / PUBLISHED / ARCHIVED"
     String departmentId FK "tùy chọn"
     DateTime publishedAt "tùy chọn"
@@ -169,14 +231,22 @@ erDiagram
     DateTime createdAt
     DateTime updatedAt
   }
+  project_members {
+    String projectId FK
+    String userId FK
+    DateTime createdAt
+  }
   recruitment_rounds {
     String id PK
     String title
     String slug UK
     String description
+    String audience
+    String requirements
     RecruitmentRoundStatus status "DRAFT / OPEN / CLOSED / ARCHIVED"
     DateTime opensAt
     DateTime closesAt
+    Json questions
     String createdById FK
     DateTime createdAt
     DateTime updatedAt
@@ -184,6 +254,7 @@ erDiagram
   membership_applications {
     String id PK
     String profileCode UK "Mã tra cứu công khai CSPRNG (REC-06)"
+    String idempotencyKey UK "tùy chọn. Khóa chống gửi lặp (FLOW-04, STATE-01)"
     String recruitmentRoundId FK
     String applicantName
     String applicantEmail
@@ -203,6 +274,15 @@ erDiagram
     DateTime convertedAt "tùy chọn"
     DateTime submittedAt
     DateTime updatedAt
+  }
+  application_status_histories {
+    String id PK
+    String applicationId FK
+    ApplicationStatus fromStatus "NEW / REVIEWING / INTERVIEW / ACCEPTED / REJECTED / WITHDRAWN"
+    ApplicationStatus toStatus "NEW / REVIEWING / INTERVIEW / ACCEPTED / REJECTED / WITHDRAWN"
+    String reason "tùy chọn. Bắt buộc khi Ban Chủ nhiệm rút đơn thay ứng viên"
+    String changedById FK "tùy chọn"
+    DateTime changedAt
   }
   notification_deliveries {
     String id PK "Cũng là idempotency key: Message-ID sinh từ id"
@@ -263,8 +343,45 @@ erDiagram
     DateTime createdAt
     DateTime updatedAt
   }
+  documents {
+    String id PK
+    String title
+    String description "tùy chọn"
+    String category
+    String departmentId FK "tùy chọn"
+    DocumentScope scope "DEPARTMENT / CLUB"
+    Role allowedRoles "MEMBER / DEPARTMENT_MANAGER / BOARD / TECH_ADMIN. Rỗng: mọi thành viên trong phạm vi; nếu có thì cần một vai…"
+    DocumentStatus status "ACTIVE / ARCHIVED"
+    String createdById FK
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  document_versions {
+    String id PK
+    String documentId FK
+    Int versionNumber
+    String storedFileId FK
+    String uploadedById FK
+    DateTime createdAt
+  }
+  export_files {
+    String id PK
+    String createdById FK
+    String downloaderId FK
+    String kind
+    String filename
+    String storageKey UK
+    ExportFileStatus status "CREATING / READY / EXPIRED"
+    DateTime expiresAt
+    DateTime createdAt
+    DateTime updatedAt
+  }
 
   users }o--|o departments : "department"
+  role_decisions }o--|| users : "user"
+  role_decisions }o--|o user_roles : "userRole"
+  role_decisions }o--|| users : "decidedBy"
+  role_decisions }o--|o users : "executedBy"
   user_roles }o--|| users : "user"
   user_roles }o--|o departments : "department"
   user_roles }o--|o users : "grantedBy"
@@ -276,16 +393,30 @@ erDiagram
   posts }o--|o users : "publishedBy"
   events }o--|o departments : "department"
   events }o--|| users : "createdBy"
+  events }o--|o users : "attendanceFinalizedBy"
+  event_registrations }o--|| events : "event"
+  event_registrations }o--|o users : "user"
   projects }o--|o departments : "department"
   projects }o--|| users : "createdBy"
+  project_members }o--|| projects : "project"
+  project_members }o--|| users : "user"
   recruitment_rounds }o--|| users : "createdBy"
   membership_applications }o--|| recruitment_rounds : "recruitmentRound"
   membership_applications }o--|o departments : "desiredDepartment"
   membership_applications }o--|o users : "reviewedBy"
   membership_applications |o--|o users : "convertedUser"
+  application_status_histories }o--|| membership_applications : "application"
+  application_status_histories }o--|o users : "changedBy"
   notification_deliveries }o--|o departments : "department"
   audit_logs }o--|o users : "actor"
   stored_files }o--|| users : "uploadedBy"
+  documents }o--|o departments : "department"
+  documents }o--|| users : "createdBy"
+  document_versions }o--|| documents : "document"
+  document_versions }o--|| stored_files : "storedFile"
+  document_versions }o--|| users : "uploadedBy"
+  export_files }o--|| users : "createdBy"
+  export_files }o--|| users : "downloader"
 ```
 
 ## Giá trị trạng thái (enum)
@@ -296,11 +427,17 @@ erDiagram
 | `AccountStatus` | `PENDING_ACTIVATION`, `ACTIVE`, `LOCKED`, `INACTIVE` |
 | `MemberStatus` | `ACTIVE`, `PAUSED`, `LEFT` |
 | `DepartmentStatus` | `ACTIVE`, `ARCHIVED` |
+| `DocumentScope` | `DEPARTMENT`, `CLUB` |
+| `DocumentStatus` | `ACTIVE`, `ARCHIVED` |
 | `ContentStatus` | `DRAFT`, `PUBLISHED`, `ARCHIVED` |
 | `ContentScope` | `PUBLIC`, `INTERNAL` |
+| `ProjectType` | `PROJECT`, `PRODUCT` |
 | `ApplicationStatus` | `NEW`, `REVIEWING`, `INTERVIEW`, `ACCEPTED`, `REJECTED`, `WITHDRAWN` |
 | `RoleAssignmentStatus` | `PENDING`, `ACTIVE`, `EXPIRED`, `REVOKED` |
 | `EventStatus` | `DRAFT`, `PUBLISHED`, `CANCELLED`, `ENDED`, `ARCHIVED` |
+| `EventAudience` |  |
+| `EventRegistrationStatus` | `REGISTERED`, `CANCELLED` |
+| `EventAttendanceStatus` | `NOT_MARKED`, `PRESENT`, `EXCUSED`, `ABSENT` |
 | `RecruitmentRoundStatus` | `DRAFT`, `OPEN`, `CLOSED`, `ARCHIVED` |
 | `DeliveryStatus` | `PENDING`, `SENDING`, `RETRY`, `SENT`, `FAILED` |
 | `AuditActorType` | `USER`, `SERVICE` |
@@ -311,3 +448,6 @@ erDiagram
 | `FilePurpose` |  |
 | `FileVisibility` | `PUBLIC`, `INTERNAL` |
 | `FileScanStatus` | `PENDING`, `CLEAN`, `REJECTED` |
+| `ExportFileStatus` | `CREATING`, `READY`, `EXPIRED` |
+| `RoleDecisionAction` | `GRANT`, `REVOKE` |
+| `RoleDecisionStatus` | `PENDING`, `EXECUTED`, `CANCELLED` |

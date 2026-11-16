@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../components/AsyncState'
 import { Breadcrumb } from '../../../components/Breadcrumb'
@@ -12,6 +12,8 @@ import { NotFound } from '../../NotFound'
 /** Trang chi tiết tin tức */
 export function NewsDetailPage() {
   const { slug } = useParams<{ slug: string }>()
+  const location = useLocation()
+  const backTo = (location.state as { from?: string } | null)?.from ?? '/news'
   const { data: item, loading, error, reload } = useApi<NewsDetailItem>(slug ? `/public/news/${slug}` : null)
 
   // Bài không tồn tại, nháp, lưu trữ hay nội bộ đều trả 404 (docs/02 §12)
@@ -25,11 +27,12 @@ export function NewsDetailPage() {
         {item && (
           <article>
             {/* metaTitle/metaDescription để trống thì dùng tiêu đề/tóm tắt */}
+            {/* Map fileId từ D2 thành URL public để hiển thị ảnh đúng */}
             <Seo
               title={item.metaTitle || item.title}
               description={item.metaDescription || item.summary}
               path={`/news/${slug}`}
-              imageUrl={item.thumbnailUrl}
+              imageUrl={item.thumbnailUrl ? `/api/public/files/${item.thumbnailUrl}` : null}
             />
             <PageHero
               tone="gold"
@@ -37,7 +40,7 @@ export function NewsDetailPage() {
                 <Breadcrumb
                   items={[
                     { label: 'trang chủ', to: '/' },
-                    { label: 'tin tức', to: '/news' },
+                    { label: 'tin tức', to: backTo },
                     { label: item.title },
                   ]}
                 />
@@ -54,7 +57,8 @@ export function NewsDetailPage() {
               <div className="mx-auto w-full max-w-[760px]">
                 {item.thumbnailUrl && (
                   <div data-rv className="photo mb-10 aspect-[16/9] bg-soft">
-                    <img alt="" className="h-full" src={item.thumbnailUrl} />
+                    {/* Map fileId từ D2 thành URL public để hiển thị ảnh đúng */}
+                    <img alt="" className="h-full" src={`/api/public/files/${item.thumbnailUrl}`} />
                   </div>
                 )}
                 {/* Tách đoạn theo dòng trống, giữ xuống dòng trong đoạn */}
@@ -66,7 +70,7 @@ export function NewsDetailPage() {
                   ))}
                 </div>
                 <div className="mt-12 border-t-2 border-ink pt-6">
-                  <Link to="/news" className="inline-flex min-h-12 items-center text-[17px] font-extrabold text-apc-red underline decoration-2 underline-offset-4">
+                  <Link to={backTo} className="inline-flex min-h-12 items-center text-[17px] font-extrabold text-apc-red underline decoration-2 underline-offset-4">
                     ← Về danh sách tin tức
                   </Link>
                 </div>

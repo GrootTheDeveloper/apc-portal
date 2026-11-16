@@ -49,3 +49,22 @@ export function vnParts(value: string | Date): VnParts {
   const pick = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value)
   return { year: pick('year'), month: pick('month'), day: pick('day'), hour: pick('hour'), minute: pick('minute') }
 }
+
+/**
+ * Đổi từ chuỗi ISO (UTC) từ DB sang dạng "YYYY-MM-DDTHH:mm" theo giờ Việt Nam (+07:00)
+ * để gán vào thuộc tính value của <input type="datetime-local" />
+ */
+export function toVnDatetimeInput(value: string | Date | null | undefined): string {
+  if (!value) return ''
+  const p = vnParts(value)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${p.year}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}`
+}
+
+/**
+ * Đổi chuỗi "YYYY-MM-DDTHH:mm" người dùng nhập (giờ VN) sang chuỗi ISO UTC để gửi lên API
+ */
+export function fromVnDatetimeInput(value: string): string {
+  if (!value) return ''
+  return new Date(`${value}:00+07:00`).toISOString()
+}

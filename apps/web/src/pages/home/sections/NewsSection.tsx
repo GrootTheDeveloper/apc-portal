@@ -2,17 +2,22 @@ import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useApi } from '../../../hooks/useApi'
-import type { Page } from '../../../lib/api'
 import { newsCategoryStyle, type NewsItem } from '../../../lib/content'
 import { formatDate } from '../../../lib/format'
+import type { HomeData } from '../../admin/organization/types'
 
 const delay = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties
 
-export function NewsSection() {
-  const { data } = useApi<Page<NewsItem>>('/public/news?page=1&pageSize=3')
-  const news = data?.items ?? []
+type NewsSectionProps = {
+  items?: NewsItem[]
+}
 
-  // Đang tải, lỗi hoặc chưa có bài công bố: ẩn cả khối, không để khoảng trống (FLOW-01)
+export function NewsSection({ items }: NewsSectionProps = {}) {
+  // T4: đọc từ GET /public/home (hoặc nhận qua props từ HomePage)
+  const home = useApi<HomeData>(items !== undefined ? null : '/public/home')
+  const news = items ?? home.data?.news ?? []
+
+  // Đang tải, lỗi hoặc chưa có bài công bố: ẩn cả khối, không để khoảng trống (FLOW-01, QĐ-4)
   if (news.length === 0) return null
 
   return (

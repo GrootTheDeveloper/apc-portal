@@ -22,13 +22,23 @@ export const AUDIT_ACTIONS = {
   ACCOUNT_RESET_PASSWORD: 'account.reset_password',
   ACCOUNT_DEACTIVATE: 'account.deactivate',
   ACCOUNT_REVOKE_SESSION: 'account.revoke_session',
+  // Xác thực (A4): thành viên tự kích hoạt (đổi mật khẩu tạm) và tự đổi mật khẩu; metadata ghi số phiên bị thu hồi
+  AUTH_ACTIVATE: 'auth.activate',
+  AUTH_PASSWORD_CHANGE: 'auth.password_change',
   // Phân quyền
   ROLE_GRANT: 'role.grant',
   ROLE_REVOKE: 'role.revoke',
   ROLE_UPDATE_SCOPE: 'role.update_scope',
+  ROLE_EXPIRE: 'role.expire', // O6: tác vụ role-expiry chuyển ACTIVE quá hạn sang EXPIRED
   // Tuyển thành viên
   RECRUITMENT_CREATE_ROUND: 'recruitment.create_round',
+  RECRUITMENT_UPDATE_ROUND: 'recruitment.update_round',
+  RECRUITMENT_OPEN_ROUND: 'recruitment.open_round',
+  RECRUITMENT_CLOSE_ROUND: 'recruitment.close_round',
+  RECRUITMENT_ARCHIVE_ROUND: 'recruitment.archive_round',
+  RECRUITMENT_AUTO_CLOSE: 'recruitment.auto_close',
   APPLICATION_STATUS_CHANGE: 'application.status_change',
+  APPLICATION_REVIEW: 'application.review',
   RECRUITMENT_FINALIZE: 'recruitment.finalize',
   APPLICATION_CONVERT_USER: 'application.convert_user',
   RECRUITMENT_EXPORT: 'recruitment.export',
@@ -36,13 +46,18 @@ export const AUDIT_ACTIONS = {
   // Thành viên
   MEMBER_IMPORT: 'member.import',
   MEMBER_EXPORT: 'member.export',
+  EXPORT_EXPIRE: 'export.expire',
+  EXPORT_DOWNLOAD: 'export.download',
   MEMBER_CHANGE_DEPARTMENT: 'member.change_department',
   MEMBER_CHANGE_ROLE: 'member.change_role',
   MEMBER_CHANGE_STATUS: 'member.change_status',
   MEMBER_UPDATE_MANAGED: 'member.update_managed_data',
   // Sự kiện
   EVENT_PUBLISH: 'event.publish',
+  EVENT_UNPUBLISH: 'event.unpublish', // E4: hạ sự kiện khỏi PUBLIC qua PATCH (gửi email báo hủy cho người còn đăng ký)
+  EVENT_END: 'event.end', // Tác vụ nền event-end (E2) chuyển PUBLISHED quá endAt sang ENDED
   EVENT_CANCEL: 'event.cancel',
+  EVENT_ARCHIVE: 'event.archive', // E4: lưu trữ sự kiện từ CANCELLED/ENDED (docs/01 §9.2)
   EVENT_EXPORT: 'event.export',
   EVENT_CHECKIN: 'event.checkin',
   EVENT_EDIT_CHECKIN: 'event.edit_checkin',

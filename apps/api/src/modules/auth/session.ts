@@ -20,25 +20,33 @@ declare module 'fastify' {
   interface FastifyRequest {
     /** id dòng sessions của request hiện tại; null khi chưa đăng nhập. */
     sessionId: string | null
+    /** Phiên hiện tại đã nhập mã 2 lớp chưa (false khi chưa đăng nhập). */
+    twoFactorVerified: boolean
   }
 }
 
 export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex')
 
+/**
+ * Trạng thái 2 lớp của mọi phiên mới tạo — MỘT chỗ duy nhất, các nơi khác đọc từ giá trị `createSession` trả về.
+ * B3: Mọi phiên đăng nhập mới ban đầu chưa qua bước 2FA (false).
+ * Chỉ khi người dùng xác thực mã 6 số hoặc mã khôi phục mới đặt twoFactorVerified = true.
+ */
+export const NEW_SESSION_TWO_FACTOR_VERIFIED = false
+
 export async function createSession(userId: string, meta: { ipAddress: string; userAgent: string | undefined }) {
   const token = randomBytes(32).toString('base64url')
+  const twoFactorVerified = NEW_SESSION_TWO_FACTOR_VERIFIED
   await db.session.create({
     data: {
       userId,
       tokenHash: hashToken(token),
       ipAddress: meta.ipAddress,
       userAgent: meta.userAgent ?? null,
-      // B3: Mọi phiên đăng nhập mới ban đầu chưa qua bước 2FA.
-      // Chỉ khi người dùng xác thực mã 6 số hoặc mã khôi phục mới đặt twoFactorVerified = true.
-      twoFactorVerified: false,
+      twoFactorVerified,
     },
   })
-  return token
+  return { token, twoFactorVerified }
 }
 
 /** Đánh dấu phiên hiện tại đã qua bước xác thực 2 lớp (B3, FLOW-27). */
@@ -90,6 +98,7 @@ const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
  */
 export function registerSession(app: FastifyInstance, config: AppConfig) {
   app.decorateRequest('sessionId', null)
+  app.decorateRequest('twoFactorVerified', false)
 
   app.addHook('onRequest', async (request) => {
     if (UNSAFE_METHODS.has(request.method) && request.headers.origin !== config.WEB_URL) {
@@ -112,5 +121,6 @@ export function registerSession(app: FastifyInstance, config: AppConfig) {
     }
     request.user = user
     request.sessionId = session.id
+    request.twoFactorVerified = session.twoFactorVerified
   })
 }

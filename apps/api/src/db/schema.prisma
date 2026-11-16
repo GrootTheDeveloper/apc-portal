@@ -38,6 +38,16 @@ enum DepartmentStatus {
   ARCHIVED
 }
 
+enum DocumentScope {
+  DEPARTMENT
+  CLUB
+}
+
+enum DocumentStatus {
+  ACTIVE
+  ARCHIVED
+}
+
 // Dùng cho Post và Project. Project: DRAFT = Ẩn, PUBLISHED = Công khai (PRT-03).
 enum ContentStatus {
   DRAFT
@@ -49,6 +59,12 @@ enum ContentStatus {
 enum ContentScope {
   PUBLIC
   INTERNAL
+}
+
+// Loại dự án / sản phẩm (PRT-01, C4)
+enum ProjectType {
+  PROJECT
+  PRODUCT
 }
 
 enum ApplicationStatus {
@@ -75,6 +91,27 @@ enum EventStatus {
   CANCELLED
   ENDED
   ARCHIVED
+}
+
+// Đối tượng tham gia sự kiện (EVT-02). Tách khỏi departmentId — departmentId luôn là ban QUẢN LÝ sự kiện.
+enum EventAudience {
+  PUBLIC // Công khai, người ngoài APC đăng ký được nếu allowGuestRegistration
+  CLUB // Nội bộ toàn CLB
+  DEPARTMENT // Nội bộ trong ban quản lý
+}
+
+// Trạng thái một lượt đăng ký sự kiện (E2). Hủy rồi đăng ký lại kích hoạt lại dòng cũ, không tạo dòng mới.
+enum EventRegistrationStatus {
+  REGISTERED
+  CANCELLED
+}
+
+// Kết quả điểm danh (FLOW-16); chốt điểm danh ở E6.
+enum EventAttendanceStatus {
+  NOT_MARKED
+  PRESENT
+  EXCUSED
+  ABSENT
 }
 
 enum RecruitmentRoundStatus {
@@ -144,6 +181,12 @@ enum FileScanStatus {
   REJECTED
 }
 
+enum ExportFileStatus {
+  CREATING
+  READY
+  EXPIRED
+}
+
 // MODELS — TỔ CHỨC
 
 // Thông tin CLB — singleton (1 dòng duy nhất, id = "singleton")
@@ -175,13 +218,15 @@ model Department {
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
-  users        User[]
-  roles        UserRole[]
-  posts        Post[]
-  events       Event[]
-  projects     Project[]
-  applications MembershipApplication[]
-  deliveries   NotificationDelivery[]
+  users             User[]
+  roles             UserRole[]
+  posts             Post[]
+  events            Event[]
+  projects          Project[]
+  applications      MembershipApplication[]
+  deliveries        NotificationDelivery[]
+  recruitmentRounds RecruitmentRound[]
+  documents         Document[] @relation("DocumentOwnerDepartment")
 
   @@map("departments")
 }
@@ -192,6 +237,7 @@ model User {
   id           String        @id @default(cuid())
   username     String        @unique // Tên đăng nhập (AUTH-02, BR-02)
   email        String        @unique
+  contactEmail String?       // Email liên hệ tùy chọn (QĐ-8, MEM-03)
   passwordHash String // Băm Argon2id (SEC-02)
   status       AccountStatus @default(PENDING_ACTIVATION)
 
@@ -222,6 +268,7 @@ model User {
   departmentId String? // Ban đang hoạt động; khác phạm vi quản lý trong user_roles
   department   Department?  @relation(fields: [departmentId], references: [id])
   memberStatus MemberStatus @default(ACTIVE) // MEM-11: độc lập AccountStatus, trừ LEFT kéo theo INACTIVE
+  deactivatedAt DateTime? // A5: lúc chuyển INACTIVE; B7 dùng để tính hạn lưu giữ dữ liệu
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -229,6 +276,9 @@ model User {
   roles        UserRole[] @relation("RoleHolder")
   grantedRoles UserRole[] @relation("RoleGrantor")
   revokedRoles UserRole[] @relation("RoleRevoker")
+  roleDecisionsAbout    RoleDecision[] @relation("RoleDecisionTarget")
+  roleDecisionsMade     RoleDecision[] @relation("RoleDecisionDecider")
+  roleDecisionsExecuted RoleDecision[] @relation("RoleDecisionExecutor")
   sessions     Session[]
   auditLogs    AuditLog[]
   recoveryCodes TwoFactorRecoveryCode[]
@@ -237,16 +287,67 @@ model User {
   publishedPosts Post[] @relation("PostPublisher")
 
   createdEvents Event[] @relation("EventCreator")
+  finalizedEventAttendance Event[] @relation("EventAttendanceFinalizer")
+  eventRegistrations EventRegistration[]
 
   createdRounds RecruitmentRound[]      @relation("RoundCreator")
   reviewedApps  MembershipApplication[] @relation("ReviewedBy")
 
   createdProjects          Project[]              @relation("ProjectCreator")
+  projectMemberships      ProjectMember[]
   convertedFromApplication MembershipApplication? @relation("ApplicationConversion")
 
-  uploadedFiles StoredFile[] @relation("FileUploader")
+  createdDocuments Document[]        @relation("DocumentCreator")
+  documentVersions DocumentVersion[] @relation("DocumentVersionUploader")
+
+  statusHistories ApplicationStatusHistory[]
+
+  uploadedFiles       StoredFile[] @relation("FileUploader")
+  createdExports      ExportFile[] @relation("ExportCreator")
+  downloadableExports ExportFile[] @relation("ExportDownloader")
 
   @@map("users")
+}
+
+enum RoleDecisionAction {
+  GRANT
+  REVOKE
+}
+
+enum RoleDecisionStatus {
+  PENDING
+  EXECUTED
+  CANCELLED
+}
+
+// A6 — quyết định gán/thu hồi TECH_ADMIN theo quy trình DUAL (Vai trò & quyền §8.6, FLOW-20):
+// BOARD ghi quyết định → hiện ở /admin/access-control → một TECH_ADMIN khác đang hoạt động thực hiện.
+model RoleDecision {
+  id     String             @id @default(cuid())
+  action RoleDecisionAction
+  role   Role // hiện chỉ dùng cho TECH_ADMIN
+
+  userId String
+  user   User   @relation("RoleDecisionTarget", fields: [userId], references: [id])
+  userRoleId String? // REVOKE: dòng user_roles bị thu hồi; GRANT: dòng được tạo khi thực hiện
+  userRole   UserRole? @relation(fields: [userRoleId], references: [id])
+  expiresAt  DateTime? // GRANT: ngày hết hạn của vai trò, không muộn hơn SiteSetting.termEndsAt (RP-03)
+  reason     String
+
+  status       RoleDecisionStatus @default(PENDING)
+  decidedById  String
+  decidedBy    User      @relation("RoleDecisionDecider", fields: [decidedById], references: [id])
+  executedById String?
+  executedBy   User?     @relation("RoleDecisionExecutor", fields: [executedById], references: [id])
+  executedAt   DateTime?
+  cancelledAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([userId])
+  @@map("role_decisions")
 }
 
 // Gán vai trò quản lý/đặc quyền (docs/02 §9). Một người có thể có nhiều dòng,
@@ -270,6 +371,11 @@ model UserRole {
   revokedById String?
   revokedBy   User?     @relation("RoleRevoker", fields: [revokedById], references: [id])
   revokedAt   DateTime?
+  revokeReason String? // A6: lý do thu hồi (lý do cấp nằm ở `reason`)
+  decisions    RoleDecision[] // A6: quyết định DUAL tạo ra (GRANT) hoặc thu hồi (REVOKE) dòng này
+
+  warnedLevel        Int? // O6: mốc cảnh báo hết hạn đã gửi gần nhất (30 hoặc 7 ngày)
+  warnedForExpiresAt DateTime? // O6: giá trị expiresAt lúc báo; khác expiresAt hiện tại (đã gia hạn) thì coi như chưa báo
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -342,17 +448,16 @@ model Post {
 }
 
 // MODELS — SỰ KIỆN
-//
-// Bảng đăng ký/điểm danh (EventRegistration) thêm ở việc E2 (docs/plan/E-su-kien.md).
 
 model Event {
-  id            String      @id @default(cuid())
+  id            String        @id @default(cuid())
   title         String
-  slug          String      @unique
+  slug          String        @unique
   description   String
   coverImageUrl String?
   eventType     String // Loại/chuyên mục: Workshop, Training, Contest...
-  status        EventStatus @default(DRAFT)
+  status        EventStatus   @default(DRAFT)
+  audience      EventAudience @default(PUBLIC) // EVT-02; departmentId bên dưới là ban quản lý, không phải đối tượng
 
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id])
@@ -361,15 +466,64 @@ model Event {
   createdById String
   createdBy   User    @relation("EventCreator", fields: [createdById], references: [id])
   location    String?
+  onlineUrl   String? // Link trực tuyến khi không dùng địa điểm; chỉ nhận http/https (FLOW-18)
 
   startAt DateTime
   endAt   DateTime
+
+  // Thời gian nhận đăng ký (BR-08); phía nào để trống là không giới hạn phía đó
+  registrationOpensAt  DateTime?
+  registrationClosesAt DateTime?
+  capacity             Int? // null = không giới hạn
+  allowGuestRegistration Boolean @default(false) // Người ngoài APC đăng ký được; chỉ áp dụng khi audience = PUBLIC
+
+  // EVT-09: bắt buộc khi hủy sự kiện (E4), hiển thị trên trang công khai
+  cancelReason String?
+
+  // Chốt điểm danh (E6): sau khi chốt chỉ BOARD sửa được, kèm lý do
+  attendanceFinalizedAt   DateTime?
+  attendanceFinalizedById String?
+  attendanceFinalizedBy   User? @relation("EventAttendanceFinalizer", fields: [attendanceFinalizedById], references: [id])
+
+  registrations EventRegistration[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([status])
   @@map("events")
+}
+
+// Một lượt đăng ký sự kiện (E2): hoặc thành viên (userId, E5) hoặc khách (họ tên, email, MSSV, E3).
+// Hủy rồi đăng ký lại kích hoạt lại dòng cũ (về REGISTERED), không tạo dòng mới — hai ràng buộc duy nhất
+// (sự kiện, email khách) và (sự kiện, userId) giữ chỗ của dòng cũ; Postgres coi NULL là phân biệt nên
+// dòng khách (userId null) và dòng thành viên (guestEmail null) cùng tồn tại trong một bảng.
+// Mã đăng ký sinh bằng publicCode() lúc tạo (EVT-10); không ghi mã vào log hay audit (OPS-11, SEC-09).
+model EventRegistration {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  // Thông tin khách; thành viên lấy từ User, không lưu trùng
+  guestFullName  String?
+  guestEmail     String?
+  guestStudentId String?
+
+  registrationCode String @unique
+
+  status           EventRegistrationStatus @default(REGISTERED)
+  attendanceStatus EventAttendanceStatus   @default(NOT_MARKED)
+
+  registeredAt DateTime  @default(now())
+  cancelledAt  DateTime?
+
+  @@unique([eventId, guestEmail])
+  @@unique([eventId, userId])
+  @@index([eventId, status])
+  @@map("event_registrations")
 }
 
 // MODELS — DỰ ÁN
@@ -383,6 +537,7 @@ model Project {
   technologies Json? // ["React", "Node.js", "PostgreSQL"]
   projectUrl   String?
   sourceUrl    String?
+  type         ProjectType   @default(PROJECT)
   status       ContentStatus @default(DRAFT)
 
   departmentId String?
@@ -392,11 +547,26 @@ model Project {
   createdById String
   createdBy   User   @relation("ProjectCreator", fields: [createdById], references: [id])
 
+  members ProjectMember[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([status])
   @@map("projects")
+}
+
+// Thành viên tham gia dự án (C4). Xóa dự án thì xóa cả dòng tham gia; xóa tài khoản cũng vậy.
+model ProjectMember {
+  projectId String
+  userId    String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([projectId, userId])
+  @@index([userId])
+  @@map("project_members")
 }
 
 // MODELS — TUYỂN DỤNG
@@ -405,13 +575,16 @@ model Project {
 // ConsentRecord thêm ở việc B2 (docs/plan/B-bao-mat.md), dùng chung cho R3 và E3.
 
 model RecruitmentRound {
-  id          String                 @id @default(cuid())
-  title       String
-  slug        String                 @unique
-  description String
-  status      RecruitmentRoundStatus @default(DRAFT)
-  opensAt     DateTime
-  closesAt    DateTime
+  id           String                 @id @default(cuid())
+  title        String
+  slug         String                 @unique
+  description  String
+  audience     String                 @default("")
+  requirements String                 @default("")
+  status       RecruitmentRoundStatus @default(DRAFT)
+  opensAt      DateTime
+  closesAt     DateTime
+  questions    Json                   @default("[]")
 
   createdById String
   createdBy   User   @relation("RoundCreator", fields: [createdById], references: [id])
@@ -419,6 +592,7 @@ model RecruitmentRound {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  departments  Department[]
   applications MembershipApplication[]
 
   @@map("recruitment_rounds")
@@ -427,6 +601,7 @@ model RecruitmentRound {
 model MembershipApplication {
   id                 String           @id @default(cuid())
   profileCode        String           @unique // Mã tra cứu công khai CSPRNG (REC-06)
+  idempotencyKey     String?          @unique // Khóa chống gửi lặp (FLOW-04, STATE-01)
   recruitmentRoundId String
   recruitmentRound   RecruitmentRound @relation(fields: [recruitmentRoundId], references: [id])
 
@@ -453,6 +628,8 @@ model MembershipApplication {
   convertedUser   User?     @relation("ApplicationConversion", fields: [convertedUserId], references: [id])
   convertedAt     DateTime?
 
+  statusHistories ApplicationStatusHistory[]
+
   submittedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -461,6 +638,23 @@ model MembershipApplication {
   @@index([applicantEmail])
   @@index([recruitmentRoundId])
   @@map("membership_applications")
+}
+
+// R5 — Lịch sử trạng thái hồ sơ (FLOW-07 bước 6)
+model ApplicationStatusHistory {
+  id            String                @id @default(cuid())
+  applicationId String
+  application   MembershipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  fromStatus    ApplicationStatus
+  toStatus      ApplicationStatus
+  reason        String? // Bắt buộc khi Ban Chủ nhiệm rút đơn thay ứng viên
+  changedById   String?
+  changedBy     User?                 @relation(fields: [changedById], references: [id])
+  changedAt     DateTime              @default(now())
+
+  @@index([applicationId])
+  @@index([changedAt])
+  @@map("application_status_histories")
 }
 
 // MODELS — EMAIL (O1)
@@ -559,7 +753,66 @@ model StoredFile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  documentVersions DocumentVersion[]
+
   @@index([scanStatus, createdAt])
   @@index([uploadedById])
   @@map("stored_files")
+}
+
+// Thư viện tài liệu nội bộ (D4). Phiên bản mới nhất là bản hiện hành; khôi phục tạo phiên bản mới.
+model Document {
+  id           String         @id @default(cuid())
+  title        String
+  description  String?
+  category     String
+  departmentId String?
+  department   Department?    @relation("DocumentOwnerDepartment", fields: [departmentId], references: [id])
+  scope        DocumentScope  @default(DEPARTMENT)
+  allowedRoles Role[]         @default([]) // Rỗng: mọi thành viên trong phạm vi; nếu có thì cần một vai trò khớp
+  status       DocumentStatus @default(ACTIVE)
+  createdById  String
+  createdBy    User           @relation("DocumentCreator", fields: [createdById], references: [id])
+  versions     DocumentVersion[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([status, scope, departmentId, updatedAt])
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id            String     @id @default(cuid())
+  documentId    String
+  document      Document   @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  versionNumber Int
+  storedFileId  String
+  storedFile    StoredFile @relation(fields: [storedFileId], references: [id], onDelete: Restrict)
+  uploadedById  String
+  uploadedBy    User       @relation("DocumentVersionUploader", fields: [uploadedById], references: [id])
+  createdAt     DateTime   @default(now())
+
+  @@unique([documentId, versionNumber])
+  @@index([storedFileId])
+  @@map("document_versions")
+}
+
+// File xuất chứa dữ liệu cá nhân (D6): chỉ người được chỉ định tải trong 24 giờ.
+model ExportFile {
+  id           String           @id @default(cuid())
+  createdById  String
+  createdBy    User             @relation("ExportCreator", fields: [createdById], references: [id])
+  downloaderId String
+  downloader   User             @relation("ExportDownloader", fields: [downloaderId], references: [id])
+  kind         String
+  filename     String
+  storageKey   String           @unique
+  status       ExportFileStatus @default(CREATING)
+  expiresAt    DateTime
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([downloaderId, status, expiresAt])
+  @@index([status, expiresAt])
+  @@map("export_files")
 }
