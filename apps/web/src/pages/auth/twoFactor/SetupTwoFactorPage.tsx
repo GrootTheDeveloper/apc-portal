@@ -26,7 +26,7 @@ export function SetupTwoFactorPage() {
     try {
       const res = await api<{ qrCodeDataUrl: string; manualKey: string }>('/auth/two-factor/setup', {
         method: 'POST',
-        body: JSON.stringify({ password }),
+        body: { password },
       })
       setQrCode(res.qrCodeDataUrl)
       setManualKey(res.manualKey)

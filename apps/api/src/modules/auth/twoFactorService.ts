@@ -41,6 +41,9 @@ export async function initiateTwoFactorSetup(
     select: { id: true, username: true, passwordHash: true, totpEnabledAt: true },
   })
 
+  if (user.totpEnabledAt) {
+    throw conflict('TOTP đã được kích hoạt, không thể thiết lập lại.')
+  }
   const passwordValid = await verifyPassword(user.passwordHash, password)
   if (!passwordValid) {
     throw unauthenticated('Mật khẩu không chính xác.')

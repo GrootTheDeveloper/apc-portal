@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify'
 
 import type { AppConfig } from '../../config.js'
 import { unauthenticated } from '../../lib/errors.js'
-import { currentUser, requireAuth } from './rbac.js'
+import { currentUser, requireAuth, requireTwoFactorVerified } from './rbac.js'
 import { getMe, loadAuthUser, loginSchema, verifyLogin } from './service.js'
 import {
   clearSessionCookie,
@@ -113,7 +113,7 @@ export function authRoutes(config: AppConfig) {
     /** Tạo lại 10 mã khôi phục mới (yêu cầu mật khẩu) */
     app.post(
       '/auth/two-factor/recovery-codes',
-      { preHandler: requireAuth },
+      { preHandler: [requireAuth, requireTwoFactorVerified] },
       async (request) => {
         const user = currentUser(request)
         const input = setupTwoFactorSchema.parse(request.body)
