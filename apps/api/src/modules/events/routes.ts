@@ -7,7 +7,9 @@ import {
   createLookupAttemptLimiter,
   createSourceIpLimiter,
 } from '../../lib/rateLimit.js'
-import { requireAuth, requireRole, requireScope } from '../auth/rbac.js'
+import { requireAuth, requireRole, requireScope, currentUser } from '../auth/rbac.js'
+import type { FileStorage } from '../files/storage.js'
+import { finalizeAttendance, updateAttendance } from './attendance.service.js'
 import {
   archiveEvent,
   cancelEvent,
@@ -26,8 +28,9 @@ import {
   registerMember,
   updateEvent,
 } from './service.js'
+import { exportEventRegistrations, listEventRegistrations } from './registrations.service.js'
 
-export function eventsRoutes(config: AppConfig) {
+export function eventsRoutes(config: AppConfig, deps: { storage: FileStorage }) {
   return async function registerEventsRoutes(app: FastifyInstance) {
     /**
      * Lớp 2 của chặn lạm dụng (SEC-05): bên cạnh các giới hạn theo route, giới hạn theo mỗi địa chỉ nguồn —
@@ -187,6 +190,48 @@ export function eventsRoutes(config: AppConfig) {
     app.post('/admin/events/:id/archive', { preHandler: adminPreHandler }, async (request) => {
       const { id } = request.params as { id: string }
       return archiveEvent(request, id)
+    })
+
+    // ─── QUẢN TRỊ: ĐĂNG KÝ & ĐIỂM DANH (E6, FLOW-16) ────────────────────────
+    // Cùng adminPreHandler (requireRole + requireScope theo :id sự kiện): quản lý ban mở sự kiện
+    // ban khác nhận 404 ở preHandler, BOARD làm được với tất cả (docs/02 mục 8.3).
+
+    /**
+     * Tìm danh sách đăng ký (PAGE-MGT-EVT-05). Body POST vì ô tìm kiếm chứa tên/email (OPS-11),
+     * cùng cách làm của danh sách hồ sơ ứng tuyển (R5). Query: page, pageSize, status, search.
+     */
+    app.post('/admin/events/:id/registrations/search', { preHandler: adminPreHandler }, async (request) => {
+      const { id } = request.params as { id: string }
+      return listEventRegistrations(id, request.body)
+    })
+
+    /**
+     * Xuất danh sách đăng ký ra CSV (EVT-06) qua createExport của D6: BOM UTF-8 cho Excel, file chỉ
+     * người tạo tải được (downloaderId), audit `event.export` ghi bên trong createExport. Bộ lọc qua
+     * body như route search (OPS-11); tải file ở GET /portal/exports/:id/download có sẵn (D6).
+     */
+    app.post('/admin/events/:id/registrations/export', { preHandler: adminPreHandler }, async (request) => {
+      const { id } = request.params as { id: string }
+      return exportEventRegistrations(request, id, request.body, currentUser(request), { storage: deps.storage })
+    })
+
+    /**
+     * Điểm danh từng người (PAGE-MGT-EVT-06, FLOW-16 bước 3): lưu ngay mỗi lượt bấm. Chưa chốt cả
+     * DEPARTMENT_MANAGER lẫn BOARD sửa được; đã chốt chỉ BOARD kèm lý do (403/422 — xem service).
+     */
+    app.patch(
+      '/admin/events/:id/registrations/:registrationId/attendance',
+      { preHandler: adminPreHandler },
+      async (request) => {
+        const { id, registrationId } = request.params as { id: string; registrationId: string }
+        return updateAttendance(request, id, registrationId, request.body)
+      },
+    )
+
+    /** Chốt điểm danh (FLOW-16 bước 4); chốt hai lần trả 409, sau chốt chỉ BOARD sửa kèm lý do. */
+    app.post('/admin/events/:id/attendance/finalize', { preHandler: adminPreHandler }, async (request) => {
+      const { id } = request.params as { id: string }
+      return finalizeAttendance(request, id)
     })
   }
 }

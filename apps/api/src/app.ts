@@ -49,7 +49,7 @@ export function buildApp(config: AppConfig, deps: AppDeps = {}) {
   app.register(contentRoutes({ storage, scanner: createScanner(config) }))
   app.register(adminPostsRoutes())
   app.register(adminProjectsRoutes())
-  app.register(eventsRoutes(config))
+  app.register(eventsRoutes(config, { storage }))
   app.register(aboutRoutes)
   app.register(organizationRoutes)
   app.register(memberRoutes(config))
