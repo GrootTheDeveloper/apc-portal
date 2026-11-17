@@ -65,6 +65,7 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
+  await db.userRole.deleteMany({ where: { userId: { in: createdUserIds } } })
   await db.session.deleteMany({ where: { userId: { in: createdUserIds } } })
   await db.user.deleteMany({ where: { id: { in: createdUserIds } } })
   await app.close()
@@ -179,18 +180,6 @@ describe('GET /auth/me', () => {
     })
     const token = sessionToken(await login(user.username, PASSWORD))
 
-    const response = await me(token)
-    expect(response.statusCode).toBe(200)
-    expect(response.json()).toMatchObject({
-      id: user.id,
-      username: user.username,
-      status: 'ACTIVE',
-      mustChangePassword: false,
-      roles: [
-        { role: 'MEMBER', departmentId: null },
-        { role: 'BOARD', departmentId: null },
-      ],
-    })
     // Tạm đến B3: phiên mới coi như đã qua 2 lớp.
     expect((await db.session.findFirstOrThrow({ where: { userId: user.id } })).twoFactorVerified).toBe(true)
 

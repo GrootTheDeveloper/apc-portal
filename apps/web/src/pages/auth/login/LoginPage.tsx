@@ -5,7 +5,7 @@ import { AsyncState } from '../../../components/AsyncState'
 import { Button } from '../../../components/Button'
 import { useAuth } from '../../../hooks/useAuth'
 import { ApiError } from '../../../lib/api'
-import { ACTIVATE_PATH, needsActivation } from '../../../lib/auth'
+import { ACTIVATE_PATH, needsActivation, TWO_FACTOR_SETUP_PATH, TWO_FACTOR_VERIFY_PATH } from '../../../lib/auth'
 import { safeReturnTo } from '../../../lib/returnTo'
 import { isAppPath } from '../../../routes'
 import { Eyebrow } from '../../../components/Eyebrow'
@@ -31,9 +31,12 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [submit, setSubmit] = useState<SubmitState>({ phase: 'idle' })
 
-  // Đã đăng nhập (kể cả ngay sau khi bấm Đăng nhập): về trang đang định vào, mặc định /portal.
+  // Đã đăng nhập (kể cả ngay sau khi bấm Đăng nhập): kiểm tra 2FA hoặc về trang đang định vào.
   if (status === 'authenticated' && user) {
-    const destination = needsActivation(user) ? ACTIVATE_PATH : safeReturnTo(searchParams.get('returnTo'), isAppPath)
+    if (needsActivation(user)) return <Navigate to={ACTIVATE_PATH} replace />
+    if (user.twoFactor === 'setup') return <Navigate to={TWO_FACTOR_SETUP_PATH} replace />
+    if (user.twoFactor === 'verify') return <Navigate to={TWO_FACTOR_VERIFY_PATH} replace />
+    const destination = safeReturnTo(searchParams.get('returnTo'), isAppPath)
     return <Navigate to={destination} replace />
   }
 

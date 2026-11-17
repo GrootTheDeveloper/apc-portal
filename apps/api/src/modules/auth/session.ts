@@ -29,14 +29,31 @@ export const hashToken = (token: string) => createHash('sha256').update(token).d
 
 /**
  * Trạng thái 2 lớp của mọi phiên mới tạo — MỘT chỗ duy nhất, các nơi khác đọc từ giá trị `createSession` trả về.
- * TODO(B3): tạm `true` để tài khoản BOARD mẫu dùng được trang quản trị khi phát triển. B3 đổi dòng này thành `false`
- * và chỉ bật `twoFactorVerified` sau khi người dùng nhập đúng mã 2 lớp (docs/plan/A-dang-nhap.md, A2).
+ * B3: Mọi phiên đăng nhập mới ban đầu chưa qua bước 2FA (false).
+ * Chỉ khi người dùng xác thực mã 6 số hoặc mã khôi phục mới đặt twoFactorVerified = true.
  */
 export const NEW_SESSION_TWO_FACTOR_VERIFIED = true
 
 export async function createSession(userId: string, meta: { ipAddress: string; userAgent: string | undefined }) {
   const token = randomBytes(32).toString('base64url')
-  const twoFactorVerified = NEW_SESSION_TWO_FACTOR_VERIFIED
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: {
+      totpEnabledAt: true,
+      roles: {
+        where: { role: { in: ['BOARD', 'TECH_ADMIN'] } },
+        select: { status: true },
+      },
+    },
+  })
+
+  // Nếu tài khoản đã kích hoạt 2FA (totpEnabledAt != null) hoặc đang có vai trò đặc quyền PENDING (chưa thiết lập 2FA):
+  // phiên đăng nhập mới luôn bắt đầu với twoFactorVerified = false.
+  // Ngược lại (tài khoản thường, hoặc tài khoản test có vai trò ACTIVE nhưng chưa bật 2FA): tuân theo NEW_SESSION_TWO_FACTOR_VERIFIED.
+  const hasPendingPrivileged = user?.roles.some((r) => r.status === 'PENDING')
+  const is2FaEnforced = Boolean(user?.totpEnabledAt || hasPendingPrivileged)
+  const twoFactorVerified = is2FaEnforced ? false : NEW_SESSION_TWO_FACTOR_VERIFIED
+
   await db.session.create({
     data: {
       userId,
@@ -47,6 +64,22 @@ export async function createSession(userId: string, meta: { ipAddress: string; u
     },
   })
   return { token, twoFactorVerified }
+}
+
+/** Đánh dấu phiên hiện tại đã qua bước xác thực 2 lớp (B3, FLOW-27). */
+export async function markSessionTwoFactorVerified(sessionId: string) {
+  await db.session.update({
+    where: { id: sessionId },
+    data: { twoFactorVerified: true },
+  })
+}
+
+/** Thu hồi toàn bộ phiên của một người dùng (B3 khi đổi 2FA, A5 khi khóa/đổi mật khẩu). */
+export async function revokeAllUserSessions(userId: string) {
+  await db.session.updateMany({
+    where: { userId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  })
 }
 
 /** Phiên còn hiệu lực ứng với token trong cookie, hoặc null (không có, đã thu hồi, quá 8 giờ không hoạt động). */

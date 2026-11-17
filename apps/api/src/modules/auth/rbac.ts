@@ -4,6 +4,7 @@ import type { Role } from '../../db/generated/enums.js'
 import { type AppError, forbidden, notFound, unauthenticated } from '../../lib/errors.js'
 import { AUDIT_ACTIONS, audit, AuditCategory, AuditResult } from '../audit/service.js'
 import { SESSION_COOKIE } from './session.js'
+import { db } from '../../db/client.js'
 
 // Phân quyền dùng chung cho mọi API (docs/02 mục 12). Không tự viết kiểm quyền riêng trong module.
 //
@@ -115,6 +116,22 @@ export function assertInScope(user: AuthUser, departmentId: string | null) {
 /** preHandler: bắt buộc đã đăng nhập (401) và tài khoản đã kích hoạt (403). */
 export async function requireAuth(request: FastifyRequest) {
   await authedUser(request)
+}
+
+/** preHandler: require that the session has completed two-factor verification. */
+export async function requireTwoFactorVerified(request: FastifyRequest) {
+  // Ensure session exists
+  if (!request.sessionId) {
+    throw unauthenticated()
+  }
+  const session = await db.session.findUnique({
+    where: { id: request.sessionId },
+    select: { twoFactorVerified: true },
+  })
+  if (!session?.twoFactorVerified) {
+    // Return 403 to indicate lacking 2FA verification
+    throw await denied(request, forbidden('Two-factor verification required.'))
+  }
 }
 
 /**
