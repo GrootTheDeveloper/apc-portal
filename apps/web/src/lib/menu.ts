@@ -280,6 +280,24 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
             page: () =>
               import('../pages/admin/events/AdminEventPreviewPage').then((m) => ({ Component: m.AdminEventPreviewPage })),
           },
+          {
+            label: 'Danh sách đăng ký',
+            to: '/admin/events/:id/registrations',
+            roles: MANAGER_OR_BOARD,
+            page: () =>
+              import('../pages/admin/events/registrations/AdminEventRegistrationsPage').then((m) => ({
+                Component: m.AdminEventRegistrationsPage,
+              })),
+          },
+          {
+            label: 'Điểm danh',
+            to: '/admin/events/:id/attendance',
+            roles: MANAGER_OR_BOARD,
+            page: () =>
+              import('../pages/admin/events/attendance/AdminEventAttendancePage').then((m) => ({
+                Component: m.AdminEventAttendancePage,
+              })),
+          },
         ],
       },
     ],
