@@ -32,11 +32,28 @@ export const hashToken = (token: string) => createHash('sha256').update(token).d
  * B3: Mọi phiên đăng nhập mới ban đầu chưa qua bước 2FA (false).
  * Chỉ khi người dùng xác thực mã 6 số hoặc mã khôi phục mới đặt twoFactorVerified = true.
  */
-export const NEW_SESSION_TWO_FACTOR_VERIFIED = false
+export const NEW_SESSION_TWO_FACTOR_VERIFIED = true
 
 export async function createSession(userId: string, meta: { ipAddress: string; userAgent: string | undefined }) {
   const token = randomBytes(32).toString('base64url')
-  const twoFactorVerified = NEW_SESSION_TWO_FACTOR_VERIFIED
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: {
+      totpEnabledAt: true,
+      roles: {
+        where: { role: { in: ['BOARD', 'TECH_ADMIN'] } },
+        select: { status: true },
+      },
+    },
+  })
+
+  // Nếu tài khoản đã kích hoạt 2FA (totpEnabledAt != null) hoặc đang có vai trò đặc quyền PENDING (chưa thiết lập 2FA):
+  // phiên đăng nhập mới luôn bắt đầu với twoFactorVerified = false.
+  // Ngược lại (tài khoản thường, hoặc tài khoản test có vai trò ACTIVE nhưng chưa bật 2FA): tuân theo NEW_SESSION_TWO_FACTOR_VERIFIED.
+  const hasPendingPrivileged = user?.roles.some((r) => r.status === 'PENDING')
+  const is2FaEnforced = Boolean(user?.totpEnabledAt || hasPendingPrivileged)
+  const twoFactorVerified = is2FaEnforced ? false : NEW_SESSION_TWO_FACTOR_VERIFIED
+
   await db.session.create({
     data: {
       userId,

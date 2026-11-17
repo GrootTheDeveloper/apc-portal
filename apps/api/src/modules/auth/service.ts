@@ -299,5 +299,4 @@ export async function changePassword(actor: AuditRequestLike, userId: string, cu
     })
     await audit(actor, passwordAudit(AUDIT_ACTIONS.AUTH_PASSWORD_CHANGE, userId, count), tx)
   })
->>>>>>> origin/main
 }
