@@ -14,6 +14,9 @@ export type Me = {
   departmentId: string | null
   roles: RoleGrant[]
   mustChangePassword: boolean
+  twoFactorEnabled?: boolean
+  twoFactorVerified?: boolean
+  hasPrivilegedRole?: boolean
   /** Bước 2 lớp còn thiếu: `setup` → /account/setup-two-factor, `verify` → /account/two-factor. */
   twoFactor: 'setup' | 'verify' | null
 }

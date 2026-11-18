@@ -2,9 +2,25 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 
 import type { AppConfig } from '../../config.js'
 import { unauthenticated } from '../../lib/errors.js'
-import { currentUser, requireAuth, requireSession } from './rbac.js'
+import { currentUser, requireAuth, requireSession, requireTwoFactorVerified } from './rbac.js'
 import { activateAccount, changePassword, getMe, loadAuthUser, loginSchema, verifyLogin } from './service.js'
-import { clearSessionCookie, createSession, hashToken, revokeSession, SESSION_COOKIE, sessionCookieOptions } from './session.js'
+import {
+  clearSessionCookie,
+  createSession,
+  hashToken,
+  revokeSession,
+  SESSION_COOKIE,
+  sessionCookieOptions,
+} from './session.js'
+import {
+  confirmTwoFactorSchema,
+  confirmTwoFactorSetup,
+  initiateTwoFactorSetup,
+  regenerateRecoveryCodes,
+  setupTwoFactorSchema,
+  verifyTwoFactorChallenge,
+  verifyTwoFactorSchema,
+} from './twoFactorService.js'
 
 // Đổi mật khẩu cần đúng mật khẩu hiện tại: giới hạn để không dò được (SEC-05). Đếm theo PHIÊN (băm token cookie),
 // nên đổi IP cũng không lách được; request không có phiên thì đếm theo IP.
@@ -68,5 +84,64 @@ export function authRoutes(config: AppConfig) {
       await changePassword(request, currentUser(request).id, request.sessionId ?? '', request.body)
       return reply.code(204).send()
     })
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // XÁC THỰC 2 LỚP (TOTP) — B3
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Bước 1: Xác minh lại mật khẩu và khởi tạo mã QR / khóa nhập tay */
+    app.post(
+      '/auth/two-factor/setup',
+      { preHandler: requireAuth },
+      async (request) => {
+        const user = currentUser(request)
+        const input = setupTwoFactorSchema.parse(request.body)
+        return initiateTwoFactorSetup(user.id, input.password, config)
+      },
+    )
+
+    /** Bước 2: Xác nhận mã 6 số đầu tiên -> kích hoạt 2FA, sinh 10 mã khôi phục */
+    app.post(
+      '/auth/two-factor/confirm',
+      { preHandler: requireAuth },
+      async (request) => {
+        const user = currentUser(request)
+        const input = confirmTwoFactorSchema.parse(request.body)
+        return confirmTwoFactorSetup(user.id, input.code, config, request)
+      },
+    )
+
+    /** Xác thực bước 2 khi đăng nhập: nhận mã 6 số hoặc 1 mã khôi phục */
+    app.post(
+      '/auth/two-factor/verify',
+      {
+        preHandler: requireAuth,
+        config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+      },
+      async (request) => {
+        const user = currentUser(request)
+        const input = verifyTwoFactorSchema.parse(request.body)
+        if (!request.sessionId) throw unauthenticated()
+
+        return verifyTwoFactorChallenge(
+          request.sessionId,
+          user.id,
+          input.code,
+          config,
+          request,
+        )
+      },
+    )
+
+    /** Tạo lại 10 mã khôi phục mới (yêu cầu mật khẩu) */
+    app.post(
+      '/auth/two-factor/recovery-codes',
+      { preHandler: [requireAuth, requireTwoFactorVerified] },
+      async (request) => {
+        const user = currentUser(request)
+        const input = setupTwoFactorSchema.parse(request.body)
+        return regenerateRecoveryCodes(user.id, input.password, request)
+      },
+    )
   }
 }
