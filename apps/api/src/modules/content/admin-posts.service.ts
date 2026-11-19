@@ -318,7 +318,7 @@ export async function updateAdminPost(user: AuthUser, id: string, rawBody: unkno
       ...(fields.thumbnailUrl !== undefined && { thumbnailUrl: fields.thumbnailUrl }),
       ...(fields.metaTitle !== undefined && { metaTitle: fields.metaTitle }),
       ...(fields.metaDescription !== undefined && { metaDescription: fields.metaDescription }),
-      ...(audienceUpdate ?? {}),
+      ...audienceUpdate,
     },
     select: adminPostDetailSelect,
   })
