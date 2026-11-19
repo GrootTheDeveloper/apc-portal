@@ -20,6 +20,7 @@ erDiagram
   user_roles }o--|o users : "grantedBy"
   user_roles }o--|o users : "revokedBy"
   sessions }o--|| users : "user"
+  posts }o--|o departments : "audienceDepartment"
   posts }o--|| users : "author"
   posts }o--|o departments : "department"
   posts }o--|o users : "publishedBy"
@@ -155,6 +156,9 @@ erDiagram
     String category
     ContentScope scope "PUBLIC / INTERNAL. CMS-05"
     ContentStatus status "DRAFT / PUBLISHED / ARCHIVED"
+    PostAudience audience "tùy chọn"
+    String audienceDepartmentId FK "tùy chọn"
+    Role audienceRoles "MEMBER / DEPARTMENT_MANAGER / BOARD / TECH_ADMIN. Rỗng khi audience khác ROLES"
     String authorId FK
     String departmentId FK "tùy chọn"
     String publishedById FK "tùy chọn"
@@ -376,6 +380,7 @@ erDiagram
   user_roles }o--|o users : "grantedBy"
   user_roles }o--|o users : "revokedBy"
   sessions }o--|| users : "user"
+  posts }o--|o departments : "audienceDepartment"
   posts }o--|| users : "author"
   posts }o--|o departments : "department"
   posts }o--|o users : "publishedBy"
@@ -419,6 +424,7 @@ erDiagram
 | `DocumentStatus` | `ACTIVE`, `ARCHIVED` |
 | `ContentStatus` | `DRAFT`, `PUBLISHED`, `ARCHIVED` |
 | `ContentScope` | `PUBLIC`, `INTERNAL` |
+| `PostAudience` |  |
 | `ProjectType` | `PROJECT`, `PRODUCT` |
 | `ApplicationStatus` | `NEW`, `REVIEWING`, `INTERVIEW`, `ACCEPTED`, `REJECTED`, `WITHDRAWN` |
 | `RoleAssignmentStatus` | `PENDING`, `ACTIVE`, `EXPIRED`, `REVOKED` |

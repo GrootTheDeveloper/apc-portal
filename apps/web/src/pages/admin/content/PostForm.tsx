@@ -1,7 +1,19 @@
+import { useEffect } from 'react'
+
 import { FileUpload } from '../../../components/FileUpload'
 import { inputClass, labelClass } from '../../../components/formClass'
+import type { Me, Role } from '../../../lib/auth.js'
 import { NEWS_CATEGORIES } from '../../../lib/content'
-import { type ContentScope, type PostFormValues, SCOPE_LABEL, fileSrc } from './postTypes'
+import { ROLE_LABEL } from '../members/members.types.js'
+import {
+  AUDIENCE_LABEL,
+  AUDIENCE_ROLES,
+  type ContentScope,
+  type PostAudience,
+  type PostFormValues,
+  SCOPE_LABEL,
+  fileSrc,
+} from './postTypes.js'
 
 /** Lỗi 422 của một ô, lấy từ `fieldErrors(error)`. */
 function FieldMessages({ messages }: { messages?: string[] }) {
@@ -27,19 +39,74 @@ type PostFormProps = {
   /** khóa toàn bộ ô nhập (vd quản lý ban mở bài đã công bố) */
   disabled?: boolean
   board: boolean
+  /** ban ACTIVE (GET /public/about) để chọn ban nhận thông báo (C5) */
+  departments?: { id: string; name: string }[]
+  /** người đang đăng nhập — cần ban của quản lý ban để gắn sẵn ban nhận thông báo */
+  currentUser: Me | null
 }
 
 /**
  * Form soạn bài viết dùng chung cho trang tạo mới và trang sửa (CMS-01). Nội dung là văn bản thuần, giữ xuống
  * dòng khi hiển thị; không render HTML từ nội dung để tránh XSS. Không có ô slug: slug do server sinh lúc tạo.
  */
-export function PostForm({ values, onChange, fields, disabled = false, board }: PostFormProps) {
+export function PostForm({
+  values,
+  onChange,
+  fields,
+  disabled = false,
+  board,
+  departments = [],
+  currentUser,
+}: PostFormProps) {
   const set = (key: keyof PostFormValues) => (value: string) =>
     onChange({ [key]: value } as Partial<PostFormValues>)
   const thumbnail = fileSrc(values.thumbnailUrl)
   // Bài cũ có thể mang chuyên mục ngoài danh sách chuẩn: giữ nguyên để không âm thầm đổi dữ liệu khi lưu.
   const categories: readonly string[] = NEWS_CATEGORIES
   const extraCategory = !!values.category && !categories.includes(values.category)
+
+  // C5: quản lý ban chỉ được gửi cho ban mình nên luôn coi audience là DEPARTMENT. Đồng bộ giá trị vào state
+  // (effect bên dưới) thay vì chỉ `disabled` input — input disabled không được nộp nên dễ mất giá trị khi submit.
+  const audience: PostAudience = board ? values.audience : 'DEPARTMENT'
+  const audienceOptions: readonly PostAudience[] = board ? ['ALL', 'DEPARTMENT', 'ROLES'] : ['DEPARTMENT']
+
+  useEffect(() => {
+    if (board || values.scope !== 'INTERNAL') return
+    const ownDepartmentId = currentUser?.departmentId ?? null
+    if (
+      values.audience !== 'DEPARTMENT' ||
+      values.audienceDepartmentId !== ownDepartmentId ||
+      values.audienceRoles.length !== 0
+    ) {
+      onChange({ audience: 'DEPARTMENT', audienceDepartmentId: ownDepartmentId, audienceRoles: [] })
+    }
+  }, [board, values.scope, values.audience, values.audienceDepartmentId, values.audienceRoles, currentUser, onChange])
+
+  const changeScope = (scope: ContentScope) => {
+    if (scope === 'PUBLIC') {
+      onChange({ scope, audience: 'ALL', audienceDepartmentId: null, audienceRoles: [] })
+    } else {
+      onChange({
+        scope,
+        audience: board ? 'ALL' : 'DEPARTMENT',
+        audienceDepartmentId: board ? null : (currentUser?.departmentId ?? null),
+        audienceRoles: [],
+      })
+    }
+  }
+
+  const changeAudience = (next: PostAudience) => {
+    if (next === 'ALL') onChange({ audience: next, audienceDepartmentId: null, audienceRoles: [] })
+    else if (next === 'DEPARTMENT') onChange({ audience: next, audienceRoles: [] })
+    else onChange({ audience: next, audienceDepartmentId: null })
+  }
+
+  const toggleAudienceRole = (role: Role) => {
+    const roles = values.audienceRoles.includes(role)
+      ? values.audienceRoles.filter((item) => item !== role)
+      : [...values.audienceRoles, role]
+    onChange({ audienceRoles: roles })
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -96,7 +163,7 @@ export function PostForm({ values, onChange, fields, disabled = false, board }: 
                   name="post-scope"
                   value={scope}
                   checked={values.scope === scope}
-                  onChange={() => onChange({ scope })}
+                  onChange={() => changeScope(scope)}
                   className="h-4 w-4 accent-apc-red"
                 />
                 {SCOPE_LABEL[scope]}
@@ -111,6 +178,93 @@ export function PostForm({ values, onChange, fields, disabled = false, board }: 
           </span>
         </fieldset>
       </div>
+
+      {values.scope === 'INTERNAL' && (
+        <div className="flex flex-col gap-4">
+          <fieldset className="flex flex-col gap-2" disabled={disabled}>
+            <legend className={labelClass}>đối tượng nhận</legend>
+            <div className="flex flex-wrap gap-3">
+              {audienceOptions.map((option) => (
+                <label
+                  key={option}
+                  className={`flex min-h-12 flex-1 cursor-pointer items-center gap-3 rounded-xl px-4 text-[16px] font-bold transition-colors ${
+                    audience === option ? 'bg-ink text-paper' : 'bg-soft text-ink hover:bg-apc-blue-pale'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="post-audience"
+                    value={option}
+                    checked={audience === option}
+                    onChange={() => changeAudience(option)}
+                    className="h-4 w-4 accent-apc-red"
+                  />
+                  {AUDIENCE_LABEL[option]}
+                </label>
+              ))}
+            </div>
+            {!board && (
+              <span className="font-body text-[15px] text-muted">
+                Quản lý ban chỉ được gửi thông báo cho ban mình.
+              </span>
+            )}
+            <FieldMessages messages={fields.audience} />
+          </fieldset>
+
+          {audience === 'DEPARTMENT' && (
+            <label className={labelClass} htmlFor="post-audience-department">
+              ban nhận thông báo
+              <select
+                id="post-audience-department"
+                className={inputClass}
+                value={board ? (values.audienceDepartmentId ?? '') : (currentUser?.departmentId ?? '')}
+                required={board}
+                disabled={disabled || !board}
+                aria-invalid={!!fields.audienceDepartmentId}
+                onChange={(event) => set('audienceDepartmentId')(event.target.value)}
+              >
+                <option value="">— chọn ban —</option>
+                {departments.map((department) => (
+                  <option key={department.id} value={department.id}>
+                    {department.name}
+                  </option>
+                ))}
+              </select>
+              <FieldMessages messages={fields.audienceDepartmentId} />
+            </label>
+          )}
+
+          {audience === 'ROLES' && (
+            <fieldset className="flex flex-col gap-2" disabled={disabled}>
+              <legend className={labelClass}>vai trò nhận thông báo</legend>
+              <div className="flex flex-wrap gap-3">
+                {AUDIENCE_ROLES.map((role) => (
+                  <label
+                    key={role}
+                    className={`flex min-h-12 flex-1 cursor-pointer items-center gap-3 rounded-xl px-4 text-[15px] font-bold transition-colors ${
+                      values.audienceRoles.includes(role)
+                        ? 'bg-ink text-paper'
+                        : 'bg-soft text-ink hover:bg-apc-blue-pale'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={values.audienceRoles.includes(role)}
+                      onChange={() => toggleAudienceRole(role)}
+                      className="h-4 w-4 accent-apc-red"
+                    />
+                    {ROLE_LABEL[role]}
+                  </label>
+                ))}
+              </div>
+              <span className="font-body text-[15px] text-muted">
+                MEMBER là mọi thành viên đã đăng nhập. Chọn ít nhất một vai trò.
+              </span>
+              <FieldMessages messages={fields.audienceRoles} />
+            </fieldset>
+          )}
+        </div>
+      )}
 
       <label className={labelClass} htmlFor="post-summary">
         tóm tắt
