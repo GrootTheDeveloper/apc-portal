@@ -2,7 +2,7 @@ import type { FastifyRequest } from 'fastify'
 import { z } from 'zod'
 
 import { db } from '../../db/client.js'
-import { ContentScope, ContentStatus } from '../../db/generated/client.js'
+import { ContentScope, ContentStatus, PostAudience, Role } from '../../db/generated/client.js'
 import { conflict, forbidden, notFound } from '../../lib/errors.js'
 import { buildUniqueSlug, slugify } from '../../lib/ids.js'
 import { pageArgs, pageQuery } from '../../lib/pagination.js'
@@ -30,6 +30,10 @@ export const createPostBody = z.object({
   thumbnailUrl: z.string().optional(),    // lưu fileId từ /portal/files
   metaTitle: z.string().trim().max(70).optional(),
   metaDescription: z.string().trim().max(160).optional(),
+  // Đối tượng nhận (C5) — chỉ có ý nghĩa khi scope = INTERNAL; server tự chuẩn hóa.
+  audience: z.nativeEnum(PostAudience).optional(),
+  audienceDepartmentId: z.string().cuid().nullable().optional(),
+  audienceRoles: z.array(z.nativeEnum(Role)).optional(),
 })
 
 /** Body cập nhật bài viết — mọi trường đều tùy chọn. OCC bắt buộc qua updatedAt. */
@@ -42,6 +46,10 @@ export const updatePostBody = z.object({
   thumbnailUrl: z.string().nullable().optional(),
   metaTitle: z.string().trim().max(70).nullable().optional(),
   metaDescription: z.string().trim().max(160).nullable().optional(),
+  // Đối tượng nhận (C5) — PATCH từng phần; thiếu là giữ nguyên giá trị cũ.
+  audience: z.nativeEnum(PostAudience).optional(),
+  audienceDepartmentId: z.string().cuid().nullable().optional(),
+  audienceRoles: z.array(z.nativeEnum(Role)).optional(),
   /** Phiên bản client biết (ISO string của updatedAt) — dùng cho OCC check. */
   updatedAt: z.string().datetime(),
 })
@@ -69,6 +77,59 @@ function resolveAuthorDepartmentId(user: AuthUser): string | null {
   return managerGrant?.departmentId ?? user.departmentId ?? null
 }
 
+/** Lỗi 422 gắn vào một ô trong form (giống documents/service.ts) — registerErrorHandler tự đổi ZodError → 422 kèm issues. */
+function audienceFieldError(field: string, message: string) {
+  return new z.ZodError([{ code: 'custom', path: [field], message, input: undefined }])
+}
+
+type NormalizedAudience = {
+  audience: PostAudience | null
+  audienceDepartmentId: string | null
+  audienceRoles: Role[]
+}
+
+/**
+ * Chuẩn hóa đối tượng nhận thông báo (C5):
+ * - PUBLIC: không có đối tượng — trả null/null/[].
+ * - INTERNAL + DEPARTMENT_MANAGER: ép DEPARTMENT ban họ quản lý, bỏ qua giá trị gửi lên.
+ * - INTERNAL + BOARD: mặc định ALL; DEPARTMENT bắt buộc có ban, ROLES bắt buộc có ít nhất một vai trò (422).
+ */
+function normalizeAudience(
+  scope: ContentScope,
+  audience: PostAudience | null | undefined,
+  audienceDepartmentId: string | null | undefined,
+  audienceRoles: Role[] | undefined,
+  user: AuthUser,
+): NormalizedAudience {
+  if (scope === 'PUBLIC') {
+    return { audience: null, audienceDepartmentId: null, audienceRoles: [] }
+  }
+
+  if (!hasRole(user, 'BOARD')) {
+    return {
+      audience: 'DEPARTMENT',
+      audienceDepartmentId: resolveAuthorDepartmentId(user),
+      audienceRoles: [],
+    }
+  }
+
+  const effectiveAudience = audience ?? 'ALL'
+  if (effectiveAudience === 'DEPARTMENT' && !audienceDepartmentId) {
+    throw audienceFieldError('audienceDepartmentId', 'Chọn ban nhận thông báo.')
+  }
+  if (effectiveAudience === 'ROLES' && (!audienceRoles || audienceRoles.length === 0)) {
+    throw audienceFieldError('audienceRoles', 'Chọn ít nhất một vai trò nhận thông báo.')
+  }
+
+  const deptId = audienceDepartmentId ?? null
+  const roles = audienceRoles ?? []
+  return {
+    audience: effectiveAudience,
+    audienceDepartmentId: effectiveAudience === 'DEPARTMENT' ? deptId : null,
+    audienceRoles: effectiveAudience === 'ROLES' ? roles : [],
+  }
+}
+
 // ─── SELECT SETS ─────────────────────────────────────────────────────────────
 
 /** Trường trả về trong danh sách admin — bao gồm trạng thái nội bộ. */
@@ -82,6 +143,9 @@ const adminPostListSelect = {
   scope: true,
   status: true,
   departmentId: true,
+  audience: true,
+  audienceDepartmentId: true,
+  audienceRoles: true,
   authorId: true,
   publishedAt: true,
   createdAt: true,
@@ -139,6 +203,13 @@ export async function getAdminPost(user: AuthUser, id: string) {
 /** Tạo bài viết mới với trạng thái DRAFT. authorId = user hiện tại. */
 export async function createAdminPost(user: AuthUser, rawBody: unknown) {
   const body = createPostBody.parse(rawBody)
+  const audienceData = normalizeAudience(
+    body.scope,
+    body.audience,
+    body.audienceDepartmentId,
+    body.audienceRoles,
+    user,
+  )
   const slug = await buildUniqueSlug(slugify(body.title), (candidate) =>
     db.post.findUnique({ where: { slug: candidate }, select: { id: true } }).then(Boolean),
   )
@@ -155,6 +226,7 @@ export async function createAdminPost(user: AuthUser, rawBody: unknown) {
       thumbnailUrl: body.thumbnailUrl ?? null,
       metaTitle: body.metaTitle ?? null,
       metaDescription: body.metaDescription ?? null,
+      ...audienceData,
       authorId: user.id,
       departmentId,
       status: 'DRAFT',
@@ -176,7 +248,15 @@ export async function updateAdminPost(user: AuthUser, id: string, rawBody: unkno
 
   const post = await db.post.findUnique({
     where: { id },
-    select: { departmentId: true, status: true, updatedAt: true },
+    select: {
+      departmentId: true,
+      status: true,
+      updatedAt: true,
+      scope: true,
+      audience: true,
+      audienceDepartmentId: true,
+      audienceRoles: true,
+    },
   })
   if (!post) throw notFound('Không tìm thấy bài viết.')
 
@@ -191,6 +271,30 @@ export async function updateAdminPost(user: AuthUser, id: string, rawBody: unkno
   // OCC: so sánh updatedAt client gửi với DB
   if (post.updatedAt.toISOString() !== clientUpdatedAt) {
     throw conflict('Bài viết đã được chỉnh sửa bởi người khác. Vui lòng tải lại trang.')
+  }
+
+  // Audience (C5) — chỉ chuẩn hóa khi client gửi trường audience hoặc scope chuyển PUBLIC↔INTERNAL.
+  // PATCH thuần (vd sửa title) giữ nguyên audience đang có trong DB.
+  const audienceTouched =
+    fields.audience !== undefined ||
+    fields.audienceDepartmentId !== undefined ||
+    fields.audienceRoles !== undefined
+  const effectiveScope = fields.scope ?? post.scope
+  const becamePublic = post.scope === 'INTERNAL' && effectiveScope === 'PUBLIC'
+  const becameInternal = post.scope === 'PUBLIC' && effectiveScope === 'INTERNAL'
+
+  let audienceUpdate: NormalizedAudience | undefined
+  if (becamePublic) {
+    audienceUpdate = normalizeAudience('PUBLIC', undefined, undefined, undefined, user)
+  } else if (audienceTouched || becameInternal) {
+    audienceUpdate = normalizeAudience(
+      effectiveScope,
+      // Lần đầu chuyển sang INTERNAL mà không gửi audience thì mặc định ALL
+      becameInternal ? (fields.audience ?? 'ALL') : (fields.audience ?? post.audience),
+      fields.audienceDepartmentId !== undefined ? fields.audienceDepartmentId : post.audienceDepartmentId,
+      fields.audienceRoles ?? post.audienceRoles,
+      user,
+    )
   }
 
   // Nếu title thay đổi, tạo slug mới
@@ -214,6 +318,7 @@ export async function updateAdminPost(user: AuthUser, id: string, rawBody: unkno
       ...(fields.thumbnailUrl !== undefined && { thumbnailUrl: fields.thumbnailUrl }),
       ...(fields.metaTitle !== undefined && { metaTitle: fields.metaTitle }),
       ...(fields.metaDescription !== undefined && { metaDescription: fields.metaDescription }),
+      ...(audienceUpdate ?? {}),
     },
     select: adminPostDetailSelect,
   })

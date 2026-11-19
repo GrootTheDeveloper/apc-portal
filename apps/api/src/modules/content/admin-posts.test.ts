@@ -74,6 +74,9 @@ async function seedPost(opts: {
   departmentId?: string | null
   status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
   scope?: 'PUBLIC' | 'INTERNAL'
+  audience?: 'ALL' | 'DEPARTMENT' | 'ROLES'
+  audienceDepartmentId?: string | null
+  audienceRoles?: ('MEMBER' | 'DEPARTMENT_MANAGER' | 'BOARD' | 'TECH_ADMIN')[]
 }) {
   const suffix = randomUUID().slice(0, 6)
   const post = await db.post.create({
@@ -85,6 +88,9 @@ async function seedPost(opts: {
       category: 'Kiểm thử',
       status: opts.status ?? 'DRAFT',
       scope: opts.scope ?? 'PUBLIC',
+      audience: opts.audience ?? null,
+      audienceDepartmentId: opts.audienceDepartmentId ?? null,
+      audienceRoles: opts.audienceRoles ?? [],
       authorId: opts.authorId,
       departmentId: opts.departmentId ?? null,
       publishedAt: opts.status === 'PUBLISHED' ? new Date() : null,
@@ -573,5 +579,150 @@ describe('PATCH /admin/content/posts/:id/status', () => {
     })
     expect(auditEntry).not.toBeNull()
     expect(auditEntry?.result).toBe('SUCCESS')
+  })
+})
+
+// ─── AUDIENCE (C5) ─────────────────────────────────────────────────────────────
+
+describe('audience của bài viết (C5)', () => {
+  const internalBody = (extra: Record<string, unknown> = {}) => ({
+    title: `Thông báo nội bộ ${randomUUID().slice(0, 6)}`,
+    summary: 'Tóm tắt thông báo',
+    content: 'Nội dung thông báo.',
+    category: 'Thông báo',
+    scope: 'INTERNAL',
+    ...extra,
+  })
+
+  it('manager tạo INTERNAL không gửi audience → ép DEPARTMENT ban mình', async () => {
+    const res = await req('POST', '/admin/content/posts', 'manager', internalBody())
+    expect(res.statusCode).toBe(201)
+    const post = await db.post.findUnique({ where: { id: res.json().id } })
+    expect(post?.audience).toBe('DEPARTMENT')
+    expect(post?.audienceDepartmentId).toBe(dept1Id)
+    expect(post?.audienceRoles).toEqual([])
+    createdPostIds.push(res.json().id)
+  })
+
+  it('manager gửi audience=ALL → DB vẫn DEPARTMENT (ghi đè im lặng)', async () => {
+    const res = await req('POST', '/admin/content/posts', 'manager', internalBody({ audience: 'ALL' }))
+    expect(res.statusCode).toBe(201)
+    const post = await db.post.findUnique({ where: { id: res.json().id } })
+    expect(post?.audience).toBe('DEPARTMENT')
+    expect(post?.audienceDepartmentId).toBe(dept1Id)
+    createdPostIds.push(res.json().id)
+  })
+
+  it('manager gửi audienceDepartmentId=ban khác → ghi đè thành ban mình', async () => {
+    const res = await req('POST', '/admin/content/posts', 'manager', internalBody({ audienceDepartmentId: dept2Id }))
+    expect(res.statusCode).toBe(201)
+    const post = await db.post.findUnique({ where: { id: res.json().id } })
+    expect(post?.audienceDepartmentId).toBe(dept1Id)
+    expect(post?.audienceDepartmentId).not.toBe(dept2Id)
+    createdPostIds.push(res.json().id)
+  })
+
+  it('board tạo INTERNAL audience=DEPARTMENT thiếu ban → 422', async () => {
+    const res = await req('POST', '/admin/content/posts', 'board', internalBody({ audience: 'DEPARTMENT' }))
+    expect(res.statusCode).toBe(422)
+    expect(res.json().error).toBe('validation')
+  })
+
+  it('board tạo INTERNAL audience=ROLES thiếu roles → 422', async () => {
+    const res = await req('POST', '/admin/content/posts', 'board', internalBody({ audience: 'ROLES' }))
+    expect(res.statusCode).toBe(422)
+    expect(res.json().error).toBe('validation')
+  })
+
+  it('board tạo INTERNAL audience=ROLES với roles cụ thể → lưu đúng', async () => {
+    const res = await req('POST', '/admin/content/posts', 'board', internalBody({
+      audience: 'ROLES',
+      audienceRoles: ['BOARD', 'TECH_ADMIN'],
+    }))
+    expect(res.statusCode).toBe(201)
+    const post = await db.post.findUnique({ where: { id: res.json().id } })
+    expect(post?.audience).toBe('ROLES')
+    expect(post?.audienceRoles).toEqual(['BOARD', 'TECH_ADMIN'])
+    expect(post?.audienceDepartmentId).toBeNull()
+    createdPostIds.push(res.json().id)
+  })
+
+  it('board tạo PUBLIC kèm audience → chuẩn hóa null/null/[]', async () => {
+    const res = await req('POST', '/admin/content/posts', 'board', {
+      ...internalBody(),
+      scope: 'PUBLIC',
+      audience: 'DEPARTMENT',
+      audienceDepartmentId: dept1Id,
+    })
+    expect(res.statusCode).toBe(201)
+    const post = await db.post.findUnique({ where: { id: res.json().id } })
+    expect(post?.audience).toBeNull()
+    expect(post?.audienceDepartmentId).toBeNull()
+    expect(post?.audienceRoles).toEqual([])
+    createdPostIds.push(res.json().id)
+  })
+
+  it('PATCH đổi scope INTERNAL→PUBLIC → audience về null/null/[]', async () => {
+    const post = await seedPost({ authorId: users.board.id, scope: 'INTERNAL', audience: 'ALL' })
+    const res = await req('PATCH', `/admin/content/posts/${post.id}`, 'board', {
+      scope: 'PUBLIC',
+      updatedAt: post.updatedAt.toISOString(),
+    })
+    expect(res.statusCode).toBe(200)
+    const updated = await db.post.findUnique({ where: { id: post.id } })
+    expect(updated?.scope).toBe('PUBLIC')
+    expect(updated?.audience).toBeNull()
+    expect(updated?.audienceDepartmentId).toBeNull()
+    expect(updated?.audienceRoles).toEqual([])
+  })
+
+  it('PATCH đổi scope PUBLIC→INTERNAL → audience mặc định ALL', async () => {
+    const post = await seedPost({ authorId: users.board.id, scope: 'PUBLIC' })
+    const res = await req('PATCH', `/admin/content/posts/${post.id}`, 'board', {
+      scope: 'INTERNAL',
+      updatedAt: post.updatedAt.toISOString(),
+    })
+    expect(res.statusCode).toBe(200)
+    const updated = await db.post.findUnique({ where: { id: post.id } })
+    expect(updated?.audience).toBe('ALL')
+    expect(updated?.audienceDepartmentId).toBeNull()
+    expect(updated?.audienceRoles).toEqual([])
+  })
+
+  it('PATCH chỉ sửa title (INTERNAL, không gửi audience) → audience giữ nguyên', async () => {
+    const post = await seedPost({
+      authorId: users.board.id,
+      scope: 'INTERNAL',
+      audience: 'DEPARTMENT',
+      audienceDepartmentId: dept1Id,
+    })
+    const res = await req('PATCH', `/admin/content/posts/${post.id}`, 'board', {
+      title: `Đổi tiêu đề ${randomUUID().slice(0, 6)}`,
+      updatedAt: post.updatedAt.toISOString(),
+    })
+    expect(res.statusCode).toBe(200)
+    const updated = await db.post.findUnique({ where: { id: post.id } })
+    expect(updated?.audience).toBe('DEPARTMENT')
+    expect(updated?.audienceDepartmentId).toBe(dept1Id)
+  })
+
+  it('PATCH title + audience=ROLES trên bài INTERNAL → cập nhật audience, xóa ban', async () => {
+    const post = await seedPost({
+      authorId: users.board.id,
+      scope: 'INTERNAL',
+      audience: 'DEPARTMENT',
+      audienceDepartmentId: dept1Id,
+    })
+    const res = await req('PATCH', `/admin/content/posts/${post.id}`, 'board', {
+      title: `Đổi sang roles ${randomUUID().slice(0, 6)}`,
+      audience: 'ROLES',
+      audienceRoles: ['MEMBER'],
+      updatedAt: post.updatedAt.toISOString(),
+    })
+    expect(res.statusCode).toBe(200)
+    const updated = await db.post.findUnique({ where: { id: post.id } })
+    expect(updated?.audience).toBe('ROLES')
+    expect(updated?.audienceRoles).toEqual(['MEMBER'])
+    expect(updated?.audienceDepartmentId).toBeNull()
   })
 })
