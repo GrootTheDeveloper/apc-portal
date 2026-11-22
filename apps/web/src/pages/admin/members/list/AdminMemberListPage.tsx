@@ -9,7 +9,7 @@ import { PageHero } from '../../../../components/PageHero'
 import { Pagination } from '../../../../components/Pagination'
 import { useApi } from '../../../../hooks/useApi'
 import { useAuth } from '../../../../hooks/useAuth'
-import type { Page } from '../../../../lib/api'
+import { api, ApiError, type Page } from '../../../../lib/api'
 import { hasRole } from '../../../../lib/auth'
 import { formatDate } from '../../../../lib/format'
 import {
@@ -35,6 +35,8 @@ export function AdminMemberListPage() {
   const status = (searchParams.get('status') ?? '') as MemberStatus | ''
 
   const [searchDraft, setSearchDraft] = useState(q)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState('')
 
   // Tải danh sách ban cho dropdown lọc
   const departmentsApi = useApi<{ id: string; name: string }[]>(isBoard ? '/admin/accounts/departments' : null)
@@ -82,22 +84,33 @@ export function AdminMemberListPage() {
         {/* Nút Xuất CSV cho D5 — CHỈ HIỂN THỊ VỚI BOARD */}
         {isBoard && (
           <div className="flex-shrink-0">
-            {/* Chừa chỗ nút Xuất CSV cho D5 (Phạm Đăng Hoàng Thiên) */}
             <Button
               variant="outline"
-              onClick={() => {
-                alert('Tính năng Xuất CSV sẽ được tích hợp bởi việc D5.')
+              disabled={exporting}
+              onClick={async () => {
+                setExporting(true)
+                setExportError('')
+                try {
+                  const result = await api<{ id: string }>('/admin/members/export', { method: 'POST' })
+                  window.location.assign(`/api/portal/exports/${encodeURIComponent(result.id)}/download`)
+                } catch (error) {
+                  setExportError(error instanceof ApiError ? error.message : 'Không tạo được file xuất. Vui lòng thử lại.')
+                } finally {
+                  setExporting(false)
+                }
               }}
-              title="Xuất danh sách thành viên ra file CSV (D5)"
+              title="Xuất danh sách thành viên ra CSV bảo vệ"
             >
               <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Xuất CSV
+              {exporting ? 'Đang tạo CSV…' : 'Xuất CSV'}
             </Button>
+            <Link className={`${buttonClass('outline')} ml-2`} to="/admin/members/import">Nhập CSV</Link>
           </div>
         )}
       </div>
+      {exportError && <p role="alert" className="rounded-xl bg-apc-red px-4 py-3 font-bold text-paper">{exportError}</p>}
 
       {/* Bộ lọc */}
       <div className="bg-white p-4 rounded-lg border border-neutral-200 space-y-4">

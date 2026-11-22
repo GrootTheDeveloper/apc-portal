@@ -52,7 +52,7 @@ export function buildApp(config: AppConfig, deps: AppDeps = {}) {
   app.register(eventsRoutes(config))
   app.register(aboutRoutes)
   app.register(organizationRoutes)
-  app.register(memberRoutes(config))
+  app.register(memberRoutes(config, { storage }))
   app.register(filesRoutes({ storage, scanner }))
   app.register(exportsRoutes({ storage }))
   app.register(documentsRoutes({ storage, scanner }))
