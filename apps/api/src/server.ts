@@ -10,7 +10,7 @@ import { endPastEvents } from './modules/events/service.js'
 import { createMailer, processEmailQueue } from './modules/email/service.js'
 import { createScanner } from './modules/files/scan.js'
 import { rescanPendingFiles } from './modules/files/service.js'
-import { createS3Storage } from './modules/files/storage.js'
+import { createMemoryStorage, createS3Storage } from './modules/files/storage.js'
 import { cleanupExpiredExports } from './modules/exports/service.js'
 import { closeExpiredRecruitmentRounds } from './modules/recruitment/service.js'
 
@@ -19,7 +19,9 @@ loadEnvFile({ path: fileURLToPath(new URL('../../../.env', import.meta.url)), qu
 
 // Production thiếu FILE_SCAN_MODE=clamav thì loadConfig ném lỗi, API không khởi động (D2).
 const config = loadConfig()
-const storage = createS3Storage(config)
+// Playwright runs the API without SeaweedFS/R2. Keep its file-backed flows real
+// while using the same in-memory storage adapter used by API integration tests.
+const storage = config.NODE_ENV === 'test' ? createMemoryStorage().storage : createS3Storage(config)
 const app = buildApp(config, { storage })
 const jobs: Job[] = []
 
