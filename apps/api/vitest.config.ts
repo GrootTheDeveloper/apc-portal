@@ -9,5 +9,7 @@ config({ path: path.resolve(import.meta.dirname, '../../.env'), quiet: true })
 export default defineConfig({
   test: {
     exclude: ['dist/**', 'node_modules/**'],
+    // API suites share one real PostgreSQL database; parallel files can deadlock while writing related rows.
+    fileParallelism: false,
   },
 })
