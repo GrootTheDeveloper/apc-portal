@@ -7,7 +7,7 @@ import { conflict, forbidden, notFound } from '../../lib/errors.js'
 import { buildUniqueSlug, slugify } from '../../lib/ids.js'
 import { pageArgs, pageQuery } from '../../lib/pagination.js'
 import { AUDIT_ACTIONS, audit, AuditCategory, AuditResult } from '../audit/service.js'
-import { type AuthUser, assertInScope, departmentScope, hasRole } from '../auth/rbac.js'
+import { type AuthUser, assertInScope, canAccessDepartment, departmentScope, hasRole } from '../auth/rbac.js'
 import { hasActiveConsent } from '../consent/service.js'
 
 // ─── SCHEMA VALIDATION ───────────────────────────────────────────────────────
@@ -91,7 +91,7 @@ type NormalizedAudience = {
 /**
  * Chuẩn hóa đối tượng nhận thông báo (C5):
  * - PUBLIC: không có đối tượng — trả null/null/[].
- * - INTERNAL + DEPARTMENT_MANAGER: ép DEPARTMENT ban họ quản lý, bỏ qua giá trị gửi lên.
+ * - INTERNAL + DEPARTMENT_MANAGER: luôn là DEPARTMENT ban họ quản lý; chọn ALL/ROLES hoặc ban khác → 403 (docs/02 mục 8.4).
  * - INTERNAL + BOARD: mặc định ALL; DEPARTMENT bắt buộc có ban, ROLES bắt buộc có ít nhất một vai trò (422).
  */
 function normalizeAudience(
@@ -106,9 +106,12 @@ function normalizeAudience(
   }
 
   if (!hasRole(user, 'BOARD')) {
+    if ((audience && audience !== 'DEPARTMENT') || (audienceDepartmentId && !canAccessDepartment(user, audienceDepartmentId))) {
+      throw forbidden('Quản lý ban chỉ gửi thông báo cho ban mình quản lý.')
+    }
     return {
       audience: 'DEPARTMENT',
-      audienceDepartmentId: resolveAuthorDepartmentId(user),
+      audienceDepartmentId: audienceDepartmentId ?? resolveAuthorDepartmentId(user),
       audienceRoles: [],
     }
   }
@@ -289,8 +292,8 @@ export async function updateAdminPost(user: AuthUser, id: string, rawBody: unkno
   } else if (audienceTouched || becameInternal) {
     audienceUpdate = normalizeAudience(
       effectiveScope,
-      // Lần đầu chuyển sang INTERNAL mà không gửi audience thì mặc định ALL
-      becameInternal ? (fields.audience ?? 'ALL') : (fields.audience ?? post.audience),
+      // Lần đầu chuyển sang INTERNAL mà không gửi audience: normalizeAudience mặc định ALL (BOARD) hoặc ban mình (quản lý ban)
+      becameInternal ? fields.audience : (fields.audience ?? post.audience),
       fields.audienceDepartmentId !== undefined ? fields.audienceDepartmentId : post.audienceDepartmentId,
       fields.audienceRoles ?? post.audienceRoles,
       user,
@@ -350,7 +353,7 @@ export async function changePostStatus(
 
   const post = await db.post.findUnique({
     where: { id },
-    select: { departmentId: true, status: true, scope: true },
+    select: { departmentId: true, status: true, scope: true, audience: true, audienceDepartmentId: true },
   })
   if (!post) throw notFound('Không tìm thấy bài viết.')
 
@@ -365,6 +368,14 @@ export async function changePostStatus(
     if (post.scope !== 'INTERNAL') {
       throw forbidden('Quản lý ban chỉ được thay đổi trạng thái bài viết Nội bộ.')
     }
+    // Bài nội bộ do BOARD tạo cho toàn CLB/theo vai trò có thể mang departmentId ban này: quản lý ban không được đăng.
+    if (post.audience !== 'DEPARTMENT' || !post.audienceDepartmentId) {
+      throw forbidden('Quản lý ban chỉ được thay đổi trạng thái thông báo gửi cho ban mình.')
+    }
+    assertInScope(user, post.audienceDepartmentId)
+  }
+  if (body.action === 'PUBLISH' && post.scope === 'INTERNAL' && !post.audience) {
+    throw audienceFieldError('audience', 'Chọn đối tượng nhận thông báo trước khi đăng.')
   }
 
   // ── Kiểm tra state machine ────────────────────────────────────────────────

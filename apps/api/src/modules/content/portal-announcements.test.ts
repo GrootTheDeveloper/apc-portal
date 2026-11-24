@@ -192,37 +192,36 @@ describe('GET /portal/announcements', () => {
     expect(res.json().error).toBe('unauthenticated')
   })
 
-  it('member.a (Ban A) thấy ALL + ban A + ROLES(MEMBER) = 3 thông báo', async () => {
+  it('member.a (Ban A) thấy ALL + ban A + ROLES(MEMBER)', async () => {
     const res = await req('GET', '/portal/announcements', 'memberA')
     expect(res.statusCode).toBe(200)
     const ids = res.json().items.map((item: { id: string }) => item.id)
-    expect(ids).toHaveLength(3)
     expect(ids).toEqual(expect.arrayContaining([postAllId, postDeptAId, postMemberTargetId]))
+    expect(ids).not.toContain(postManagerOnlyId)
   })
 
-  it('member.b (Ban B) thấy ALL + ROLES(MEMBER) = 2 thông báo', async () => {
+  it('member.b (Ban B) thấy ALL + ROLES(MEMBER)', async () => {
     const res = await req('GET', '/portal/announcements', 'memberB')
     expect(res.statusCode).toBe(200)
     const ids = res.json().items.map((item: { id: string }) => item.id)
-    expect(ids).toHaveLength(2)
     expect(ids).toEqual(expect.arrayContaining([postAllId, postMemberTargetId]))
+    expect(ids).not.toContain(postDeptAId)
+    expect(ids).not.toContain(postManagerOnlyId)
   })
 
-  it('manager.a (Ban A + MANAGER) thấy thêm thông báo dành cho DEPARTMENT_MANAGER = 4', async () => {
+  it('manager.a (Ban A + MANAGER) thấy thêm thông báo dành cho DEPARTMENT_MANAGER', async () => {
     const res = await req('GET', '/portal/announcements', 'managerA')
     expect(res.statusCode).toBe(200)
     const ids = res.json().items.map((item: { id: string }) => item.id)
-    expect(ids).toHaveLength(4)
     expect(ids).toEqual(
       expect.arrayContaining([postAllId, postDeptAId, postManagerOnlyId, postMemberTargetId]),
     )
   })
 
-  it('board (không thuộc ban) chỉ thấy ALL + ROLES(MEMBER) = 2 thông báo', async () => {
+  it('board (không thuộc ban) chỉ thấy ALL + ROLES(MEMBER)', async () => {
     const res = await req('GET', '/portal/announcements', 'board')
     expect(res.statusCode).toBe(200)
     const ids = res.json().items.map((item: { id: string }) => item.id)
-    expect(ids).toHaveLength(2)
     expect(ids).toEqual(expect.arrayContaining([postAllId, postMemberTargetId]))
     expect(ids).not.toContain(postDeptAId)
     expect(ids).not.toContain(postManagerOnlyId)

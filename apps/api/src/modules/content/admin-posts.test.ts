@@ -495,10 +495,30 @@ describe('PATCH /admin/content/posts/:id/status', () => {
       departmentId: dept1Id,
       status: 'DRAFT',
       scope: 'INTERNAL',
+      audience: 'DEPARTMENT',
+      audienceDepartmentId: dept1Id,
     })
     const res = await req('PATCH', `/admin/content/posts/${post.id}/status`, 'manager', { action: 'PUBLISH' })
     expect(res.statusCode).toBe(200)
     expect(res.json().status).toBe('PUBLISHED')
+  })
+
+  it('403 khi DEPARTMENT_MANAGER publish thông báo toàn CLB mang departmentId ban mình', async () => {
+    const post = await seedPost({
+      authorId: users.board.id,
+      departmentId: dept1Id,
+      status: 'DRAFT',
+      scope: 'INTERNAL',
+      audience: 'ALL',
+    })
+    const res = await req('PATCH', `/admin/content/posts/${post.id}/status`, 'manager', { action: 'PUBLISH' })
+    expect(res.statusCode).toBe(403)
+  })
+
+  it('422 khi publish bài INTERNAL chưa có đối tượng nhận', async () => {
+    const post = await seedPost({ authorId: users.board.id, status: 'DRAFT', scope: 'INTERNAL', departmentId: null })
+    const res = await req('PATCH', `/admin/content/posts/${post.id}/status`, 'board', { action: 'PUBLISH' })
+    expect(res.statusCode).toBe(422)
   })
 
   it('403 khi DEPARTMENT_MANAGER archive bài PUBLIC', async () => {
@@ -604,22 +624,14 @@ describe('audience của bài viết (C5)', () => {
     createdPostIds.push(res.json().id)
   })
 
-  it('manager gửi audience=ALL → DB vẫn DEPARTMENT (ghi đè im lặng)', async () => {
+  it('manager chọn audience=ALL → 403', async () => {
     const res = await req('POST', '/admin/content/posts', 'manager', internalBody({ audience: 'ALL' }))
-    expect(res.statusCode).toBe(201)
-    const post = await db.post.findUnique({ where: { id: res.json().id } })
-    expect(post?.audience).toBe('DEPARTMENT')
-    expect(post?.audienceDepartmentId).toBe(dept1Id)
-    createdPostIds.push(res.json().id)
+    expect(res.statusCode).toBe(403)
   })
 
-  it('manager gửi audienceDepartmentId=ban khác → ghi đè thành ban mình', async () => {
+  it('manager chọn ban khác → 403', async () => {
     const res = await req('POST', '/admin/content/posts', 'manager', internalBody({ audienceDepartmentId: dept2Id }))
-    expect(res.statusCode).toBe(201)
-    const post = await db.post.findUnique({ where: { id: res.json().id } })
-    expect(post?.audienceDepartmentId).toBe(dept1Id)
-    expect(post?.audienceDepartmentId).not.toBe(dept2Id)
-    createdPostIds.push(res.json().id)
+    expect(res.statusCode).toBe(403)
   })
 
   it('board tạo INTERNAL audience=DEPARTMENT thiếu ban → 422', async () => {
