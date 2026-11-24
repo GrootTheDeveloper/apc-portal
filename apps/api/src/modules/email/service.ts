@@ -118,7 +118,7 @@ async function deliver(delivery: ClaimedDelivery, mailer: Mailer, log: FastifyBa
     if (!email) return await fail(delivery, 'Bản ghi gốc không còn', log)
     // Message-ID cố định theo id dòng: gửi lại sau khi kẹt vẫn là cùng một thư.
     const info = await mailer.send({ ...email, to: delivery.recipient, messageId: `<${delivery.id}@apc-portal>` })
-    await db.notificationDelivery.update({
+    await db.notificationDelivery.updateMany({
       where: { id: delivery.id },
       data: { status: 'SENT', messageId: cleanMessageId(info.messageId), lastError: null, lockedAt: null },
     })
@@ -126,7 +126,7 @@ async function deliver(delivery: ClaimedDelivery, mailer: Mailer, log: FastifyBa
     const reason = describeError(error)
     if (isPermanentError(error) || delivery.attempts >= MAX_ATTEMPTS) return fail(delivery, reason, log)
     const delayMinutes = RETRY_DELAY_MINUTES[delivery.attempts - 1] ?? 60
-    await db.notificationDelivery.update({
+    await db.notificationDelivery.updateMany({
       where: { id: delivery.id },
       data: { status: 'RETRY', lastError: reason, lockedAt: null, nextAttemptAt: new Date(Date.now() + delayMinutes * 60_000) },
     })
@@ -135,7 +135,8 @@ async function deliver(delivery: ClaimedDelivery, mailer: Mailer, log: FastifyBa
 
 /** Dừng hẳn, ghi log mức lỗi để vận hành biết; không đụng dữ liệu nghiệp vụ. */
 async function fail(delivery: ClaimedDelivery, reason: string, log: FastifyBaseLogger) {
-  await db.notificationDelivery.update({
+  // updateMany: dòng đã bị xóa giữa lúc gửi (dọn dữ liệu test) thì bỏ qua, không làm vỡ cả lượt worker.
+  await db.notificationDelivery.updateMany({
     where: { id: delivery.id },
     data: { status: 'FAILED', lastError: reason, lockedAt: null },
   })
