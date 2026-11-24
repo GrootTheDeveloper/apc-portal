@@ -10,6 +10,7 @@ import { closeExpiredRecruitmentRounds } from './service.js'
 import { APPLICATION_STATUS_LABELS, EMAIL_TEMPLATES } from '../email/templates.js'
 import { publicCode } from '../../lib/ids.js'
 import { createMemoryStorage } from '../files/storage.js'
+import { passTwoFactor } from '../../../test/twoFactor.js'
 
 let ipCounter = 200
 const nextIp = () => `10.8.${Math.floor(++ipCounter / 250)}.${ipCounter % 250}`
@@ -68,7 +69,7 @@ beforeAll(async () => {
   })
   createdUserIds.push(boardUser.id)
   boardUserId = boardUser.id
-  boardToken = (await createSession(boardUser.id, { ipAddress: '127.0.0.1', userAgent: 'test' })).token
+  boardToken = await passTwoFactor((await createSession(boardUser.id, { ipAddress: '127.0.0.1', userAgent: 'test' })).token)
 
   // 3. Tạo User DEPARTMENT_MANAGER Ban A
   const managerAUser = await db.user.create({

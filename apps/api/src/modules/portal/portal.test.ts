@@ -7,6 +7,7 @@ import { loadConfig } from '../../config.js'
 import { db } from '../../db/client.js'
 import { hashPassword } from '../../lib/password.js'
 import { createSession, SESSION_COOKIE } from '../auth/session.js'
+import { passTwoFactor } from '../../../test/twoFactor.js'
 
 const config = loadConfig({ NODE_ENV: 'test' })
 const app = buildApp(config)
@@ -50,7 +51,7 @@ async function createUser(
 
 async function userSession(userId: string) {
   const { token } = await createSession(userId, { ipAddress: '127.0.0.1', userAgent: 'test-agent' })
-  return { [SESSION_COOKIE]: token }
+  return { [SESSION_COOKIE]: await passTwoFactor(token) }
 }
 
 async function createStoredFile(

@@ -373,7 +373,7 @@ describe('Quét mã độc (ClamAV)', () => {
   it('production không có FILE_SCAN_MODE=clamav: API không khởi động', () => {
     expect(() => loadConfig({ NODE_ENV: 'production' })).toThrow()
     expect(() => loadConfig({ NODE_ENV: 'production', FILE_SCAN_MODE: 'skip' })).toThrow()
-    expect(loadConfig({ NODE_ENV: 'production', FILE_SCAN_MODE: 'clamav' }).FILE_SCAN_MODE).toBe('clamav')
+    expect(loadConfig({ NODE_ENV: 'production', FILE_SCAN_MODE: 'clamav', TOTP_ENCRYPTION_KEY: 'a'.repeat(64) }).FILE_SCAN_MODE).toBe('clamav')
   })
 
   // Chạy với ClamAV thật: `node scripts/compose.mjs --profile scan up -d clamav` rồi `CLAMAV_E2E=1 pnpm --filter @apc/api test`.

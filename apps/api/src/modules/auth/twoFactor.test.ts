@@ -424,6 +424,13 @@ describe('B3: Xác thực 2 lớp (TOTP & Recovery Codes)', () => {
     expect(useNew.statusCode).toBe(200)
   })
 
+  it('8. Khóa TOTP: production dùng khóa mẫu hoặc khóa sai định dạng thì API không khởi động', () => {
+    const prod = { NODE_ENV: 'production', FILE_SCAN_MODE: 'clamav' } as const
+    expect(() => loadConfig(prod)).toThrow()
+    expect(() => loadConfig({ ...prod, TOTP_ENCRYPTION_KEY: 'khong-phai-hex' })).toThrow()
+    expect(loadConfig({ ...prod, TOTP_ENCRYPTION_KEY: 'b'.repeat(64) }).TOTP_ENCRYPTION_KEY).toBe('b'.repeat(64))
+  })
+
   it('7. Thành viên MEMBER thông thường đăng nhập không bị ép nhập TOTP', async () => {
     const res = await app.inject({
       method: 'POST',
