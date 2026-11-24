@@ -37,14 +37,17 @@ Hero trang chủ hiển thị dải 4 chỉ số CLB dạng placeholder (số m�
 
 | Chức năng | Trạng thái |
 | --- | --- |
-| Đăng nhập, đăng xuất, đổi mật khẩu; Ban Chủ nhiệm cấp lại mật khẩu tạm thời (A2, A4, B3) | Hoàn thành |
+| Đăng nhập, đăng xuất, đổi mật khẩu; Ban Chủ nhiệm cấp lại mật khẩu tạm thời (A2, A4, A5) | Hoàn thành |
 | Hồ sơ thành viên và dashboard cá nhân (T3) | Hoàn thành |
 | Quản lý thành viên, ban chuyên môn và nhiệm kỳ (T5, O6) | Hoàn thành |
 | Quản lý đợt tuyển, hồ sơ ứng viên và chuyển ứng viên thành thành viên (R2, R5, R6) | Hoàn thành |
-| Quản lý sự kiện, đăng ký và điểm danh (E4, E5) | Hoàn thành |
+| Quản lý sự kiện, đăng ký, điểm danh và xuất danh sách (E4, E5, E6) | Hoàn thành |
+| Thông báo nội bộ theo ban/vai trò (C5) | Hoàn thành |
+| Nhập/xuất danh sách thành viên bằng CSV (D5) | Hoàn thành |
 | Quản trị tin tức, hoạt động, dự án, thông tin APC và tệp nội bộ (C3, C4, T4, D4, D6) | Hoàn thành |
 | Phân quyền `MEMBER`, `DEPARTMENT_MANAGER`, `BOARD`, `TECH_ADMIN` | Hoàn thành |
-| Audit log và theo dõi email cho hành động nhạy cảm (O3) | Hoàn thành |
+| Ghi audit log và theo dõi email gửi đi (B1, O3) | Hoàn thành |
+| Xác thực hai lớp cho tài khoản đặc quyền (B3) và trang xem nhật ký (B4) | Đang làm |
 
 ## 4. P3 - Lên máy chủ và phát hành
 
