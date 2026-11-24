@@ -22,6 +22,7 @@ Copy-Item .env.example .env
 pnpm install
 pnpm infra:up
 pnpm --filter @apc/api db:migrate
+pnpm --filter @apc/api db:seed
 pnpm dev
 ```
 
@@ -37,6 +38,8 @@ pnpm dev
 ```powershell
 pnpm dev          # chạy web và API
 pnpm check        # lint, type-check, test và build
+pnpm --filter @apc/api db:seed    # nạp dữ liệu mẫu và tài khoản thử
+pnpm --filter @apc/web test:e2e  # chạy test tự động giao diện (Playwright)
 pnpm infra:up     # bật PostgreSQL, Mailpit, SeaweedFS
 pnpm infra:down   # tắt hạ tầng local
 pnpm infra:logs   # xem log hạ tầng
