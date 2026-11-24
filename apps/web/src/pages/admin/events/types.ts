@@ -32,6 +32,9 @@ export type AdminEvent = {
   capacity: number | null
   allowGuestRegistration: boolean
   cancelReason: string | null
+  /** Chốt điểm danh (E6): set thì chỉ BOARD sửa được kết quả, kèm lý do — web khóa ô theo hai trường này */
+  attendanceFinalizedAt: string | null
+  attendanceFinalizedBy: { id: string; fullName: string } | null
   createdAt: string
   updatedAt: string
   /** Số đăng ký còn hiệu lực (REGISTERED) — đếm sẵn ở API (FLOW-15) */
@@ -53,4 +56,32 @@ export const AUDIENCE_LABELS: Record<EventAudience, string> = {
   PUBLIC: 'Công khai',
   CLUB: 'Toàn CLB',
   DEPARTMENT: 'Nội bộ ban',
+}
+
+// ─── E6: đăng ký & điểm danh (FLOW-16) — khớp POST /admin/events/:id/registrations/search ──
+
+export type EventRegistrationStatus = 'REGISTERED' | 'CANCELLED'
+
+export type AttendanceStatus = 'NOT_MARKED' | 'PRESENT' | 'EXCUSED' | 'ABSENT'
+
+export type EventRegistrationItem = {
+  id: string
+  status: EventRegistrationStatus
+  attendanceStatus: AttendanceStatus
+  registeredAt: string
+  cancelledAt: string | null
+  /** MEMBER lấy từ tài khoản, GUEST từ thông tin khách nhập lúc đăng ký (E3) */
+  attendeeType: 'MEMBER' | 'GUEST'
+  fullName: string | null
+  email: string | null
+  studentId: string | null
+}
+
+export type RegistrationSearchResult = Page<EventRegistrationItem>
+
+export type ExportCreated = {
+  id: string
+  status: string
+  filename: string
+  expiresAt: string
 }
