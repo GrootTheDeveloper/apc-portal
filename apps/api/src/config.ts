@@ -1,5 +1,8 @@
 import { z } from 'zod'
 
+/** Khóa TOTP mẫu (trùng .env.example), công khai trong repo nên cấm ở production. */
+const LOCAL_TOTP_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+
 const environmentSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   API_HOST: z.string().default('127.0.0.1'),
@@ -23,6 +26,12 @@ const environmentSchema = z.object({
   FILE_SCAN_MODE: z.enum(['clamav', 'skip']).default('skip'),
   CLAMAV_HOST: z.string().default('127.0.0.1'),
   CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
+  // Khóa mã hóa secret TOTP và băm mã khôi phục (B3, SEC-16): hex 64 ký tự (32 byte). Giá trị mặc định chỉ dùng
+  // local/CI; production dùng khóa này thì API không khởi động (refine bên dưới).
+  TOTP_ENCRYPTION_KEY: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/i, 'TOTP_ENCRYPTION_KEY phải là chuỗi hex 64 ký tự (32 byte).')
+    .default(LOCAL_TOTP_KEY),
   // Ngưỡng chặn dò mã của khách (SEC-05, cùng quy tắc R4): sai email/mã quá N lần trong 15 phút
   // thì chặn 15 phút (429). Nâng số này khi chạy e2e để luồng test không dính 429.
   LOOKUP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
@@ -33,6 +42,9 @@ const environmentSchema = z.object({
   // API không khởi động ở production khi chưa bật quét mã độc (D2).
   message: 'Production bắt buộc FILE_SCAN_MODE=clamav.',
   path: ['FILE_SCAN_MODE'],
+}).refine((env) => env.NODE_ENV !== 'production' || env.TOTP_ENCRYPTION_KEY.toLowerCase() !== LOCAL_TOTP_KEY, {
+  message: 'Production bắt buộc đặt TOTP_ENCRYPTION_KEY riêng, không dùng khóa mẫu.',
+  path: ['TOTP_ENCRYPTION_KEY'],
 })
 
 export type AppConfig = z.infer<typeof environmentSchema>

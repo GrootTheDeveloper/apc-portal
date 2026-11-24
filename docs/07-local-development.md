@@ -329,10 +329,18 @@ pnpm --filter @apc/api run db:seed
 **Danh sách tài khoản mẫu:**
 Mật khẩu chung cho tất cả tài khoản mẫu lấy từ biến `SEED_PASSWORD` trong file `.env` (mặc định là `apc_local_seed_only`). Email có dạng `<tên_đăng_nhập>@example.com`.
 
+`board` và `techadmin` đã bật xác thực 2 lớp (B3) với secret lấy từ `SEED_TOTP_SECRET` trong `.env`. Sau khi nhập mật khẩu, trang `/account/two-factor` hỏi mã 6 số: thêm secret đó vào Google/Microsoft Authenticator (chọn "nhập khóa thủ công"), hoặc sinh mã bằng lệnh:
+
+```powershell
+pnpm --filter @apc/web exec node -e "const O=require('otpauth');console.log(new O.TOTP({secret:O.Secret.fromBase32(process.argv[1])}).generate())" JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
+```
+
+`board.pending` có vai trò `PENDING` nên được đưa tới trang thiết lập 2 lớp để quét mã QR mới.
+
 | Tên đăng nhập | Vai trò | Trạng thái | Ban | Ghi chú |
 | --- | --- | --- | --- | --- |
-| `board` | `BOARD` | `ACTIVE` | — | Ban Chủ nhiệm |
-| `techadmin` | `TECH_ADMIN` | `ACTIVE` | — | Quản trị Hệ thống |
+| `board` | `BOARD` | `ACTIVE` | — | Ban Chủ nhiệm, đã bật 2 lớp |
+| `techadmin` | `TECH_ADMIN` | `ACTIVE` | — | Quản trị Hệ thống, đã bật 2 lớp |
 | `board.pending` | `BOARD` | `ACTIVE` | — | Vai trò `PENDING` (chưa thiết lập 2 lớp) |
 | `manager.a` | `DEPARTMENT_MANAGER` | `ACTIVE` | Ban A | Trưởng ban A |
 | `manager.b` | `DEPARTMENT_MANAGER` | `ACTIVE` | Ban B | Trưởng ban B |

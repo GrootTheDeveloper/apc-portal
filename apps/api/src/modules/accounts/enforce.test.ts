@@ -8,6 +8,7 @@ import { db } from '../../db/client.js'
 import { conflict } from '../../lib/errors.js'
 import { hashPassword } from '../../lib/password.js'
 import { SESSION_COOKIE } from '../auth/session.js'
+import { passTwoFactor } from '../../../test/twoFactor.js'
 
 // ENFORCE_PRIVILEGED_MINIMUM qua route (RP-06, RP-07). Số BOARD thật trong database phụ thuộc file test khác,
 // nên ở đây thay `assertPrivilegedMinimum` bằng hàm giả để kiểm: route có gọi kiểm tra khi bật cờ, và 409 của
@@ -58,7 +59,7 @@ beforeAll(async () => {
     headers: origin,
     remoteAddress: '10.6.0.1',
   })
-  boardToken = login.cookies.find((cookie) => cookie.name === SESSION_COOKIE)?.value ?? ''
+  boardToken = await passTwoFactor(login.cookies.find((cookie) => cookie.name === SESSION_COOKIE)?.value ?? '')
 })
 
 beforeEach(() => {

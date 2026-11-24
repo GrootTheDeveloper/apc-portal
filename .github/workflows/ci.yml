@@ -74,6 +74,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://apc:apc_ci_only@localhost:5432/apc_portal
       SEED_PASSWORD: e2e_ci_only
+      SEED_TOTP_SECRET: JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
     steps:
       - name: Checkout
         uses: actions/checkout@v4

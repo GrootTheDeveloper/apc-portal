@@ -139,34 +139,68 @@ export async function verifyLogin(input: z.infer<typeof loginSchema>, now = new 
 
 /**
  * Bước 2 lớp web cần đưa người dùng tới (Sitemap mục 6.2, 11.1):
- * - `setup`: có vai trò BOARD/TECH_ADMIN đang chờ (PENDING), tức chưa thiết lập 2 lớp → `/account/setup-two-factor`.
- * - `verify`: đã có vai trò đặc quyền ACTIVE nhưng phiên này chưa nhập mã → `/account/two-factor`.
+ * - `verify`: đã bật 2 lớp nhưng phiên này chưa nhập mã → `/account/two-factor`.
+ * - `setup`: có BOARD/TECH_ADMIN (ACTIVE hoặc PENDING) mà chưa bật 2 lớp → `/account/setup-two-factor`.
+ * - `regenerate`: vừa đăng nhập bằng mã khôi phục, bộ mã cũ đã hết hiệu lực → `/account/recovery-codes` (FLOW-27).
  * - `null`: không cần.
  */
-export type TwoFactorStep = 'setup' | 'verify' | null
+export type TwoFactorStep = 'setup' | 'verify' | 'regenerate' | null
 
 async function twoFactorStep(userId: string, sessionVerified: boolean, now: Date): Promise<TwoFactorStep> {
-  const privileged = await db.userRole.findMany({
-    where: {
-      userId,
-      role: { in: ['BOARD', 'TECH_ADMIN'] },
-      status: { in: ['ACTIVE', 'PENDING'] },
-      ...effectiveRoleWindow(now),
-    },
-    select: { status: true },
-  })
-  if (privileged.some((grant) => grant.status === 'ACTIVE')) return sessionVerified ? null : 'verify'
-  return privileged.length > 0 ? 'setup' : null
+  const [user, privileged] = await Promise.all([
+    db.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { totpEnabledAt: true, _count: { select: { recoveryCodes: { where: { usedAt: null } } } } },
+    }),
+    db.userRole.count({
+      where: {
+        userId,
+        role: { in: ['BOARD', 'TECH_ADMIN'] },
+        status: { in: ['ACTIVE', 'PENDING'] },
+        ...effectiveRoleWindow(now),
+      },
+    }),
+  ])
+  if (user.totpEnabledAt) {
+    if (!sessionVerified) return 'verify'
+    return user._count.recoveryCodes === 0 ? 'regenerate' : null
+  }
+  return privileged > 0 ? 'setup' : null
 }
 
-/** Thông tin trả về cho web ở /auth/login và /auth/me. Không bao giờ chứa passwordHash. */
+/** Thông tin trả về cho web ở /auth/login và /auth/me. Không bao giờ chứa passwordHash hay totpSecret. */
 export async function getMe(user: AuthUser, session: { twoFactorVerified: boolean }, now = new Date()) {
   const profile = await db.user.findUniqueOrThrow({
     where: { id: user.id },
-    select: { username: true, fullName: true, status: true, mustChangePassword: true },
+    select: {
+      username: true,
+      fullName: true,
+      status: true,
+      mustChangePassword: true,
+      totpEnabledAt: true,
+      roles: {
+        where: { role: { in: ['BOARD', 'TECH_ADMIN'] } },
+        select: { role: true, status: true },
+      },
+    },
   })
   const twoFactor = await twoFactorStep(user.id, session.twoFactorVerified, now)
-  return { id: user.id, departmentId: user.departmentId, roles: user.roles, ...profile, twoFactor }
+  const hasPrivilegedRole = profile.roles.some((r) => r.status === 'ACTIVE' || r.status === 'PENDING')
+  const twoFactorEnabled = Boolean(profile.totpEnabledAt)
+
+  return {
+    id: user.id,
+    departmentId: user.departmentId,
+    roles: user.roles,
+    username: profile.username,
+    fullName: profile.fullName,
+    status: profile.status,
+    mustChangePassword: profile.mustChangePassword,
+    twoFactorEnabled,
+    twoFactorVerified: session.twoFactorVerified,
+    hasPrivilegedRole,
+    twoFactor,
+  }
 }
 
 // KÍCH HOẠT & ĐỔI MẬT KHẨU (A4) ──────────────────────────────────────────────

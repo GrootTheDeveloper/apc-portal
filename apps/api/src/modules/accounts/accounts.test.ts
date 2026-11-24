@@ -9,6 +9,7 @@ import { hashPassword } from '../../lib/password.js'
 import { SESSION_COOKIE } from '../auth/session.js'
 import { lockPrivilegedRoles } from './privileged.js'
 import { assertPrivilegedMinimum, deactivateAccount, generateTemporaryPassword } from './service.js'
+import { passTwoFactor } from '../../../test/twoFactor.js'
 
 // A5 — quản lý tài khoản, test với Postgres thật.
 const config = loadConfig({ NODE_ENV: 'test' })
@@ -51,7 +52,7 @@ async function login(username: string, password = PASSWORD) {
     headers: origin,
     remoteAddress: `10.5.0.${++ip % 250}`,
   })
-  return { status: response.statusCode, token: response.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? '' }
+  return { status: response.statusCode, token: await passTwoFactor(response.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? '') }
 }
 
 // Thao tác đổi trạng thái bắt buộc gửi `updatedAt` của bản đang xem (STATE-09). Test không tự ghi `updatedAt`

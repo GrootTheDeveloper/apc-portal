@@ -20,6 +20,7 @@ erDiagram
   user_roles }o--|o users : "grantedBy"
   user_roles }o--|o users : "revokedBy"
   sessions }o--|| users : "user"
+  two_factor_recovery_codes }o--|| users : "user"
   posts }o--|o departments : "audienceDepartment"
   posts }o--|| users : "author"
   posts }o--|o departments : "department"
@@ -86,6 +87,9 @@ erDiagram
     DateTime passwordChangedAt "tùy chọn"
     Int failedLoginAttempts "SEC-05"
     DateTime lockoutUntil "tùy chọn"
+    String totpSecret "tùy chọn. Secret đã mã hóa AES-256-GCM với TOTP_ENCRYPTION_KEY"
+    DateTime totpEnabledAt "tùy chọn"
+    BigInt totpLastTimeStep "tùy chọn. Time step của mã 6 số hợp lệ gần nhất, chống replay"
     String fullName
     String studentId UK "tùy chọn. Optional: tài khoản bootstrap đầu tiên có thể chưa gắn MSSV"
     String faculty "tùy chọn"
@@ -145,6 +149,13 @@ erDiagram
     DateTime revokedAt "tùy chọn. Đăng xuất, đổi mật khẩu, khóa tài khoản (AUTH-08)"
     String ipAddress "tùy chọn"
     String userAgent "tùy chọn"
+  }
+  two_factor_recovery_codes {
+    String id PK
+    String userId FK
+    String codeHash UK "SHA-256 của mã khôi phục dạng chuẩn hóa"
+    DateTime usedAt "tùy chọn"
+    DateTime createdAt
   }
   posts {
     String id PK
@@ -380,6 +391,7 @@ erDiagram
   user_roles }o--|o users : "grantedBy"
   user_roles }o--|o users : "revokedBy"
   sessions }o--|| users : "user"
+  two_factor_recovery_codes }o--|| users : "user"
   posts }o--|o departments : "audienceDepartment"
   posts }o--|| users : "author"
   posts }o--|o departments : "department"
@@ -424,7 +436,7 @@ erDiagram
 | `DocumentStatus` | `ACTIVE`, `ARCHIVED` |
 | `ContentStatus` | `DRAFT`, `PUBLISHED`, `ARCHIVED` |
 | `ContentScope` | `PUBLIC`, `INTERNAL` |
-| `PostAudience` | `ALL`, `DEPARTMENT`, `ROLES` |
+| `PostAudience` |  |
 | `ProjectType` | `PROJECT`, `PRODUCT` |
 | `ApplicationStatus` | `NEW`, `REVIEWING`, `INTERVIEW`, `ACCEPTED`, `REJECTED`, `WITHDRAWN` |
 | `RoleAssignmentStatus` | `PENDING`, `ACTIVE`, `EXPIRED`, `REVOKED` |

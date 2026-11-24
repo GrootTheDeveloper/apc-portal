@@ -8,6 +8,7 @@ import { db } from '../../db/client.js'
 import { hashPassword } from '../../lib/password.js'
 import { SESSION_COOKIE } from '../auth/session.js'
 import { runRoleExpiry } from './roleExpiry.js'
+import { passTwoFactor } from '../../../test/twoFactor.js'
 
 // O6 — vai trò hết hạn và cảnh báo 30/7 ngày. Test chỉ đếm email/audit gắn với dòng vai trò do chính test tạo
 // (refId/targetId), nên không phụ thuộc dữ liệu khác trong DB.
@@ -47,7 +48,7 @@ async function createExpiring(name: string, days: number, base = new Date()) {
 
 async function login(username: string) {
   const response = await app.inject({ method: 'POST', url: '/auth/login', payload: { username, password: PASSWORD }, headers: origin, remoteAddress: `10.7.0.${++ip % 250}` })
-  return response.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? ''
+  return passTwoFactor(response.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? '')
 }
 
 const get = (url: string, token: string) => app.inject({ method: 'GET', url, cookies: token ? { [SESSION_COOKIE]: token } : {}, headers: origin })

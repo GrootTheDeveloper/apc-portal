@@ -14,8 +14,14 @@ export type Me = {
   departmentId: string | null
   roles: RoleGrant[]
   mustChangePassword: boolean
-  /** Bước 2 lớp còn thiếu: `setup` → /account/setup-two-factor, `verify` → /account/two-factor. */
-  twoFactor: 'setup' | 'verify' | null
+  twoFactorEnabled?: boolean
+  twoFactorVerified?: boolean
+  hasPrivilegedRole?: boolean
+  /**
+   * Bước 2 lớp còn thiếu: `setup` → /account/setup-two-factor, `verify` → /account/two-factor,
+   * `regenerate` (vừa dùng mã khôi phục) → /account/recovery-codes.
+   */
+  twoFactor: 'setup' | 'verify' | 'regenerate' | null
 }
 
 /** Vai trò được vào khu /admin (sitemap PAGE-MGT-01). */
@@ -33,6 +39,7 @@ export function hasAnyRole(user: Me | null, roles: readonly Role[]): boolean {
 export const ACTIVATE_PATH = '/account/activate'
 export const TWO_FACTOR_SETUP_PATH = '/account/setup-two-factor'
 export const TWO_FACTOR_VERIFY_PATH = '/account/two-factor'
+export const RECOVERY_CODES_PATH = '/account/recovery-codes'
 
 /** Tài khoản phải đổi mật khẩu tạm trước khi dùng bất kỳ trang nào khác (FLOW-09). */
 export function needsActivation(user: Me): boolean {
@@ -64,6 +71,7 @@ export function guardRedirect(user: Me | null, { roles, gate }: GuardOptions = {
   if (gate === 'two-factor') return { action: 'allow' }
   if (user.twoFactor === 'setup') return { action: 'redirect', to: TWO_FACTOR_SETUP_PATH }
   if (user.twoFactor === 'verify') return { action: 'redirect', to: TWO_FACTOR_VERIFY_PATH }
+  if (user.twoFactor === 'regenerate') return { action: 'redirect', to: RECOVERY_CODES_PATH }
   if (roles && !hasAnyRole(user, roles)) return { action: 'forbidden' }
   return { action: 'allow' }
 }
