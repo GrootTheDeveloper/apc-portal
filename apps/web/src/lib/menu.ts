@@ -225,9 +225,14 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
                 Component: m.AdminMemberDetailPage,
               })),
           },
+          {
+            label: 'Nhập thành viên từ CSV',
+            to: '/admin/members/import',
+            roles: BOARD,
+            page: () => import('../pages/admin/members/import/AdminMemberImportPage').then((m) => ({ Component: m.AdminMemberImportPage })),
+          },
         ],
       },
-      { label: 'Nhập từ CSV', to: '/admin/members/import', roles: BOARD },
     ],
   },
   {
