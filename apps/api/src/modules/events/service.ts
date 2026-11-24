@@ -910,6 +910,9 @@ const adminEventSelect = {
   capacity: true,
   allowGuestRegistration: true,
   cancelReason: true,
+  // Chốt điểm danh (E6): web khóa ô sửa và hiện người chốt theo hai trường này
+  attendanceFinalizedAt: true,
+  attendanceFinalizedBy: { select: { id: true, fullName: true } },
   createdAt: true,
   updatedAt: true,
   _count: { select: { registrations: { where: { status: 'REGISTERED' } } } },

@@ -22,6 +22,7 @@ export default defineConfig({
       // Không dùng `dev` (tsx watch): khi stdin là pipe như ở đây, tsx watch không bật server.
       command: 'pnpm --filter @apc/api exec tsx src/server.ts',
       cwd: '../..',
+      env: { NODE_ENV: 'test' },
       url: 'http://127.0.0.1:3000/health',
       reuseExistingServer: !CI,
       timeout: 120_000,

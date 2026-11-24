@@ -49,7 +49,26 @@ export const PORTAL_MENU: readonly MenuGroup[] = [
         page: () =>
           import('../pages/portal/dashboard/PortalDashboard').then((m) => ({ Component: m.PortalDashboard })),
       },
-      { label: 'Thông báo', to: '/portal/announcements', roles: MEMBER },
+      {
+        label: 'Thông báo',
+        to: '/portal/announcements',
+        roles: MEMBER,
+        page: () =>
+          import('../pages/portal/announcements/list/PortalAnnouncementsListPage').then((m) => ({
+            Component: m.PortalAnnouncementsListPage,
+          })),
+        children: [
+          {
+            label: 'Chi tiết thông báo',
+            to: '/portal/announcements/:id',
+            roles: MEMBER,
+            page: () =>
+              import('../pages/portal/announcements/detail/PortalAnnouncementDetailPage').then((m) => ({
+                Component: m.PortalAnnouncementDetailPage,
+              })),
+          },
+        ],
+      },
       {
         label: 'Sự kiện',
         to: '/portal/events',
@@ -206,9 +225,14 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
                 Component: m.AdminMemberDetailPage,
               })),
           },
+          {
+            label: 'Nhập thành viên từ CSV',
+            to: '/admin/members/import',
+            roles: BOARD,
+            page: () => import('../pages/admin/members/import/AdminMemberImportPage').then((m) => ({ Component: m.AdminMemberImportPage })),
+          },
         ],
       },
-      { label: 'Nhập từ CSV', to: '/admin/members/import', roles: BOARD },
     ],
   },
   {
@@ -279,6 +303,24 @@ export const ADMIN_MENU: readonly MenuGroup[] = [
             roles: MANAGER_OR_BOARD,
             page: () =>
               import('../pages/admin/events/AdminEventPreviewPage').then((m) => ({ Component: m.AdminEventPreviewPage })),
+          },
+          {
+            label: 'Danh sách đăng ký',
+            to: '/admin/events/:id/registrations',
+            roles: MANAGER_OR_BOARD,
+            page: () =>
+              import('../pages/admin/events/registrations/AdminEventRegistrationsPage').then((m) => ({
+                Component: m.AdminEventRegistrationsPage,
+              })),
+          },
+          {
+            label: 'Điểm danh',
+            to: '/admin/events/:id/attendance',
+            roles: MANAGER_OR_BOARD,
+            page: () =>
+              import('../pages/admin/events/attendance/AdminEventAttendancePage').then((m) => ({
+                Component: m.AdminEventAttendancePage,
+              })),
           },
         ],
       },

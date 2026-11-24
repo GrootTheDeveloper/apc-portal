@@ -22,6 +22,7 @@ import {
   type PostFormValues,
   SCOPE_LABEL,
   STATUS_LABEL,
+  audienceErrors,
   departmentLabel,
   initialPostValues,
   scopeBadgeClass,
@@ -110,6 +111,12 @@ function EditPost({
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    // C5: kiểm tra đối tượng nhận ngay ở client để người dùng sửa trước khi gửi (backend sẽ kiểm tra lại).
+    const clientErrors = audienceErrors(values)
+    if (Object.keys(clientErrors).length > 0) {
+      setSaveError({ message: 'Kiểm tra lại các ô được đánh dấu.', fields: clientErrors, stale: false })
+      return
+    }
     setPending(true)
     setSaveError(null)
     setSavedAt(null)
@@ -272,6 +279,8 @@ function EditPost({
           fields={saveError?.fields ?? {}}
           disabled={pending || managerLocked}
           board={board}
+          departments={departments}
+          currentUser={user}
         />
 
         <div className="flex flex-wrap items-center gap-3 border-t-2 border-ink pt-6">
