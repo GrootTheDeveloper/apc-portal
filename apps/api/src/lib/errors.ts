@@ -25,7 +25,6 @@ export const conflict = (
   message = 'Dữ liệu đã thay đổi hoặc bị trùng. Vui lòng tải lại.',
   details?: Record<string, unknown>,
 ) => new AppError(409, 'conflict', message, details)
-export const validation = (message = 'Dữ liệu không hợp lệ.') => new AppError(422, 'validation', message)
 export const rateLimited = (message = 'Bạn thao tác quá nhanh. Vui lòng thử lại sau.') =>
   new AppError(429, 'rate_limited', message)
 

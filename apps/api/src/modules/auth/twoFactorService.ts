@@ -5,7 +5,7 @@ import { z } from 'zod'
 
 import type { AppConfig } from '../../config.js'
 import { db } from '../../db/client.js'
-import { conflict, unauthenticated, validation } from '../../lib/errors.js'
+import { conflict } from '../../lib/errors.js'
 import { verifyPassword } from '../../lib/password.js'
 import {
   decryptTotpSecret,
@@ -14,6 +14,7 @@ import {
   hashRecoveryCode,
 } from '../../lib/totpCrypto.js'
 import { audit, AUDIT_ACTIONS, AuditCategory, AuditResult } from '../audit/service.js'
+import { fieldError } from './password-policy.js'
 import { markSessionTwoFactorVerified } from './session.js'
 
 export const setupTwoFactorSchema = z.object({
@@ -46,7 +47,7 @@ export async function initiateTwoFactorSetup(
   }
   const passwordValid = await verifyPassword(user.passwordHash, password)
   if (!passwordValid) {
-    throw unauthenticated('Mật khẩu không chính xác.')
+    throw fieldError('password', 'Mật khẩu không chính xác.')
   }
 
   // Sinh secret mới ngẫu nhiên bằng CSPRNG
@@ -115,7 +116,7 @@ export async function confirmTwoFactorSetup(
 
   const delta = totp.validate({ token: code, window: 1 })
   if (delta === null) {
-    throw validation('Mã xác thực 6 số không chính xác hoặc đã hết hạn.')
+    throw fieldError('code', 'Mã xác thực 6 số không chính xác hoặc đã hết hạn.')
   }
 
   const timeStep = BigInt(Math.floor(Date.now() / 1000 / 30) + delta)
@@ -181,7 +182,8 @@ export async function confirmTwoFactorSetup(
 }
 
 /**
- * Xác thực 2 lớp khi đăng nhập: nhận mã TOTP 6 số hoặc mã khôi phục.
+ * Xác thực 2 lớp khi đăng nhập: nhận mã TOTP 6 số hoặc mã khôi phục. Sai mã trả 422 gắn vào ô `code`, không trả
+ * 401: web coi mọi 401 là phiên đã hết và đưa về trang đăng nhập.
  */
 export async function verifyTwoFactorChallenge(
   sessionId: string,
@@ -230,7 +232,7 @@ export async function verifyTwoFactorChallenge(
         result: AuditResult.FAILURE,
         reason: 'Mã TOTP 6 số không hợp lệ',
       })
-      throw unauthenticated('Mã xác thực 6 số không chính xác.')
+      throw fieldError('code', 'Mã xác thực 6 số không chính xác.')
     }
 
     const timeStep = BigInt(Math.floor(Date.now() / 1000 / 30) + delta)
@@ -248,7 +250,7 @@ export async function verifyTwoFactorChallenge(
         result: AuditResult.FAILURE,
         reason: 'Mã TOTP đã được sử dụng trước đó (chống replay)',
       })
-      throw unauthenticated('Mã xác thực đã được sử dụng. Vui lòng chờ mã kế tiếp.')
+      throw fieldError('code', 'Mã xác thực đã được sử dụng. Vui lòng chờ mã kế tiếp.')
     }
 
     await markSessionTwoFactorVerified(sessionId)
@@ -281,7 +283,7 @@ export async function verifyTwoFactorChallenge(
       result: AuditResult.FAILURE,
       reason: 'Mã khôi phục không hợp lệ hoặc đã sử dụng',
     })
-    throw unauthenticated('Mã khôi phục không hợp lệ hoặc đã qua sử dụng.')
+    throw fieldError('code', 'Mã khôi phục không hợp lệ hoặc đã qua sử dụng.')
   }
 
   // FLOW-27: dùng mã khôi phục xong bắt buộc tạo bộ mới, nên bộ cũ hết hiệu lực luôn; /auth/me trả `regenerate`.
@@ -321,7 +323,7 @@ export async function regenerateRecoveryCodes(
 
   const passwordValid = await verifyPassword(user.passwordHash, password)
   if (!passwordValid) {
-    throw unauthenticated('Mật khẩu không chính xác.')
+    throw fieldError('password', 'Mật khẩu không chính xác.')
   }
 
   const newCodes = generateRecoveryCodes(10)

@@ -35,7 +35,7 @@ export function SetupTwoFactorPage() {
   function start(e: FormEvent) {
     e.preventDefault()
     void run(async () => setSetup(await api<Setup>('/auth/two-factor/setup', { body: { password } })), {
-      401: 'Mật khẩu không chính xác.',
+      422: 'Mật khẩu không chính xác.',
     })
   }
 

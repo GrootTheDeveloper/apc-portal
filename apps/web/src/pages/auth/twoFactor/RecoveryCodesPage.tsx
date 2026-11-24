@@ -39,7 +39,7 @@ export function RecoveryCodesPage() {
       setCodes(res.recoveryCodes)
     } catch (err) {
       setError(
-        err instanceof ApiError && err.status === 401 ? 'Mật khẩu không chính xác.' : 'Không tạo được bộ mã mới, vui lòng thử lại.',
+        err instanceof ApiError && err.status === 422 ? 'Mật khẩu không chính xác.' : 'Không tạo được bộ mã mới, vui lòng thử lại.',
       )
     } finally {
       setLoading(false)

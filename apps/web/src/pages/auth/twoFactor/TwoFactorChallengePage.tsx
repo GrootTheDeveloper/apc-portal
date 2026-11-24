@@ -26,7 +26,7 @@ export function TwoFactorChallengePage() {
       await refresh()
       navigate(res.requireRegenerate ? RECOVERY_CODES_PATH : '/portal', { replace: true })
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
+      if (err instanceof ApiError && err.status === 422) {
         setError(useRecovery ? 'Mã khôi phục không đúng hoặc đã dùng.' : 'Mã 6 số không đúng hoặc đã dùng.')
       } else {
         setError(err instanceof ApiError ? err.message : 'Xác thực thất bại, vui lòng thử lại.')

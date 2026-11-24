@@ -100,7 +100,7 @@ describe('B3: Xác thực 2 lớp (TOTP & Recovery Codes)', () => {
   })
 
   it('2. Thiết lập TOTP: nhập mật khẩu nhận QR và manualKey', async () => {
-    // Nhập sai mật khẩu -> 401
+    // Nhập sai mật khẩu -> 422
     const failRes = await app.inject({
       method: 'POST',
       url: '/auth/two-factor/setup',
@@ -108,7 +108,7 @@ describe('B3: Xác thực 2 lớp (TOTP & Recovery Codes)', () => {
       cookies: { [SESSION_COOKIE]: boardCookie },
       body: { password: 'sai-mat-khau-ne' },
     })
-    expect(failRes.statusCode).toBe(401)
+    expect(failRes.statusCode).toBe(422)
 
     // Nhập đúng mật khẩu -> 200 kèm QR code data URL và manualKey
     const res = await app.inject({
@@ -285,7 +285,7 @@ describe('B3: Xác thực 2 lớp (TOTP & Recovery Codes)', () => {
     expect(meAfter.json().roles.some((r: any) => r.role === 'BOARD')).toBe(true)
     expect(meAfter.json().twoFactorVerified).toBe(true)
 
-    // Dùng lại CÙNG MÃ 6 SỐ đó lần thứ 2: bị từ chối chống replay (401)
+    // Dùng lại CÙNG MÃ 6 SỐ đó lần thứ 2: bị từ chối chống replay (422)
     const replayRes = await app.inject({
       method: 'POST',
       url: '/auth/two-factor/verify',
@@ -293,7 +293,7 @@ describe('B3: Xác thực 2 lớp (TOTP & Recovery Codes)', () => {
       cookies: { [SESSION_COOKIE]: newCookie },
       body: { code: validCode },
     })
-    expect(replayRes.statusCode).toBe(401)
+    expect(replayRes.statusCode).toBe(422)
   })
 
   it('5. Đăng nhập bằng mã khôi phục một lần: đúng mã thì thành công; dùng lại lần 2 bị từ chối', async () => {
@@ -345,7 +345,7 @@ describe('B3: Xác thực 2 lớp (TOTP & Recovery Codes)', () => {
       cookies: { [SESSION_COOKIE]: sessionCookie2 },
       body: { code: testRecoveryCode },
     })
-    expect(reuseRes.statusCode).toBe(401)
+    expect(reuseRes.statusCode).toBe(422)
 
     // Bộ mã cũ hết hiệu lực luôn: mã chưa dùng khác cũng bị từ chối
     const otherCode = await app.inject({
@@ -355,7 +355,7 @@ describe('B3: Xác thực 2 lớp (TOTP & Recovery Codes)', () => {
       cookies: { [SESSION_COOKIE]: sessionCookie2 },
       body: { code: savedRecoveryCodes[1]! },
     })
-    expect(otherCode.statusCode).toBe(401)
+    expect(otherCode.statusCode).toBe(422)
   })
 
   it('6. Tạo lại bộ mã khôi phục: nhập mật khẩu -> sinh 10 mã mới, mã cũ không còn dùng được', async () => {
@@ -380,7 +380,7 @@ describe('B3: Xác thực 2 lớp (TOTP & Recovery Codes)', () => {
     })
     expect(verifyRes.statusCode).toBe(200)
 
-    // Sai mật khẩu -> 401
+    // Sai mật khẩu -> 422 (không phải 401, để web không coi là hết phiên)
     const wrong = await app.inject({
       method: 'POST',
       url: '/auth/two-factor/recovery-codes',
@@ -388,7 +388,7 @@ describe('B3: Xác thực 2 lớp (TOTP & Recovery Codes)', () => {
       cookies: { [SESSION_COOKIE]: sessionCookie },
       body: { password: 'sai-mat-khau' },
     })
-    expect(wrong.statusCode).toBe(401)
+    expect(wrong.statusCode).toBe(422)
 
     // Yêu cầu tạo lại bộ mã mới
     const regenRes = await app.inject({
