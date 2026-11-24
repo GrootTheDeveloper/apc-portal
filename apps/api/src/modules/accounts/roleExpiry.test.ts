@@ -128,15 +128,17 @@ describe('role-expiry job', () => {
 
   it('warns again at the 30-day mark of a renewed expiry date', async () => {
     const now = new Date()
-    const { row } = await createExpiring('renew', 29, now)
+    const { holder, row } = await createExpiring('renew', 29, now)
+    // Chỉ đếm email gửi người giữ vai trò: danh sách BOARD nhận kèm có thể đổi khi file test khác chạy song song.
+    const toHolder = async () => (await deliveries(row.id)).filter((d) => d.recipient === holder.email)
     await runRoleExpiry(now, [row.id])
     const size = (await deliveries(row.id)).length
-    expect(size).toBeGreaterThan(0)
+    expect(await toHolder()).toHaveLength(1)
     await db.userRole.update({ where: { id: row.id }, data: { expiresAt: new Date(now.getTime() + 100 * DAY) } })
     await runRoleExpiry(new Date(now.getTime() + 50 * DAY), [row.id]) // còn 50 ngày: chưa tới mốc
     expect(await deliveries(row.id)).toHaveLength(size)
     await runRoleExpiry(new Date(now.getTime() + 75 * DAY), [row.id]) // còn 25 ngày: báo lại mốc 30
-    expect(await deliveries(row.id)).toHaveLength(size * 2)
+    expect(await toHolder()).toHaveLength(2)
   })
 })
 
