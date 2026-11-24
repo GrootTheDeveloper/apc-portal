@@ -159,14 +159,39 @@ async function twoFactorStep(userId: string, sessionVerified: boolean, now: Date
   return privileged.length > 0 ? 'setup' : null
 }
 
-/** Thông tin trả về cho web ở /auth/login và /auth/me. Không bao giờ chứa passwordHash. */
+/** Thông tin trả về cho web ở /auth/login và /auth/me. Không bao giờ chứa passwordHash hay totpSecret. */
 export async function getMe(user: AuthUser, session: { twoFactorVerified: boolean }, now = new Date()) {
   const profile = await db.user.findUniqueOrThrow({
     where: { id: user.id },
-    select: { username: true, fullName: true, status: true, mustChangePassword: true },
+    select: {
+      username: true,
+      fullName: true,
+      status: true,
+      mustChangePassword: true,
+      totpEnabledAt: true,
+      roles: {
+        where: { role: { in: ['BOARD', 'TECH_ADMIN'] } },
+        select: { role: true, status: true },
+      },
+    },
   })
   const twoFactor = await twoFactorStep(user.id, session.twoFactorVerified, now)
-  return { id: user.id, departmentId: user.departmentId, roles: user.roles, ...profile, twoFactor }
+  const hasPrivilegedRole = profile.roles.some((r) => r.status === 'ACTIVE' || r.status === 'PENDING')
+  const twoFactorEnabled = Boolean(profile.totpEnabledAt)
+
+  return {
+    id: user.id,
+    departmentId: user.departmentId,
+    roles: user.roles,
+    username: profile.username,
+    fullName: profile.fullName,
+    status: profile.status,
+    mustChangePassword: profile.mustChangePassword,
+    twoFactorEnabled,
+    twoFactorVerified: session.twoFactorVerified,
+    hasPrivilegedRole,
+    twoFactor,
+  }
 }
 
 // KÍCH HOẠT & ĐỔI MẬT KHẨU (A4) ──────────────────────────────────────────────

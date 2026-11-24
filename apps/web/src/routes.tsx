@@ -8,6 +8,9 @@ import { ADMIN_ROLES } from './lib/auth'
 import { ADMIN_MENU, type MenuGroup, menuPages, PORTAL_MENU } from './lib/menu'
 import { AboutPage } from './pages/about/AboutPage'
 import { ActivatePage } from './pages/account/activate/ActivatePage'
+import { RecoveryCodesPage } from './pages/auth/twoFactor/RecoveryCodesPage'
+import { SetupTwoFactorPage } from './pages/auth/twoFactor/SetupTwoFactorPage'
+import { TwoFactorChallengePage } from './pages/auth/twoFactor/TwoFactorChallengePage'
 import { AreaPlaceholder } from './pages/area/AreaPlaceholder'
 import { EventDetailPage } from './pages/events/detail/EventDetailPage'
 import { RegistrationLookupPage } from './pages/events/lookup/RegistrationLookupPage'
@@ -17,7 +20,6 @@ import { HomePage } from './pages/home/HomePage'
 import { NewsDetailPage } from './pages/news/detail/NewsDetailPage'
 import { NewsListPage } from './pages/news/list/NewsListPage'
 import { NotFound } from './pages/NotFound'
-import { Placeholder } from './pages/Placeholder'
 import { PrivacyPage } from './pages/privacy/PrivacyPage'
 import { SearchPage } from './pages/search/SearchPage'
 import { ProjectDetailPage } from './pages/projects/detail/ProjectDetailPage'
@@ -82,12 +84,20 @@ export const appRoutes: RouteObject[] = [
           </RequireAuth>
         ),
       },
-      // Hai trang 2 lớp thuộc B3; tạm là trang đang xây dựng để route guard có chỗ chuyển tới.
+      // Các trang 2 lớp thuộc B3
       {
         path: 'account/setup-two-factor',
         element: (
           <RequireAuth gate="two-factor">
-            <Placeholder title="Thiết lập xác thực hai bước" />
+            <SetupTwoFactorPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'account/recovery-codes',
+        element: (
+          <RequireAuth gate="two-factor">
+            <RecoveryCodesPage />
           </RequireAuth>
         ),
       },
@@ -95,7 +105,7 @@ export const appRoutes: RouteObject[] = [
         path: 'account/two-factor',
         element: (
           <RequireAuth gate="two-factor">
-            <Placeholder title="Xác thực hai bước" />
+            <TwoFactorChallengePage />
           </RequireAuth>
         ),
       },
