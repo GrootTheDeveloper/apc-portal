@@ -176,7 +176,7 @@ export async function importMembers(request: FastifyRequest, content: Buffer, ba
         metadata: { batchId, fileHash, rowCount: validation.rows.length },
       }, tx)
       return false
-  })
+  }, { timeout: 120_000 }) // Mỗi tài khoản băm Argon2id, 500 dòng vượt xa mặc định 5 giây của Prisma.
   return { batchId, importedRows: validation.rows.length, alreadyImported }
 }
 

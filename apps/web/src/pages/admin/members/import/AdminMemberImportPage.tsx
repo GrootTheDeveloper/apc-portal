@@ -83,7 +83,7 @@ export function AdminMemberImportPage() {
           </a>
         </div>
 
-        <form className="space-y-5 bg-paper p-6 shadow-[inset_0_0_0_2px_#081F3D] md:p-8" onSubmit={validateFile}>
+        <form className="space-y-5 bg-soft p-6 md:p-8" onSubmit={validateFile}>
           <label className="flex flex-col gap-2 font-code text-sm font-bold" htmlFor="member-csv">Chọn file CSV</label>
           <input id="member-csv" className="block w-full text-sm" type="file" accept=".csv,text/csv" onChange={(event) => {
             setFile(event.target.files?.[0] ?? null)
