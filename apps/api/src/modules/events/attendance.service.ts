@@ -51,6 +51,8 @@ export async function updateAttendance(
   const input = attendanceUpdateSchema.parse(rawBody)
 
   return db.$transaction(async (tx) => {
+    // Khóa dòng sự kiện: chốt điểm danh song song phải chờ, nên trạng thái "đã chốt" đọc dưới đây không cũ.
+    await tx.$queryRaw`SELECT id FROM events WHERE id = ${eventId} FOR UPDATE`
     const event = await tx.event.findUnique({
       where: { id: eventId },
       select: { id: true, attendanceFinalizedAt: true },
