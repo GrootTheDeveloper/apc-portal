@@ -1,8 +1,22 @@
 // Kiểu dữ liệu và nhãn cho C3 (quản trị bài viết), khớp apps/api/src/modules/content/admin-posts.service.ts:
 // `adminPostListSelect` cho danh sách, `adminPostDetailSelect` cho chi tiết/sửa, `changeStatusBody` cho đổi trạng thái.
 
+import type { Role } from '../../../lib/auth.js'
+
 export type ContentStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
 export type ContentScope = 'PUBLIC' | 'INTERNAL'
+
+/** Đối tượng nhận thông báo nội bộ (C5); chỉ có nghĩa khi scope = INTERNAL. */
+export type PostAudience = 'ALL' | 'DEPARTMENT' | 'ROLES'
+
+export const AUDIENCE_LABEL: Record<PostAudience, string> = {
+  ALL: 'Toàn CLB',
+  DEPARTMENT: 'Theo Ban',
+  ROLES: 'Theo Vai trò',
+}
+
+/** Các vai trò chọn làm đối tượng nhận (C5); MEMBER nghĩa là mọi thành viên đã đăng nhập. */
+export const AUDIENCE_ROLES = ['MEMBER', 'DEPARTMENT_MANAGER', 'BOARD', 'TECH_ADMIN'] as const satisfies readonly Role[]
 
 /** Trạng thái theo PRD mục 9.2: DRAFT → PUBLISHED → DRAFT, và DRAFT/PUBLISHED → ARCHIVED. */
 export type PostAction = 'PUBLISH' | 'UNPUBLISH' | 'ARCHIVE'
@@ -19,6 +33,12 @@ export type AdminPostRow = {
   status: ContentStatus
   /** Ban sở hữu bài; `null` là bài toàn CLB do BOARD tạo, chỉ BOARD thấy được. */
   departmentId: string | null
+  /** Đối tượng nhận (C5); `null` khi bài Công khai. */
+  audience: PostAudience | null
+  /** Ban nhận thông báo khi audience = DEPARTMENT; null khi chọn khác. */
+  audienceDepartmentId: string | null
+  /** Vai trò nhận thông báo khi audience = ROLES; rỗng khi chọn khác. */
+  audienceRoles: Role[]
   authorId: string
   publishedAt: string | null
   createdAt: string
@@ -89,6 +109,10 @@ export type PostFormValues = {
   thumbnailUrl: string | null
   metaTitle: string
   metaDescription: string
+  /** Đối tượng nhận (C5): chỉ dùng khi scope = INTERNAL; bài Công khai giữ giá trị mặc định. */
+  audience: PostAudience
+  audienceDepartmentId: string | null
+  audienceRoles: Role[]
 }
 
 /** Giá trị khởi tạo của form: từ bài đang sửa, hoặc rỗng cho bài mới. */
@@ -102,6 +126,9 @@ export function initialPostValues(post?: AdminPostDetail | null): PostFormValues
     thumbnailUrl: post?.thumbnailUrl ?? null,
     metaTitle: post?.metaTitle ?? '',
     metaDescription: post?.metaDescription ?? '',
+    audience: post?.audience ?? 'ALL',
+    audienceDepartmentId: post?.audienceDepartmentId ?? null,
+    audienceRoles: post?.audienceRoles ?? [],
   }
 }
 
@@ -115,6 +142,14 @@ export function createPayload(values: PostFormValues) {
     content: values.content,
     category: values.category,
     scope: values.scope,
+    // C5: audience chỉ gửi kèm bài Nội bộ; bài Công khai server tự chuẩn hóa về null/rỗng.
+    ...(values.scope === 'INTERNAL'
+      ? {
+          audience: values.audience,
+          audienceDepartmentId: values.audienceDepartmentId,
+          audienceRoles: values.audienceRoles,
+        }
+      : {}),
     ...(values.thumbnailUrl ? { thumbnailUrl: values.thumbnailUrl } : {}),
     ...(metaTitle ? { metaTitle } : {}),
     ...(metaDescription ? { metaDescription } : {}),
@@ -132,9 +167,32 @@ export function updatePayload(values: PostFormValues, updatedAt: string) {
     content: values.content,
     category: values.category,
     scope: values.scope,
+    // C5: audience chỉ gửi kèm bài Nội bộ; đổi Nội bộ → Công khai thì bỏ hẳn, server tự chuẩn hóa.
+    ...(values.scope === 'INTERNAL'
+      ? {
+          audience: values.audience,
+          audienceDepartmentId: values.audienceDepartmentId,
+          audienceRoles: values.audienceRoles,
+        }
+      : {}),
     thumbnailUrl: values.thumbnailUrl,
     metaTitle: values.metaTitle.trim() || null,
     metaDescription: values.metaDescription.trim() || null,
     updatedAt,
   }
+}
+
+/**
+ * Kiểm tra đối tượng nhận ngay ở client để người dùng sửa trước khi gửi, không phải đợi server 422.
+ * Nội dung lỗi khớp `normalizeAudience` bên backend (admin-posts.service.ts).
+ */
+export function audienceErrors(values: PostFormValues): Record<string, string[]> {
+  if (values.scope !== 'INTERNAL') return {}
+  if (values.audience === 'DEPARTMENT' && !values.audienceDepartmentId) {
+    return { audienceDepartmentId: ['Chọn ban nhận thông báo.'] }
+  }
+  if (values.audience === 'ROLES' && values.audienceRoles.length === 0) {
+    return { audienceRoles: ['Chọn ít nhất một vai trò nhận thông báo.'] }
+  }
+  return {}
 }
