@@ -192,7 +192,8 @@ Docker Desktop phải đang chạy. Chạy lần lượt từng lệnh, chờ l�
 | 4 | `pnpm install` | Cài thư viện (2–5 phút) | Dòng cuối có `Done in ...` |
 | 5 | `pnpm infra:up` | Bật PostgreSQL, Mailpit, SeaweedFS trong Docker. Lần đầu tải image (vài phút) | Các dòng `Container apc-portal-local-... Started` |
 | 6 | `pnpm --filter @apc/api db:migrate` | Tạo bảng trong database | `Your database is now in sync with your schema.` hoặc `Already in sync` |
-| 7 | `pnpm dev` | Chạy web và API. Lệnh này chạy liên tục, không tự kết thúc | Có dòng `Local: http://localhost:5173/` |
+| 7 | `pnpm --filter @apc/api db:seed` | Nạp dữ liệu mẫu và tài khoản thử | In danh sách tài khoản mẫu đã tạo |
+| 8 | `pnpm dev` | Chạy web và API. Lệnh này chạy liên tục, không tự kết thúc | Có dòng `Local: http://localhost:5173/` |
 
 Để `pnpm dev` chạy trong cửa sổ đó. Cần gõ lệnh khác thì mở thêm một terminal (trong VS Code: nút **+** ở khung Terminal).
 
@@ -293,6 +294,8 @@ Email do API gửi (qua `enqueueEmail`) được worker trong process API gửi 
 | Chạy web và API | `pnpm dev` |
 | Lint, kiểm tra kiểu, test, build | `pnpm check` |
 | Chỉ chạy test API | `pnpm --filter @apc/api test` |
+| Nạp lại dữ liệu mẫu | `pnpm --filter @apc/api db:seed` |
+| Cài trình duyệt và chạy test E2E | `pnpm --filter @apc/web exec playwright install chromium` rồi `pnpm --filter @apc/web test:e2e` |
 | Bật / tắt / xem log dịch vụ Docker | `pnpm infra:up` / `pnpm infra:down` / `pnpm infra:logs` |
 | Tạo bảng theo migration mới nhất | `pnpm --filter @apc/api db:migrate` |
 | Xem và sửa dữ liệu dạng bảng | `pnpm --filter @apc/api db:studio` |
