@@ -61,6 +61,13 @@ enum ContentScope {
   INTERNAL
 }
 
+// Đối tượng nhận thông báo nội bộ (C5). Chỉ có giá trị khi scope = INTERNAL; null khi PUBLIC.
+enum PostAudience {
+  ALL // Toàn CLB
+  DEPARTMENT // Theo ban
+  ROLES // Theo vai trò
+}
+
 // Loại dự án / sản phẩm (PRT-01, C4)
 enum ProjectType {
   PROJECT
@@ -220,13 +227,14 @@ model Department {
 
   users             User[]
   roles             UserRole[]
-  posts             Post[]
+  posts             Post[]                  @relation("PostOwnerDepartment")
+  audiencePosts     Post[]                  @relation("PostAudienceDepartment")
   events            Event[]
   projects          Project[]
   applications      MembershipApplication[]
   deliveries        NotificationDelivery[]
   recruitmentRounds RecruitmentRound[]
-  documents         Document[] @relation("DocumentOwnerDepartment")
+  documents         Document[]              @relation("DocumentOwnerDepartment")
 
   @@map("departments")
 }
@@ -237,7 +245,7 @@ model User {
   id           String        @id @default(cuid())
   username     String        @unique // Tên đăng nhập (AUTH-02, BR-02)
   email        String        @unique
-  contactEmail String?       // Email liên hệ tùy chọn (QĐ-8, MEM-03)
+  contactEmail String? // Email liên hệ tùy chọn (QĐ-8, MEM-03)
   passwordHash String // Băm Argon2id (SEC-02)
   status       AccountStatus @default(PENDING_ACTIVATION)
 
@@ -260,35 +268,35 @@ model User {
   skills        Json?
   interestAreas Json?
 
-  departmentId String? // Ban đang hoạt động; khác phạm vi quản lý trong user_roles
-  department   Department?  @relation(fields: [departmentId], references: [id])
-  memberStatus MemberStatus @default(ACTIVE) // MEM-11: độc lập AccountStatus, trừ LEFT kéo theo INACTIVE
+  departmentId  String? // Ban đang hoạt động; khác phạm vi quản lý trong user_roles
+  department    Department?  @relation(fields: [departmentId], references: [id])
+  memberStatus  MemberStatus @default(ACTIVE) // MEM-11: độc lập AccountStatus, trừ LEFT kéo theo INACTIVE
   deactivatedAt DateTime? // A5: lúc chuyển INACTIVE; B7 dùng để tính hạn lưu giữ dữ liệu
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  roles        UserRole[] @relation("RoleHolder")
-  grantedRoles UserRole[] @relation("RoleGrantor")
-  revokedRoles UserRole[] @relation("RoleRevoker")
+  roles                 UserRole[]     @relation("RoleHolder")
+  grantedRoles          UserRole[]     @relation("RoleGrantor")
+  revokedRoles          UserRole[]     @relation("RoleRevoker")
   roleDecisionsAbout    RoleDecision[] @relation("RoleDecisionTarget")
   roleDecisionsMade     RoleDecision[] @relation("RoleDecisionDecider")
   roleDecisionsExecuted RoleDecision[] @relation("RoleDecisionExecutor")
-  sessions     Session[]
-  auditLogs    AuditLog[]
+  sessions              Session[]
+  auditLogs             AuditLog[]
 
   authoredPosts  Post[] @relation("PostAuthor")
   publishedPosts Post[] @relation("PostPublisher")
 
-  createdEvents Event[] @relation("EventCreator")
-  finalizedEventAttendance Event[] @relation("EventAttendanceFinalizer")
-  eventRegistrations EventRegistration[]
+  createdEvents            Event[]             @relation("EventCreator")
+  finalizedEventAttendance Event[]             @relation("EventAttendanceFinalizer")
+  eventRegistrations       EventRegistration[]
 
   createdRounds RecruitmentRound[]      @relation("RoundCreator")
   reviewedApps  MembershipApplication[] @relation("ReviewedBy")
 
   createdProjects          Project[]              @relation("ProjectCreator")
-  projectMemberships      ProjectMember[]
+  projectMemberships       ProjectMember[]
   convertedFromApplication MembershipApplication? @relation("ApplicationConversion")
 
   createdDocuments Document[]        @relation("DocumentCreator")
@@ -321,8 +329,8 @@ model RoleDecision {
   action RoleDecisionAction
   role   Role // hiện chỉ dùng cho TECH_ADMIN
 
-  userId String
-  user   User   @relation("RoleDecisionTarget", fields: [userId], references: [id])
+  userId     String
+  user       User      @relation("RoleDecisionTarget", fields: [userId], references: [id])
   userRoleId String? // REVOKE: dòng user_roles bị thu hồi; GRANT: dòng được tạo khi thực hiện
   userRole   UserRole? @relation(fields: [userRoleId], references: [id])
   expiresAt  DateTime? // GRANT: ngày hết hạn của vai trò, không muộn hơn SiteSetting.termEndsAt (RP-03)
@@ -330,9 +338,9 @@ model RoleDecision {
 
   status       RoleDecisionStatus @default(PENDING)
   decidedById  String
-  decidedBy    User      @relation("RoleDecisionDecider", fields: [decidedById], references: [id])
+  decidedBy    User               @relation("RoleDecisionDecider", fields: [decidedById], references: [id])
   executedById String?
-  executedBy   User?     @relation("RoleDecisionExecutor", fields: [executedById], references: [id])
+  executedBy   User?              @relation("RoleDecisionExecutor", fields: [executedById], references: [id])
   executedAt   DateTime?
   cancelledAt  DateTime?
 
@@ -360,11 +368,11 @@ model UserRole {
   expiresAt DateTime? // Bắt buộc với BOARD/TECH_ADMIN: không muộn hơn hết nhiệm kỳ (RP-03)
   reason    String // RP-11
 
-  grantedById String? // null khi tạo bằng bootstrap (RP-15)
-  grantedBy   User?     @relation("RoleGrantor", fields: [grantedById], references: [id])
-  revokedById String?
-  revokedBy   User?     @relation("RoleRevoker", fields: [revokedById], references: [id])
-  revokedAt   DateTime?
+  grantedById  String? // null khi tạo bằng bootstrap (RP-15)
+  grantedBy    User?          @relation("RoleGrantor", fields: [grantedById], references: [id])
+  revokedById  String?
+  revokedBy    User?          @relation("RoleRevoker", fields: [revokedById], references: [id])
+  revokedAt    DateTime?
   revokeReason String? // A6: lý do thu hồi (lý do cấp nằm ở `reason`)
   decisions    RoleDecision[] // A6: quyết định DUAL tạo ra (GRANT) hoặc thu hồi (REVOKE) dòng này
 
@@ -410,10 +418,16 @@ model Post {
   scope        ContentScope  @default(PUBLIC) // CMS-05
   status       ContentStatus @default(DRAFT)
 
+  // Đối tượng nhận (C5): chỉ dùng khi scope = INTERNAL; bài PUBLIC để null.
+  audience             PostAudience?
+  audienceDepartmentId String?
+  audienceDepartment   Department?   @relation("PostAudienceDepartment", fields: [audienceDepartmentId], references: [id], onDelete: SetNull)
+  audienceRoles        Role[]        @default([]) // Rỗng khi audience khác ROLES
+
   authorId      String
   author        User        @relation("PostAuthor", fields: [authorId], references: [id])
   departmentId  String?
-  department    Department? @relation(fields: [departmentId], references: [id])
+  department    Department? @relation("PostOwnerDepartment", fields: [departmentId], references: [id])
   publishedById String?
   publishedBy   User?       @relation("PostPublisher", fields: [publishedById], references: [id])
   publishedAt   DateTime?
@@ -453,10 +467,10 @@ model Event {
   endAt   DateTime
 
   // Thời gian nhận đăng ký (BR-08); phía nào để trống là không giới hạn phía đó
-  registrationOpensAt  DateTime?
-  registrationClosesAt DateTime?
-  capacity             Int? // null = không giới hạn
-  allowGuestRegistration Boolean @default(false) // Người ngoài APC đăng ký được; chỉ áp dụng khi audience = PUBLIC
+  registrationOpensAt    DateTime?
+  registrationClosesAt   DateTime?
+  capacity               Int? // null = không giới hạn
+  allowGuestRegistration Boolean   @default(false) // Người ngoài APC đăng ký được; chỉ áp dụng khi audience = PUBLIC
 
   // EVT-09: bắt buộc khi hủy sự kiện (E4), hiển thị trên trang công khai
   cancelReason String?
@@ -464,7 +478,7 @@ model Event {
   // Chốt điểm danh (E6): sau khi chốt chỉ BOARD sửa được, kèm lý do
   attendanceFinalizedAt   DateTime?
   attendanceFinalizedById String?
-  attendanceFinalizedBy   User? @relation("EventAttendanceFinalizer", fields: [attendanceFinalizedById], references: [id])
+  attendanceFinalizedBy   User?     @relation("EventAttendanceFinalizer", fields: [attendanceFinalizedById], references: [id])
 
   registrations EventRegistration[]
 
@@ -541,8 +555,8 @@ model Project {
 model ProjectMember {
   projectId String
   userId    String
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
   @@id([projectId, userId])
@@ -743,20 +757,20 @@ model StoredFile {
 
 // Thư viện tài liệu nội bộ (D4). Phiên bản mới nhất là bản hiện hành; khôi phục tạo phiên bản mới.
 model Document {
-  id           String         @id @default(cuid())
+  id           String            @id @default(cuid())
   title        String
   description  String?
   category     String
   departmentId String?
-  department   Department?    @relation("DocumentOwnerDepartment", fields: [departmentId], references: [id])
-  scope        DocumentScope  @default(DEPARTMENT)
-  allowedRoles Role[]         @default([]) // Rỗng: mọi thành viên trong phạm vi; nếu có thì cần một vai trò khớp
-  status       DocumentStatus @default(ACTIVE)
+  department   Department?       @relation("DocumentOwnerDepartment", fields: [departmentId], references: [id])
+  scope        DocumentScope     @default(DEPARTMENT)
+  allowedRoles Role[]            @default([]) // Rỗng: mọi thành viên trong phạm vi; nếu có thì cần một vai trò khớp
+  status       DocumentStatus    @default(ACTIVE)
   createdById  String
-  createdBy    User           @relation("DocumentCreator", fields: [createdById], references: [id])
+  createdBy    User              @relation("DocumentCreator", fields: [createdById], references: [id])
   versions     DocumentVersion[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   @@index([status, scope, departmentId, updatedAt])
   @@map("documents")

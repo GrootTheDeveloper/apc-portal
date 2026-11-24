@@ -196,12 +196,15 @@ async function main() {
   ]
 
   for (const p of posts) {
+    // C5: thông báo nội bộ gửi cho đúng ban sở hữu bài, để portal Ban A có dữ liệu mẫu.
+    const audience = p.scope === 'INTERNAL' ? { audience: 'DEPARTMENT' as const, audienceDepartmentId: p.departmentId ?? null } : {}
     await db.post.upsert({
       where: { slug: p.slug },
       update: {
         status: p.status,
         scope: p.scope,
         category: p.category,
+        ...audience,
       },
       create: {
         slug: p.slug,
@@ -213,6 +216,7 @@ async function main() {
         scope: p.scope,
         authorId: boardUser.id,
         departmentId: p.departmentId ?? null,
+        ...audience,
         publishedById: p.status === 'PUBLISHED' ? boardUser.id : null,
         publishedAt: p.status === 'PUBLISHED' ? new Date() : null,
       },

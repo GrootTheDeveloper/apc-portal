@@ -12,6 +12,7 @@ import { authRoutes } from './modules/auth/routes.js'
 import { adminPostsRoutes } from './modules/content/admin-posts.routes.js'
 import { adminProjectsRoutes } from './modules/content/admin-projects.routes.js'
 import { contentRoutes } from './modules/content/routes.js'
+import { portalAnnouncementsRoutes } from './modules/content/portal-announcements.routes.js'
 import { registerSession } from './modules/auth/session.js'
 import { emailRoutes } from './modules/email/routes.js'
 import { eventsRoutes } from './modules/events/routes.js'
@@ -49,7 +50,8 @@ export function buildApp(config: AppConfig, deps: AppDeps = {}) {
   app.register(contentRoutes({ storage, scanner: createScanner(config) }))
   app.register(adminPostsRoutes())
   app.register(adminProjectsRoutes())
-  app.register(eventsRoutes(config))
+  app.register(portalAnnouncementsRoutes())
+  app.register(eventsRoutes(config, { storage }))
   app.register(aboutRoutes)
   app.register(organizationRoutes)
   app.register(memberRoutes(config, { storage }))
