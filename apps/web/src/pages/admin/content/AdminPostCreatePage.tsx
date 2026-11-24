@@ -3,18 +3,22 @@ import { Link, useNavigate } from 'react-router-dom'
 
 import { Button } from '../../../components/Button'
 import { buttonClass } from '../../../components/buttonClass'
+import { useApi } from '../../../hooks/useApi.js'
 import { useAuth } from '../../../hooks/useAuth'
 import { api, ApiError } from '../../../lib/api'
 import { hasRole } from '../../../lib/auth'
 import { fieldErrors } from '../../../lib/formErrors'
+import type { AboutData } from '../../about/types.js'
 import { PostForm } from './PostForm'
-import { type AdminPostDetail, type PostFormValues, createPayload, initialPostValues } from './postTypes'
+import { type AdminPostDetail, type PostFormValues, audienceErrors, createPayload, initialPostValues } from './postTypes.js'
 
 /** PAGE-MGT-CMS-02 — tạo bài viết mới (C3). Bài tạo ra luôn ở trạng thái Bản nháp; công bố làm ở trang sửa. */
 export function AdminPostCreatePage() {
   const { user } = useAuth()
   const board = hasRole(user, 'BOARD')
   const navigate = useNavigate()
+  const about = useApi<AboutData>('/public/about')
+  const departments = about.data?.departments ?? []
   const [values, setValues] = useState<PostFormValues>(() => initialPostValues())
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<{ message: string; fields: Record<string, string[]> } | null>(null)
@@ -24,6 +28,12 @@ export function AdminPostCreatePage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    // C5: kiểm tra đối tượng nhận ngay ở client để người dùng sửa trước khi gửi (backend sẽ kiểm tra lại).
+    const clientErrors = audienceErrors(values)
+    if (Object.keys(clientErrors).length > 0) {
+      setError({ message: 'Kiểm tra lại các ô được đánh dấu.', fields: clientErrors })
+      return
+    }
     setPending(true)
     setError(null)
     try {
@@ -67,7 +77,15 @@ export function AdminPostCreatePage() {
       )}
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-8">
-        <PostForm values={values} onChange={onChange} fields={fields} disabled={pending} board={board} />
+        <PostForm
+          values={values}
+          onChange={onChange}
+          fields={fields}
+          disabled={pending}
+          board={board}
+          departments={departments}
+          currentUser={user}
+        />
 
         <div className="flex flex-wrap items-center gap-3 border-t-2 border-ink pt-6">
           <Button type="submit" disabled={pending}>

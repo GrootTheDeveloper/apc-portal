@@ -11,6 +11,7 @@ import type { AuthUser } from '../auth/rbac.js'
 import { SESSION_COOKIE } from '../auth/session.js'
 import { lockPrivilegedRoles } from './privileged.js'
 import { cancelDecisionInTx, changeDepartmentInTx, executeDecisionInTx, grantRoleInTx, hasTwoFactorEnrolled, revokeRoleInTx } from './roles.js'
+import { passTwoFactor } from '../../../test/twoFactor.js'
 
 // A6 — vai trò & phạm vi. Test API cho quyền và các thao tác không cần ngày nhiệm kỳ;
 // test service trong transaction rồi rollback cho phần phụ thuộc SiteSetting và số BOARD toàn hệ thống.
@@ -48,7 +49,7 @@ async function createUser(name: string, role?: 'BOARD' | 'TECH_ADMIN' | 'DEPARTM
 
 async function login(username: string) {
   const response = await app.inject({ method: 'POST', url: '/auth/login', payload: { username, password: PASSWORD }, headers: origin, remoteAddress: `10.6.0.${++ip % 250}` })
-  return response.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? ''
+  return passTwoFactor(response.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? '')
 }
 
 const call = (method: 'GET' | 'POST', url: string, token: string, payload?: object) =>

@@ -1,7 +1,9 @@
 import path from 'node:path'
 import { config } from 'dotenv'
+import { loadConfig } from '../config.js'
 import { db } from './client.js'
 import { hashPassword } from '../lib/password.js'
+import { encryptTotpSecret, generateRecoveryCodes, hashRecoveryCode } from '../lib/totpCrypto.js'
 import type {
   AccountStatus,
   ApplicationStatus,
@@ -30,6 +32,14 @@ if (!seedPassword) {
   console.error('Thiếu biến môi trường SEED_PASSWORD')
   process.exit(1)
 }
+
+// B3: `board`, `techadmin` bật sẵn 2 lớp với secret cố định để đăng nhập thử và e2e sinh được mã.
+const seedTotpSecret = (process.env.SEED_TOTP_SECRET ?? '').toUpperCase()
+if (!/^[A-Z2-7]{16,}$/.test(seedTotpSecret)) {
+  console.error('Thiếu hoặc sai SEED_TOTP_SECRET (chuỗi base32, ít nhất 16 ký tự), xem .env.example')
+  process.exit(1)
+}
+const totpKey = loadConfig().TOTP_ENCRYPTION_KEY
 
 type SeedUser = {
   username: string
@@ -152,6 +162,21 @@ async function main() {
       },
     })
 
+    // Vai trò đặc quyền ACTIVE thì bật 2 lớp kèm 10 mã khôi phục (không in ra); còn lại tắt, để board.pending đi luồng thiết lập.
+    const withTotp = (u.role === 'BOARD' || u.role === 'TECH_ADMIN') && u.roleStatus === 'ACTIVE'
+    await db.twoFactorRecoveryCode.deleteMany({ where: { userId: user.id } })
+    await db.user.update({
+      where: { id: user.id },
+      data: withTotp
+        ? { totpSecret: encryptTotpSecret(seedTotpSecret, totpKey), totpEnabledAt: new Date(), totpLastTimeStep: null }
+        : { totpSecret: null, totpEnabledAt: null, totpLastTimeStep: null },
+    })
+    if (withTotp) {
+      await db.twoFactorRecoveryCode.createMany({
+        data: generateRecoveryCodes(10).map((code) => ({ userId: user.id, codeHash: hashRecoveryCode(code, totpKey) })),
+      })
+    }
+
     if (u.role && u.roleStatus) {
       const existingRole = await db.userRole.findFirst({
         where: { userId: user.id, role: u.role, departmentId },
@@ -196,12 +221,15 @@ async function main() {
   ]
 
   for (const p of posts) {
+    // C5: thông báo nội bộ gửi cho đúng ban sở hữu bài, để portal Ban A có dữ liệu mẫu.
+    const audience = p.scope === 'INTERNAL' ? { audience: 'DEPARTMENT' as const, audienceDepartmentId: p.departmentId ?? null } : {}
     await db.post.upsert({
       where: { slug: p.slug },
       update: {
         status: p.status,
         scope: p.scope,
         category: p.category,
+        ...audience,
       },
       create: {
         slug: p.slug,
@@ -213,6 +241,7 @@ async function main() {
         scope: p.scope,
         authorId: boardUser.id,
         departmentId: p.departmentId ?? null,
+        ...audience,
         publishedById: p.status === 'PUBLISHED' ? boardUser.id : null,
         publishedAt: p.status === 'PUBLISHED' ? new Date() : null,
       },

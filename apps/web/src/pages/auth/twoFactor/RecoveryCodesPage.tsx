@@ -1,110 +1,131 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { type FormEvent, useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { Button } from '../../../components/Button'
 import { Eyebrow } from '../../../components/Eyebrow'
+import { inputClass, labelClass } from '../../../components/formClass'
+import { useAuth } from '../../../hooks/useAuth'
+import { api, ApiError } from '../../../lib/api'
 
+/**
+ * Mã khôi phục (FLOW-27, SEC-12). Mã chỉ nằm trong bộ nhớ trang: đến từ state của router (vừa thiết lập) hoặc từ
+ * lần tạo lại ngay trên trang này; tải lại trang là không xem lại được. Vừa đăng nhập bằng mã khôi phục
+ * (`twoFactor = regenerate`) thì phải tạo bộ mới mới đi tiếp được.
+ */
 export function RecoveryCodesPage() {
+  const location = useLocation()
   const navigate = useNavigate()
-  const [confirmed, setConfirmed] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const { user, refresh } = useAuth()
+  const [codes, setCodes] = useState<string[]>(
+    () => (location.state as { recoveryCodes?: string[] } | null)?.recoveryCodes ?? [],
+  )
+  const [password, setPassword] = useState('')
+  const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  // Đọc mã từ sessionStorage lưu tạm
-  const rawCodes = typeof window !== 'undefined' ? sessionStorage.getItem('apc_temp_recovery_codes') : null
-  const codes: string[] = rawCodes ? JSON.parse(rawCodes) : []
+  // Xóa mã khỏi lịch sử trình duyệt ngay khi đã đọc vào state của trang.
+  useEffect(() => {
+    if (location.state) navigate(location.pathname, { replace: true, state: null })
+  }, [location.state, location.pathname, navigate])
 
-  function handleCopyAll() {
-    navigator.clipboard.writeText(codes.join('\n'))
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  async function regenerate(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+    try {
+      const res = await api<{ recoveryCodes: string[] }>('/auth/two-factor/recovery-codes', { body: { password } })
+      setPassword('')
+      setCodes(res.recoveryCodes)
+    } catch (err) {
+      setError(
+        err instanceof ApiError && err.status === 401 ? 'Mật khẩu không chính xác.' : 'Không tạo được bộ mã mới, vui lòng thử lại.',
+      )
+    } finally {
+      setLoading(false)
+    }
   }
 
-  function handleComplete() {
-    sessionStorage.removeItem('apc_temp_recovery_codes')
-    navigate('/login', { replace: true })
+  async function finish() {
+    await refresh()
+    navigate('/portal', { replace: true })
   }
 
-  if (codes.length === 0) {
-    return (
-      <main className="mx-auto max-w-[560px] px-4 py-16 text-center">
-        <div className="rounded-2xl border-2 border-ink bg-paper p-8 shadow-[4px_4px_0_0_#081F3D]">
-          <h1 className="font-heading text-2xl font-bold text-ink">Mã khôi phục không khả dụng</h1>
-          <p className="mt-4 text-sm text-ink/75">
-            Mã khôi phục chỉ được hiển thị **MỘT LẦN DUY NHẤT** ngay sau khi kích hoạt hoặc tạo lại.
-            Nếu bạn tải lại trang, vì lý do an toàn, hệ thống sẽ không hiển thị lại mã.
-          </p>
-          <div className="mt-8">
-            <Link to="/login" className="font-code text-sm font-bold text-apc-primary hover:underline">
-              ← Quay lại trang đăng nhập
-            </Link>
-          </div>
-        </div>
-      </main>
-    )
-  }
+  const mustRegenerate = user?.twoFactor === 'regenerate'
+  const title = codes.length > 0 ? 'Lưu 10 mã khôi phục' : mustRegenerate ? 'Tạo bộ mã khôi phục mới' : 'Mã khôi phục'
+  const intro =
+    codes.length > 0
+      ? 'Mất điện thoại thì dùng một mã để đăng nhập. Mỗi mã dùng một lần. Mã chỉ hiện một lần này.'
+      : mustRegenerate
+        ? 'Bạn vừa đăng nhập bằng mã khôi phục nên bộ mã cũ đã hết hiệu lực. Nhập mật khẩu để tạo bộ mới.'
+        : 'Mã khôi phục chỉ hiện một lần ngay sau khi tạo, tải lại trang không xem lại được.'
 
   return (
     <main className="mx-auto max-w-[560px] px-4 py-12 md:py-20">
-      <div className="rounded-2xl border-2 border-ink bg-paper p-6 md:p-10 shadow-[4px_4px_0_0_#081F3D]">
-        <Eyebrow className="mb-2 text-apc-gold">Lưu ý bảo mật quan trọng</Eyebrow>
-        <h1 className="font-heading text-2xl font-bold text-ink md:text-3xl">
-          Mã khôi phục tài khoản
-        </h1>
-        <p className="mt-2 text-sm text-ink/75">
-          Nếu mất điện thoại hoặc không truy cập được ứng dụng Authenticator, bạn có thể dùng một trong
-          các mã này để đăng nhập. Mỗi mã chỉ dùng được đúng một lần (SEC-12, FLOW-27).
-        </p>
-
-        <div className="mt-6 rounded-xl border-2 border-apc-gold bg-apc-gold/10 p-4 text-xs font-semibold text-ink">
-          ⚠️ Bộ mã này chỉ hiển thị <strong>MỘT LẦN DUY NHẤT</strong>. Tải lại trang sẽ không thể xem lại.
+      <div className="flex flex-col gap-6 rounded-2xl bg-soft p-6 md:p-10">
+        <div>
+          <Eyebrow className="mb-2 text-apc-primary">Mã khôi phục</Eyebrow>
+          <h1 className="font-heading text-2xl font-bold text-ink md:text-3xl">{title}</h1>
+          <p className="mt-2 text-[15px] text-muted">{intro}</p>
         </div>
 
-        <div className="mt-6 rounded-xl border-2 border-ink bg-ink/5 p-4">
-          <div className="grid grid-cols-2 gap-3 text-center">
-            {codes.map((code, index) => (
-              <div
-                key={code}
-                className="rounded-lg border border-ink/20 bg-paper py-2 font-code text-sm font-bold tracking-wider text-ink shadow-[2px_2px_0_0_#081F3D]"
-              >
-                <span className="mr-2 text-xs font-normal text-ink/40">#{index + 1}</span>
-                {code}
-              </div>
-            ))}
-          </div>
+        {error && (
+          <p role="alert" className="rounded-xl bg-apc-red/10 px-4 py-3 text-[15px] font-bold text-apc-red">
+            {error}
+          </p>
+        )}
 
-          <div className="mt-4 text-center">
+        {codes.length > 0 ? (
+          <>
+            <ol className="grid grid-cols-2 gap-3 rounded-xl bg-paper p-4">
+              {codes.map((code) => (
+                <li key={code} className="text-center font-code text-[15px] font-bold tracking-wider text-ink">
+                  {code}
+                </li>
+              ))}
+            </ol>
             <button
               type="button"
-              onClick={handleCopyAll}
-              className="font-code text-xs font-bold text-apc-primary hover:underline"
+              onClick={() => void navigator.clipboard.writeText(codes.join('\n'))}
+              className="self-center font-code text-[13px] font-bold text-apc-primary hover:underline"
             >
-              {copied ? '✓ Đã sao chép 10 mã vào bộ nhớ tạm' : '📋 Sao chép toàn bộ 10 mã'}
+              Sao chép cả 10 mã
             </button>
-          </div>
-        </div>
-
-        <div className="mt-8 space-y-6">
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={confirmed}
-              onChange={(e) => setConfirmed(e.target.checked)}
-              className="mt-1 h-5 w-5 rounded border-2 border-ink accent-apc-primary"
-            />
-            <span className="text-sm font-semibold text-ink">
-              Tôi xác nhận đã lưu trữ 10 mã khôi phục này ở nơi an toàn.
-            </span>
-          </label>
-
-          <Button
-            type="button"
-            disabled={!confirmed}
-            onClick={handleComplete}
-            className="w-full"
-          >
-            Hoàn tất & Đăng nhập lại
-          </Button>
-        </div>
+            <label className="flex items-start gap-3 text-[15px] font-bold text-ink">
+              <input
+                type="checkbox"
+                checked={saved}
+                onChange={(e) => setSaved(e.target.checked)}
+                className="mt-1 h-5 w-5 accent-apc-primary"
+              />
+              Tôi đã lưu 10 mã này ở nơi an toàn.
+            </label>
+            <Button type="button" disabled={!saved} onClick={() => void finish()}>
+              Hoàn tất
+            </Button>
+          </>
+        ) : mustRegenerate ? (
+          <form onSubmit={regenerate} className="flex flex-col gap-5">
+            <label className={labelClass}>
+              Mật khẩu hiện tại
+              <input
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={inputClass}
+              />
+            </label>
+            <Button type="submit" disabled={loading || !password}>
+              {loading ? 'Đang tạo…' : 'Tạo bộ mã mới'}
+            </Button>
+          </form>
+        ) : (
+          <Link to="/portal" className="self-center font-code text-[13px] font-bold text-apc-primary hover:underline">
+            Về trang thành viên
+          </Link>
+        )}
       </div>
     </main>
   )

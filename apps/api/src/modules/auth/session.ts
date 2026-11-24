@@ -27,13 +27,6 @@ declare module 'fastify' {
 
 export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex')
 
-/**
- * Trạng thái 2 lớp của mọi phiên mới tạo — MỘT chỗ duy nhất, các nơi khác đọc từ giá trị `createSession` trả về.
- * B3: Mọi phiên đăng nhập mới ban đầu chưa qua bước 2FA (false).
- * Chỉ khi người dùng xác thực mã 6 số hoặc mã khôi phục mới đặt twoFactorVerified = true.
- */
-export const NEW_SESSION_TWO_FACTOR_VERIFIED = true
-
 export async function createSession(userId: string, meta: { ipAddress: string; userAgent: string | undefined }) {
   const token = randomBytes(32).toString('base64url')
   const user = await db.user.findUnique({
@@ -47,12 +40,10 @@ export async function createSession(userId: string, meta: { ipAddress: string; u
     },
   })
 
-  // Nếu tài khoản đã kích hoạt 2FA (totpEnabledAt != null) hoặc đang có vai trò đặc quyền PENDING (chưa thiết lập 2FA):
-  // phiên đăng nhập mới luôn bắt đầu với twoFactorVerified = false.
-  // Ngược lại (tài khoản thường, hoặc tài khoản test có vai trò ACTIVE nhưng chưa bật 2FA): tuân theo NEW_SESSION_TWO_FACTOR_VERIFIED.
-  const hasPendingPrivileged = user?.roles.some((r) => r.status === 'PENDING')
-  const is2FaEnforced = Boolean(user?.totpEnabledAt || hasPendingPrivileged)
-  const twoFactorVerified = is2FaEnforced ? false : NEW_SESSION_TWO_FACTOR_VERIFIED
+  // B3: đã bật 2FA, hoặc có BOARD/TECH_ADMIN đang hiệu lực/chờ (kể cả ACTIVE mà chưa bật 2FA, vd sau khi B6 đặt lại)
+  // thì phiên mới chưa qua 2 lớp; chỉ nhập đúng mã 6 số / mã khôi phục / xác nhận thiết lập mới bật lên.
+  const hasPrivileged = user?.roles.some((r) => r.status === 'ACTIVE' || r.status === 'PENDING')
+  const twoFactorVerified = !(user?.totpEnabledAt || hasPrivileged)
 
   await db.session.create({
     data: {
@@ -67,8 +58,8 @@ export async function createSession(userId: string, meta: { ipAddress: string; u
 }
 
 /** Đánh dấu phiên hiện tại đã qua bước xác thực 2 lớp (B3, FLOW-27). */
-export async function markSessionTwoFactorVerified(sessionId: string) {
-  await db.session.update({
+export async function markSessionTwoFactorVerified(sessionId: string, tx: Pick<typeof db, 'session'> = db) {
+  await tx.session.update({
     where: { id: sessionId },
     data: { twoFactorVerified: true },
   })

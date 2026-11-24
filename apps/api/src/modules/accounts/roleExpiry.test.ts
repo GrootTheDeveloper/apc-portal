@@ -8,6 +8,7 @@ import { db } from '../../db/client.js'
 import { hashPassword } from '../../lib/password.js'
 import { SESSION_COOKIE } from '../auth/session.js'
 import { runRoleExpiry } from './roleExpiry.js'
+import { passTwoFactor } from '../../../test/twoFactor.js'
 
 // O6 — vai trò hết hạn và cảnh báo 30/7 ngày. Test chỉ đếm email/audit gắn với dòng vai trò do chính test tạo
 // (refId/targetId), nên không phụ thuộc dữ liệu khác trong DB.
@@ -47,7 +48,7 @@ async function createExpiring(name: string, days: number, base = new Date()) {
 
 async function login(username: string) {
   const response = await app.inject({ method: 'POST', url: '/auth/login', payload: { username, password: PASSWORD }, headers: origin, remoteAddress: `10.7.0.${++ip % 250}` })
-  return response.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? ''
+  return passTwoFactor(response.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? '')
 }
 
 const get = (url: string, token: string) => app.inject({ method: 'GET', url, cookies: token ? { [SESSION_COOKIE]: token } : {}, headers: origin })
@@ -128,15 +129,17 @@ describe('role-expiry job', () => {
 
   it('warns again at the 30-day mark of a renewed expiry date', async () => {
     const now = new Date()
-    const { row } = await createExpiring('renew', 29, now)
+    const { holder, row } = await createExpiring('renew', 29, now)
+    // Chỉ đếm email gửi người giữ vai trò: danh sách BOARD nhận kèm có thể đổi khi file test khác chạy song song.
+    const toHolder = async () => (await deliveries(row.id)).filter((d) => d.recipient === holder.email)
     await runRoleExpiry(now, [row.id])
     const size = (await deliveries(row.id)).length
-    expect(size).toBeGreaterThan(0)
+    expect(await toHolder()).toHaveLength(1)
     await db.userRole.update({ where: { id: row.id }, data: { expiresAt: new Date(now.getTime() + 100 * DAY) } })
     await runRoleExpiry(new Date(now.getTime() + 50 * DAY), [row.id]) // còn 50 ngày: chưa tới mốc
     expect(await deliveries(row.id)).toHaveLength(size)
     await runRoleExpiry(new Date(now.getTime() + 75 * DAY), [row.id]) // còn 25 ngày: báo lại mốc 30
-    expect(await deliveries(row.id)).toHaveLength(size * 2)
+    expect(await toHolder()).toHaveLength(2)
   })
 })
 

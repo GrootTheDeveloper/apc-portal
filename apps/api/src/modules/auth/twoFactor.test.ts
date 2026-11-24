@@ -136,7 +136,16 @@ describe('B3: Xác thực 2 lớp (TOTP & Recovery Codes)', () => {
     expect(decrypted).toBe(manualKey)
   })
 
-  it('3. Xác nhận mã 6 số: kích hoạt 2FA, chuyển vai trò sang ACTIVE, sinh 10 mã khôi phục, thu hồi phiên cũ', async () => {
+  it('3. Xác nhận mã 6 số: kích hoạt 2FA, chuyển vai trò sang ACTIVE, sinh 10 mã khôi phục, thu hồi phiên khác', async () => {
+    // Một phiên khác của cùng người (vd trên máy khác) phải bị thu hồi khi bật 2 lớp.
+    const otherLogin = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      headers: { origin: config.WEB_URL },
+      body: { username: `board_${tag}`, password: testPassword },
+    })
+    const otherCookie = otherLogin.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? ''
+
     const totp = new OTPAuth.TOTP({
       issuer: 'APC Portal',
       label: `board_${tag}`,
@@ -190,13 +199,41 @@ describe('B3: Xác thực 2 lớp (TOTP & Recovery Codes)', () => {
       expect(savedRecoveryCodes.includes(row.codeHash)).toBe(false) // Phải là hash
     }
 
-    // Phiên cũ đã bị thu hồi -> gọi lại /auth/me nhận 401
-    const meRes = await app.inject({
-      method: 'GET',
-      url: '/auth/me',
-      cookies: { [SESSION_COOKIE]: boardCookie },
+    // Phiên vừa nhập đúng mã giữ nguyên và đã qua 2 lớp (đi tiếp sang trang mã khôi phục được); phiên khác bị thu hồi.
+    const meRes = await app.inject({ method: 'GET', url: '/auth/me', cookies: { [SESSION_COOKIE]: boardCookie } })
+    expect(meRes.statusCode).toBe(200)
+    expect(meRes.json().twoFactor).toBeNull()
+    expect(meRes.json().roles.some((r: any) => r.role === 'BOARD')).toBe(true)
+    const otherMe = await app.inject({ method: 'GET', url: '/auth/me', cookies: { [SESSION_COOKIE]: otherCookie } })
+    expect(otherMe.statusCode).toBe(401)
+  })
+
+  it('3b. BOARD đã bật 2 lớp: chỉ đúng mật khẩu thì API quản trị trả 403, tạo lại mã khôi phục cũng 403', async () => {
+    const loginRes = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      headers: { origin: config.WEB_URL },
+      body: { username: `board_${tag}`, password: testPassword },
     })
-    expect(meRes.statusCode).toBe(401)
+    const cookie = loginRes.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? ''
+    expect(loginRes.json().twoFactor).toBe('verify')
+    const admin = await app.inject({ method: 'GET', url: '/admin/accounts', cookies: { [SESSION_COOKIE]: cookie } })
+    expect(admin.statusCode).toBe(403)
+    const regen = await app.inject({
+      method: 'POST',
+      url: '/auth/two-factor/recovery-codes',
+      headers: { origin: config.WEB_URL },
+      cookies: { [SESSION_COOKIE]: cookie },
+      body: { password: testPassword },
+    })
+    expect(regen.statusCode).toBe(403)
+  })
+
+  it('3c. Không có phiên: các API 2 lớp trả 401', async () => {
+    for (const url of ['/auth/two-factor/setup', '/auth/two-factor/confirm', '/auth/two-factor/verify', '/auth/two-factor/recovery-codes']) {
+      const res = await app.inject({ method: 'POST', url, headers: { origin: config.WEB_URL }, body: { code: '123456', password: 'x' } })
+      expect(res.statusCode).toBe(401)
+    }
   })
 
   it('4. Đăng nhập lại bằng mã 6 số: đúng mã thì có quyền BOARD; dùng lại cùng mã bị từ chối (chống replay)', async () => {
@@ -283,13 +320,14 @@ describe('B3: Xác thực 2 lớp (TOTP & Recovery Codes)', () => {
     expect(verifyRes.json().method).toBe('recovery_code')
     expect(verifyRes.json().requireRegenerate).toBe(true)
 
-    // Sau khi dùng: phiên có quyền BOARD
+    // Sau khi dùng: phiên đã qua 2 lớp nhưng bắt buộc tạo bộ mã mới (FLOW-27)
     const meRes = await app.inject({
       method: 'GET',
       url: '/auth/me',
       cookies: { [SESSION_COOKIE]: sessionCookie },
     })
     expect(meRes.json().twoFactorVerified).toBe(true)
+    expect(meRes.json().twoFactor).toBe('regenerate')
 
     // Dùng lại mã khôi phục đã qua sử dụng trên phiên khác: BỊ TỪ CHỐI
     const loginRes2 = await app.inject({
@@ -308,6 +346,16 @@ describe('B3: Xác thực 2 lớp (TOTP & Recovery Codes)', () => {
       body: { code: testRecoveryCode },
     })
     expect(reuseRes.statusCode).toBe(401)
+
+    // Bộ mã cũ hết hiệu lực luôn: mã chưa dùng khác cũng bị từ chối
+    const otherCode = await app.inject({
+      method: 'POST',
+      url: '/auth/two-factor/verify',
+      headers: { origin: config.WEB_URL },
+      cookies: { [SESSION_COOKIE]: sessionCookie2 },
+      body: { code: savedRecoveryCodes[1]! },
+    })
+    expect(otherCode.statusCode).toBe(401)
   })
 
   it('6. Tạo lại bộ mã khôi phục: nhập mật khẩu -> sinh 10 mã mới, mã cũ không còn dùng được', async () => {
@@ -320,14 +368,27 @@ describe('B3: Xác thực 2 lớp (TOTP & Recovery Codes)', () => {
     })
     const sessionCookie = loginRes.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? ''
 
-    // Dùng mã khôi phục thứ 2 để đăng nhập
-    await app.inject({
+    // Giả lập đã sang bước thời gian mới rồi nhập mã 6 số (bộ mã khôi phục cũ đã hết hiệu lực ở test 5)
+    await db.user.update({ where: { id: boardUserId }, data: { totpLastTimeStep: null } })
+    const totp = new OTPAuth.TOTP({ algorithm: 'SHA1', digits: 6, period: 30, secret: OTPAuth.Secret.fromBase32(manualKey) })
+    const verifyRes = await app.inject({
       method: 'POST',
       url: '/auth/two-factor/verify',
       headers: { origin: config.WEB_URL },
       cookies: { [SESSION_COOKIE]: sessionCookie },
-      body: { code: savedRecoveryCodes[1]! },
+      body: { code: totp.generate() },
     })
+    expect(verifyRes.statusCode).toBe(200)
+
+    // Sai mật khẩu -> 401
+    const wrong = await app.inject({
+      method: 'POST',
+      url: '/auth/two-factor/recovery-codes',
+      headers: { origin: config.WEB_URL },
+      cookies: { [SESSION_COOKIE]: sessionCookie },
+      body: { password: 'sai-mat-khau' },
+    })
+    expect(wrong.statusCode).toBe(401)
 
     // Yêu cầu tạo lại bộ mã mới
     const regenRes = await app.inject({
@@ -342,6 +403,25 @@ describe('B3: Xác thực 2 lớp (TOTP & Recovery Codes)', () => {
     const newCodes = regenRes.json().recoveryCodes
     expect(newCodes).toHaveLength(10)
     expect(newCodes).not.toEqual(savedRecoveryCodes)
+
+    // Có bộ mới thì hết bước bắt buộc; mã mới dùng được để đăng nhập
+    const me = await app.inject({ method: 'GET', url: '/auth/me', cookies: { [SESSION_COOKIE]: sessionCookie } })
+    expect(me.json().twoFactor).toBeNull()
+    const loginAgain = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      headers: { origin: config.WEB_URL },
+      body: { username: `board_${tag}`, password: testPassword },
+    })
+    const cookieAgain = loginAgain.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? ''
+    const useNew = await app.inject({
+      method: 'POST',
+      url: '/auth/two-factor/verify',
+      headers: { origin: config.WEB_URL },
+      cookies: { [SESSION_COOKIE]: cookieAgain },
+      body: { code: newCodes[0] },
+    })
+    expect(useNew.statusCode).toBe(200)
   })
 
   it('7. Thành viên MEMBER thông thường đăng nhập không bị ép nhập TOTP', async () => {

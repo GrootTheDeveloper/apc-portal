@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
+import { createCipheriv, createDecipheriv, createHmac, randomBytes } from 'node:crypto'
 
 /**
  * Tiện ích mã hóa secret TOTP (AES-256-GCM) và băm mã khôi phục (SEC-12, SEC-16).
@@ -65,10 +65,11 @@ export function normalizeRecoveryCode(code: string): string {
 }
 
 /**
- * Băm mã khôi phục bằng SHA-256 sau khi chuẩn hóa.
+ * Băm mã khôi phục bằng HMAC-SHA256 với khóa server sau khi chuẩn hóa: mã chỉ ~2^40 khả năng, nên lộ bảng băm
+ * mà không có khóa thì vẫn không dò ngược được.
  */
-export function hashRecoveryCode(code: string): string {
-  return createHash('sha256').update(normalizeRecoveryCode(code)).digest('hex')
+export function hashRecoveryCode(code: string, keyHex: string): string {
+  return createHmac('sha256', parseKey(keyHex)).update(normalizeRecoveryCode(code)).digest('hex')
 }
 
 /**

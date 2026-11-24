@@ -7,6 +7,7 @@ import { loadConfig } from '../../config.js'
 import { db } from '../../db/client.js'
 import { hashPassword } from '../../lib/password.js'
 import { SESSION_COOKIE } from '../auth/session.js'
+import { passTwoFactor } from '../../../test/twoFactor.js'
 
 const config = loadConfig({ NODE_ENV: 'test' })
 const app = buildApp(config)
@@ -68,7 +69,7 @@ async function login(username: string, password = PASSWORD) {
     headers: origin,
     remoteAddress: `10.5.1.${++ip % 250}`,
   })
-  return { status: response.statusCode, token: response.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? '' }
+  return { status: response.statusCode, token: await passTwoFactor(response.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? '') }
 }
 
 async function call(method: 'GET' | 'POST' | 'PATCH', url: string, token: string, payload?: Record<string, unknown>) {

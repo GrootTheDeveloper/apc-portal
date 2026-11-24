@@ -180,12 +180,25 @@ describe('GET /auth/me', () => {
     })
     const token = sessionToken(await login(user.username, PASSWORD))
 
-    // Tạm đến B3: phiên mới coi như đã qua 2 lớp.
-    expect((await db.session.findFirstOrThrow({ where: { userId: user.id } })).twoFactorVerified).toBe(true)
+    // B3: BOARD ACTIVE chưa bật 2 lớp, chỉ đúng mật khẩu → phiên chưa qua 2 lớp, mất BOARD (RP-13), API quản trị 403.
+    expect((await db.session.findFirstOrThrow({ where: { userId: user.id } })).twoFactorVerified).toBe(false)
+    expect((await me(token)).json()).toMatchObject({
+      id: user.id,
+      username: user.username,
+      status: 'ACTIVE',
+      mustChangePassword: false,
+      roles: [{ role: 'MEMBER', departmentId: null }],
+      twoFactor: 'setup',
+    })
+    const admin = await app.inject({ method: 'GET', url: '/admin/accounts', cookies: { [SESSION_COOKIE]: token ?? '' } })
+    expect(admin.statusCode).toBe(403)
 
-    // Phiên chưa qua 2 lớp thì mất BOARD (RP-13).
-    await db.session.updateMany({ where: { userId: user.id }, data: { twoFactorVerified: false } })
-    expect((await me(token)).json().roles).toEqual([{ role: 'MEMBER', departmentId: null }])
+    // Qua 2 lớp rồi thì có lại BOARD.
+    await db.session.updateMany({ where: { userId: user.id }, data: { twoFactorVerified: true } })
+    expect((await me(token)).json().roles).toEqual([
+      { role: 'MEMBER', departmentId: null },
+      { role: 'BOARD', departmentId: null },
+    ])
     await db.userRole.deleteMany({ where: { userId: user.id } })
   })
 
@@ -211,12 +224,18 @@ describe('GET /auth/me', () => {
     expect((await step(member.username)).twoFactor).toBeNull()
     // Vai trò còn PENDING = chưa thiết lập 2 lớp → trang thiết lập.
     expect((await step(pendingBoard.username)).twoFactor).toBe('setup')
-    // Vai trò ACTIVE và phiên đã qua 2 lớp (tạm thời đến B3) → không cần gì.
+    // Vai trò ACTIVE mà chưa bật 2 lớp (vd sau khi đặt lại) → vẫn phải thiết lập.
     const tech = await step(activeTech.username)
-    expect(tech.twoFactor).toBeNull()
-    // Phiên chưa nhập mã → trang nhập mã 2 lớp.
-    await db.session.updateMany({ where: { userId: activeTech.id }, data: { twoFactorVerified: false } })
+    expect(tech.twoFactor).toBe('setup')
+    // Đã bật 2 lớp, phiên chưa nhập mã → trang nhập mã; nhập xong → không cần gì.
+    await db.user.update({ where: { id: activeTech.id }, data: { totpEnabledAt: new Date(), totpSecret: 'x' } })
+    await db.twoFactorRecoveryCode.create({ data: { userId: activeTech.id, codeHash: `tf-${activeTech.id}` } })
     expect((await me(tech.token)).json().twoFactor).toBe('verify')
+    await db.session.updateMany({ where: { userId: activeTech.id }, data: { twoFactorVerified: true } })
+    expect((await me(tech.token)).json().twoFactor).toBeNull()
+    // Hết mã khôi phục (vừa đăng nhập bằng mã khôi phục) → bắt buộc tạo bộ mới.
+    await db.twoFactorRecoveryCode.updateMany({ where: { userId: activeTech.id }, data: { usedAt: new Date() } })
+    expect((await me(tech.token)).json().twoFactor).toBe('regenerate')
 
     await db.userRole.deleteMany({ where: { userId: { in: [pendingBoard.id, activeTech.id] } } })
   })

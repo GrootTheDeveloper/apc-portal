@@ -42,7 +42,7 @@ export function authRoutes(config: AppConfig) {
     /** Cấp phiên mới cho tài khoản và trả về thông tin như /auth/me. */
     async function startSession(userId: string, request: FastifyRequest, reply: FastifyReply) {
       const session = await createSession(userId, { ipAddress: request.ip, userAgent: request.headers['user-agent'] })
-      // Vai trò tính theo trạng thái 2 lớp của chính phiên vừa tạo (NEW_SESSION_TWO_FACTOR_VERIFIED, không ghi cứng ở đây).
+      // Vai trò tính theo trạng thái 2 lớp của chính phiên vừa tạo (createSession quyết định, không ghi cứng ở đây).
       const user = await loadAuthUser(userId, { twoFactorVerified: session.twoFactorVerified })
       if (!user) throw unauthenticated()
       reply.setCookie(SESSION_COOKIE, session.token, sessionCookieOptions(config))
@@ -90,9 +90,12 @@ export function authRoutes(config: AppConfig) {
     // ─────────────────────────────────────────────────────────────────────────
 
     /** Bước 1: Xác minh lại mật khẩu và khởi tạo mã QR / khóa nhập tay */
+    // Ba route kiểm mật khẩu hoặc mã dưới đây: giới hạn để không dò được (SEC-05).
+    const guessLimit = { rateLimit: { max: 10, timeWindow: '15 minutes' } }
+
     app.post(
       '/auth/two-factor/setup',
-      { preHandler: requireAuth },
+      { preHandler: requireAuth, config: guessLimit },
       async (request) => {
         const user = currentUser(request)
         const input = setupTwoFactorSchema.parse(request.body)
@@ -103,11 +106,12 @@ export function authRoutes(config: AppConfig) {
     /** Bước 2: Xác nhận mã 6 số đầu tiên -> kích hoạt 2FA, sinh 10 mã khôi phục */
     app.post(
       '/auth/two-factor/confirm',
-      { preHandler: requireAuth },
+      { preHandler: requireAuth, config: guessLimit },
       async (request) => {
         const user = currentUser(request)
         const input = confirmTwoFactorSchema.parse(request.body)
-        return confirmTwoFactorSetup(user.id, input.code, config, request)
+        if (!request.sessionId) throw unauthenticated()
+        return confirmTwoFactorSetup(user.id, request.sessionId, input.code, config, request)
       },
     )
 
@@ -136,11 +140,11 @@ export function authRoutes(config: AppConfig) {
     /** Tạo lại 10 mã khôi phục mới (yêu cầu mật khẩu) */
     app.post(
       '/auth/two-factor/recovery-codes',
-      { preHandler: [requireAuth, requireTwoFactorVerified] },
+      { preHandler: [requireAuth, requireTwoFactorVerified], config: guessLimit },
       async (request) => {
         const user = currentUser(request)
         const input = setupTwoFactorSchema.parse(request.body)
-        return regenerateRecoveryCodes(user.id, input.password, request)
+        return regenerateRecoveryCodes(user.id, input.password, config, request)
       },
     )
   }

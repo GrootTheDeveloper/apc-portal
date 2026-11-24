@@ -3,8 +3,8 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { Role } from '../../db/generated/enums.js'
 import { type AppError, forbidden, notFound, unauthenticated } from '../../lib/errors.js'
 import { AUDIT_ACTIONS, audit, AuditCategory, AuditResult } from '../audit/service.js'
-import { SESSION_COOKIE } from './session.js'
 import { db } from '../../db/client.js'
+import { SESSION_COOKIE } from './session.js'
 
 // Phân quyền dùng chung cho mọi API (docs/02 mục 12). Không tự viết kiểm quyền riêng trong module.
 //
@@ -118,9 +118,8 @@ export async function requireAuth(request: FastifyRequest) {
   await authedUser(request)
 }
 
-/** preHandler: require that the session has completed two-factor verification. */
+/** preHandler: phiên phải đã qua bước 2 lớp (B3), dùng sau `requireAuth`. */
 export async function requireTwoFactorVerified(request: FastifyRequest) {
-  // Ensure session exists
   if (!request.sessionId) {
     throw unauthenticated()
   }
@@ -129,8 +128,7 @@ export async function requireTwoFactorVerified(request: FastifyRequest) {
     select: { twoFactorVerified: true },
   })
   if (!session?.twoFactorVerified) {
-    // Return 403 to indicate lacking 2FA verification
-    throw await denied(request, forbidden('Two-factor verification required.'))
+    throw await denied(request, forbidden('Cần xác thực 2 lớp trước khi thực hiện thao tác này.'))
   }
 }
 

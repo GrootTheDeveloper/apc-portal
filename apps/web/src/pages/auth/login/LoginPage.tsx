@@ -5,7 +5,7 @@ import { AsyncState } from '../../../components/AsyncState'
 import { Button } from '../../../components/Button'
 import { useAuth } from '../../../hooks/useAuth'
 import { ApiError } from '../../../lib/api'
-import { ACTIVATE_PATH, needsActivation, TWO_FACTOR_SETUP_PATH, TWO_FACTOR_VERIFY_PATH } from '../../../lib/auth'
+import { ACTIVATE_PATH, guardRedirect, needsActivation } from '../../../lib/auth'
 import { safeReturnTo } from '../../../lib/returnTo'
 import { isAppPath } from '../../../routes'
 import { Eyebrow } from '../../../components/Eyebrow'
@@ -34,8 +34,9 @@ export function LoginPage() {
   // Đã đăng nhập (kể cả ngay sau khi bấm Đăng nhập): kiểm tra 2FA hoặc về trang đang định vào.
   if (status === 'authenticated' && user) {
     if (needsActivation(user)) return <Navigate to={ACTIVATE_PATH} replace />
-    if (user.twoFactor === 'setup') return <Navigate to={TWO_FACTOR_SETUP_PATH} replace />
-    if (user.twoFactor === 'verify') return <Navigate to={TWO_FACTOR_VERIFY_PATH} replace />
+    // Còn bước 2 lớp (thiết lập / nhập mã / tạo lại mã khôi phục): đi đúng thứ tự của route guard.
+    const gate = guardRedirect(user)
+    if (gate.action === 'redirect') return <Navigate to={gate.to} replace />
     const destination = safeReturnTo(searchParams.get('returnTo'), isAppPath)
     return <Navigate to={destination} replace />
   }

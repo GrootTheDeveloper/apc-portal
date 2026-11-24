@@ -17,7 +17,7 @@ import { audit, AUDIT_ACTIONS, AuditCategory, AuditResult } from '../audit/servi
 import { markSessionTwoFactorVerified } from './session.js'
 
 export const setupTwoFactorSchema = z.object({
-  password: z.string().min(1, 'Vui lòng nhập mật khẩu hiện tại.'),
+  password: z.string().min(1, 'Vui lòng nhập mật khẩu hiện tại.').max(1024),
 })
 
 export const confirmTwoFactorSchema = z.object({
@@ -25,7 +25,7 @@ export const confirmTwoFactorSchema = z.object({
 })
 
 export const verifyTwoFactorSchema = z.object({
-  code: z.string().trim().min(6, 'Vui lòng nhập mã xác thực hoặc mã khôi phục.'),
+  code: z.string().trim().min(6, 'Vui lòng nhập mã xác thực hoặc mã khôi phục.').max(32),
 })
 
 /**
@@ -89,6 +89,7 @@ export async function initiateTwoFactorSetup(
  */
 export async function confirmTwoFactorSetup(
   userId: string,
+  sessionId: string,
   code: string,
   config: AppConfig,
   request: FastifyRequest,
@@ -136,7 +137,7 @@ export async function confirmTwoFactorSetup(
       await tx.twoFactorRecoveryCode.create({
         data: {
           userId,
-          codeHash: hashRecoveryCode(rawCode),
+          codeHash: hashRecoveryCode(rawCode, config.TOTP_ENCRYPTION_KEY),
         },
       })
     }
@@ -153,11 +154,12 @@ export async function confirmTwoFactorSetup(
       },
     })
 
-    // 4. Thu hồi mọi phiên đăng nhập cũ, yêu cầu đăng nhập lại
+    // 4. Thu hồi các phiên khác; phiên đang thao tác vừa chứng minh có mã đúng nên coi như đã qua 2 lớp
     await tx.session.updateMany({
-      where: { userId, revokedAt: null },
+      where: { userId, revokedAt: null, id: { not: sessionId } },
       data: { revokedAt: new Date() },
     })
+    await markSessionTwoFactorVerified(sessionId, tx)
 
     // 5. Ghi nhật ký thao tác
     await audit(
@@ -232,7 +234,12 @@ export async function verifyTwoFactorChallenge(
     }
 
     const timeStep = BigInt(Math.floor(Date.now() / 1000 / 30) + delta)
-    if (user.totpLastTimeStep !== null && timeStep <= user.totpLastTimeStep) {
+    // Ghi có điều kiện: hai request cùng một mã chạy song song thì chỉ một request cập nhật được (chống replay).
+    const claimed = await db.user.updateMany({
+      where: { id: userId, OR: [{ totpLastTimeStep: null }, { totpLastTimeStep: { lt: timeStep } }] },
+      data: { totpLastTimeStep: timeStep },
+    })
+    if (claimed.count === 0) {
       await audit(request, {
         action: AUDIT_ACTIONS.AUTH_TWO_FACTOR_VERIFY,
         targetType: 'USER',
@@ -244,11 +251,6 @@ export async function verifyTwoFactorChallenge(
       throw unauthenticated('Mã xác thực đã được sử dụng. Vui lòng chờ mã kế tiếp.')
     }
 
-    // Cập nhật timeStep và đánh dấu phiên đã xác thực 2 lớp
-    await db.user.update({
-      where: { id: userId },
-      data: { totpLastTimeStep: timeStep },
-    })
     await markSessionTwoFactorVerified(sessionId)
 
     await audit(request, {
@@ -264,16 +266,13 @@ export async function verifyTwoFactorChallenge(
   }
 
   // Xác thực bằng mã khôi phục (Recovery Code)
-  const hashedInput = hashRecoveryCode(trimmed)
-  const recoveryRow = await db.twoFactorRecoveryCode.findFirst({
-    where: {
-      userId,
-      codeHash: hashedInput,
-      usedAt: null,
-    },
+  const usedAt = new Date()
+  const used = await db.twoFactorRecoveryCode.updateMany({
+    where: { userId, codeHash: hashRecoveryCode(trimmed, config.TOTP_ENCRYPTION_KEY), usedAt: null },
+    data: { usedAt },
   })
 
-  if (!recoveryRow) {
+  if (used.count === 0) {
     await audit(request, {
       action: AUDIT_ACTIONS.AUTH_TWO_FACTOR_VERIFY,
       targetType: 'USER',
@@ -285,11 +284,8 @@ export async function verifyTwoFactorChallenge(
     throw unauthenticated('Mã khôi phục không hợp lệ hoặc đã qua sử dụng.')
   }
 
-  // Đánh dấu mã đã dùng và bật quyền phiên
-  await db.twoFactorRecoveryCode.update({
-    where: { id: recoveryRow.id },
-    data: { usedAt: new Date() },
-  })
+  // FLOW-27: dùng mã khôi phục xong bắt buộc tạo bộ mới, nên bộ cũ hết hiệu lực luôn; /auth/me trả `regenerate`.
+  await db.twoFactorRecoveryCode.updateMany({ where: { userId, usedAt: null }, data: { usedAt } })
   await markSessionTwoFactorVerified(sessionId)
 
   await audit(request, {
@@ -311,6 +307,7 @@ export async function verifyTwoFactorChallenge(
 export async function regenerateRecoveryCodes(
   userId: string,
   password: string,
+  config: AppConfig,
   request: FastifyRequest,
 ) {
   const user = await db.user.findUniqueOrThrow({
@@ -336,7 +333,7 @@ export async function regenerateRecoveryCodes(
       await tx.twoFactorRecoveryCode.create({
         data: {
           userId,
-          codeHash: hashRecoveryCode(rawCode),
+          codeHash: hashRecoveryCode(rawCode, config.TOTP_ENCRYPTION_KEY),
         },
       })
     }

@@ -222,6 +222,13 @@ export function AdminEventDetailPage() {
                 <Link to={`/admin/events/${event.id}/preview`} className={buttonClass('outline')}>
                   Xem trước
                 </Link>
+                {/* E6 (FLOW-16): quản lý đăng ký và điểm danh của sự kiện này */}
+                <Link to={`/admin/events/${event.id}/registrations`} className={buttonClass('outline')}>
+                  Danh sách đăng ký
+                </Link>
+                <Link to={`/admin/events/${event.id}/attendance`} className={buttonClass('outline')}>
+                  Điểm danh
+                </Link>
                 <Link to="/admin/events" className={buttonClass('outline')}>
                   ← Về danh sách
                 </Link>

@@ -47,6 +47,8 @@ pnpm --filter @apc/web exec playwright install chromium
 pnpm --filter @apc/web test:e2e
 ```
 
+- Khi chạy local, đặt biến môi trường `SEED_PASSWORD` (và `SEED_TOTP_SECRET` nếu chạy test đăng nhập 2FA cho `board` / `techadmin`) khớp với cấu hình seed trong `.env`.
+
 - Playwright tự bật API và web; đang chạy `pnpm dev` thì dùng luôn.
 - Báo cáo HTML ở `apps/web/playwright-report/` (không commit). Mở bằng `pnpm --filter @apc/web exec playwright show-report`.
 - Test đánh dấu `fixme` là luồng chưa có giao diện (R3 nộp đơn, R4 tra cứu); làm xong phiếu đó thì bỏ `fixme`.
@@ -55,5 +57,7 @@ pnpm --filter @apc/web test:e2e
 | --- | --- | --- |
 | KB-01-02 Xem danh sách và chi tiết tin | `xem-tin.e2e.ts` | Chạy |
 | KB-01-03 Bài nháp/lưu trữ ra 404 | `xem-tin.e2e.ts` | Chạy |
+| Tìm kiếm công khai và giữ từ khóa URL | `tim-kiem.e2e.ts` | Chạy |
+| KB-06-01, KB-06-03, KB-06-04 Phân quyền quản trị | `quan-tri.e2e.ts` | Chạy |
 | KB-02-02 Nộp đơn hợp lệ, thiếu đồng ý | `tuyen-thanh-vien.e2e.ts` | `fixme`, chờ R3 |
 | KB-02-04 Tra cứu đơn bằng mã sai | `tuyen-thanh-vien.e2e.ts` | `fixme`, chờ R4 |

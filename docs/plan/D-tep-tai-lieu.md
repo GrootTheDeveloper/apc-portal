@@ -221,12 +221,12 @@ Mảng này làm các phần cả nhóm dùng chung và các chức năng quanh 
 
 **Xong khi:**
 
-- [ ] File có 1 dòng lỗi thì báo đúng số dòng, đúng cột và không nhập dòng nào; tải được file lỗi.
-- [ ] Gửi lại cùng một lô 2 lần không tạo trùng thành viên.
-- [ ] Mã ban trỏ tới Ban C (`ARCHIVED`) bị báo lỗi.
-- [ ] File sai header hoặc quá giới hạn bị từ chối trước khi kiểm tra từng dòng.
-- [ ] Chỉ `BOARD` nhập/xuất được; `manager.a` gọi API nhận 403.
-- [ ] Mỗi lần nhập, xuất có dòng nhật ký với mã lô và hash.
+- [X] File có 1 dòng lỗi thì báo đúng số dòng, đúng cột và không nhập dòng nào; tải được file lỗi.
+- [X] Gửi lại cùng một lô 2 lần không tạo trùng thành viên.
+- [X] Mã ban trỏ tới Ban C (`ARCHIVED`) bị báo lỗi.
+- [X] File sai header hoặc quá giới hạn bị từ chối trước khi kiểm tra từng dòng.
+- [X] Chỉ `BOARD` nhập/xuất được; `manager.a` gọi API nhận 403.
+- [X] Mỗi lần nhập có audit chứa mã lô và hash; mỗi lần xuất có audit chứa người xuất và số dòng (theo yêu cầu chi tiết ở trên).
 
 ## Lưu ý
 

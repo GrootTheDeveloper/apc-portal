@@ -192,7 +192,8 @@ Docker Desktop phải đang chạy. Chạy lần lượt từng lệnh, chờ l�
 | 4 | `pnpm install` | Cài thư viện (2–5 phút) | Dòng cuối có `Done in ...` |
 | 5 | `pnpm infra:up` | Bật PostgreSQL, Mailpit, SeaweedFS trong Docker. Lần đầu tải image (vài phút) | Các dòng `Container apc-portal-local-... Started` |
 | 6 | `pnpm --filter @apc/api db:migrate` | Tạo bảng trong database | `Your database is now in sync with your schema.` hoặc `Already in sync` |
-| 7 | `pnpm dev` | Chạy web và API. Lệnh này chạy liên tục, không tự kết thúc | Có dòng `Local: http://localhost:5173/` |
+| 7 | `pnpm --filter @apc/api db:seed` | Nạp dữ liệu mẫu và tài khoản thử | In danh sách tài khoản mẫu đã tạo |
+| 8 | `pnpm dev` | Chạy web và API. Lệnh này chạy liên tục, không tự kết thúc | Có dòng `Local: http://localhost:5173/` |
 
 Để `pnpm dev` chạy trong cửa sổ đó. Cần gõ lệnh khác thì mở thêm một terminal (trong VS Code: nút **+** ở khung Terminal).
 
@@ -293,6 +294,8 @@ Email do API gửi (qua `enqueueEmail`) được worker trong process API gửi 
 | Chạy web và API | `pnpm dev` |
 | Lint, kiểm tra kiểu, test, build | `pnpm check` |
 | Chỉ chạy test API | `pnpm --filter @apc/api test` |
+| Nạp lại dữ liệu mẫu | `pnpm --filter @apc/api db:seed` |
+| Cài trình duyệt và chạy test E2E | `pnpm --filter @apc/web exec playwright install chromium` rồi `pnpm --filter @apc/web test:e2e` |
 | Bật / tắt / xem log dịch vụ Docker | `pnpm infra:up` / `pnpm infra:down` / `pnpm infra:logs` |
 | Tạo bảng theo migration mới nhất | `pnpm --filter @apc/api db:migrate` |
 | Xem và sửa dữ liệu dạng bảng | `pnpm --filter @apc/api db:studio` |
@@ -326,10 +329,18 @@ pnpm --filter @apc/api run db:seed
 **Danh sách tài khoản mẫu:**
 Mật khẩu chung cho tất cả tài khoản mẫu lấy từ biến `SEED_PASSWORD` trong file `.env` (mặc định là `apc_local_seed_only`). Email có dạng `<tên_đăng_nhập>@example.com`.
 
+`board` và `techadmin` đã bật xác thực 2 lớp (B3) với secret lấy từ `SEED_TOTP_SECRET` trong `.env`. Sau khi nhập mật khẩu, trang `/account/two-factor` hỏi mã 6 số: thêm secret đó vào Google/Microsoft Authenticator (chọn "nhập khóa thủ công"), hoặc sinh mã bằng lệnh:
+
+```powershell
+pnpm --filter @apc/web exec node -e "const O=require('otpauth');console.log(new O.TOTP({secret:O.Secret.fromBase32(process.argv[1])}).generate())" JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
+```
+
+`board.pending` có vai trò `PENDING` nên được đưa tới trang thiết lập 2 lớp để quét mã QR mới.
+
 | Tên đăng nhập | Vai trò | Trạng thái | Ban | Ghi chú |
 | --- | --- | --- | --- | --- |
-| `board` | `BOARD` | `ACTIVE` | — | Ban Chủ nhiệm |
-| `techadmin` | `TECH_ADMIN` | `ACTIVE` | — | Quản trị Hệ thống |
+| `board` | `BOARD` | `ACTIVE` | — | Ban Chủ nhiệm, đã bật 2 lớp |
+| `techadmin` | `TECH_ADMIN` | `ACTIVE` | — | Quản trị Hệ thống, đã bật 2 lớp |
 | `board.pending` | `BOARD` | `ACTIVE` | — | Vai trò `PENDING` (chưa thiết lập 2 lớp) |
 | `manager.a` | `DEPARTMENT_MANAGER` | `ACTIVE` | Ban A | Trưởng ban A |
 | `manager.b` | `DEPARTMENT_MANAGER` | `ACTIVE` | Ban B | Trưởng ban B |

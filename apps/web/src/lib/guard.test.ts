@@ -30,6 +30,7 @@ describe('guardRedirect — thứ tự kiểm tra Sitemap §11.1', () => {
 
   it('then routes privileged accounts to two-factor setup or verification', () => {
     const board = (twoFactor: Me['twoFactor']) => person({ twoFactor }, [{ role: 'BOARD', departmentId: null }])
+    expect(guardRedirect(board('regenerate'))).toEqual({ action: 'redirect', to: '/account/recovery-codes' })
     expect(guardRedirect(board('setup'), { roles: ADMIN_ROLES })).toEqual({ action: 'redirect', to: '/account/setup-two-factor' })
     expect(guardRedirect(board('verify'), { roles: ADMIN_ROLES })).toEqual({ action: 'redirect', to: '/account/two-factor' })
     expect(guardRedirect(board('setup'), { gate: 'two-factor' })).toEqual({ action: 'allow' })
