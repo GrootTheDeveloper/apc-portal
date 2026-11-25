@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 
 import { pageQuery } from '../../lib/pagination.js'
 import { currentUser, requireAuth } from '../auth/rbac.js'
+import { getDirectoryMember, listDirectoryMembers } from './directory.js'
 import { getActivity, getProfile, getRoles, updateProfile, updateProfileSchema } from './service.js'
 
 export async function portalRoutes(app: FastifyInstance) {
@@ -25,5 +26,13 @@ export async function portalRoutes(app: FastifyInstance) {
     const user = currentUser(request)
     const query = pageQuery.parse(request.query)
     return getActivity(user.id, query)
+  })
+
+  app.get('/portal/members', { preHandler: requireAuth }, async (request) => {
+    return listDirectoryMembers(request.query)
+  })
+
+  app.get('/portal/members/:id', { preHandler: requireAuth }, async (request) => {
+    return getDirectoryMember(request.params)
   })
 }

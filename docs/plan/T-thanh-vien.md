@@ -207,8 +207,8 @@ Quyền theo [Vai trò & quyền](../02-roles-permissions.md) §8.2, §8.7:
 
 **Xong khi:**
 
-- [ ] Phản hồi API không có MSSV, email, số điện thoại (có test kiểm tra).
-- [ ] Chưa đăng nhập gọi API nhận 401.
+- [x] Phản hồi API không có MSSV, email, số điện thoại (có test kiểm tra).
+- [x] Chưa đăng nhập gọi API nhận 401.
 
 ## Lưu ý
 

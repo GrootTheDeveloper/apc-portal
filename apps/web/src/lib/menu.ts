@@ -98,7 +98,26 @@ export const PORTAL_MENU: readonly MenuGroup[] = [
           },
         ],
       },
-      { label: 'Thành viên', to: '/portal/members', roles: MEMBER },
+      {
+        label: 'Thành viên',
+        to: '/portal/members',
+        roles: MEMBER,
+        page: () =>
+          import('../pages/portal/members/list/MemberDirectoryListPage').then((m) => ({
+            Component: m.MemberDirectoryListPage,
+          })),
+        children: [
+          {
+            label: 'Hồ sơ thành viên',
+            to: '/portal/members/:id',
+            roles: MEMBER,
+            page: () =>
+              import('../pages/portal/members/detail/MemberDirectoryDetailPage').then((m) => ({
+                Component: m.MemberDirectoryDetailPage,
+              })),
+          },
+        ],
+      },
     ],
   },
   {
