@@ -1,6 +1,7 @@
 import { matchRoutes, Outlet, type RouteObject } from 'react-router-dom'
 
 import { RequireAuth } from './components/RequireAuth'
+import { RouteErrorBoundary } from './components/RouteErrorBoundary.js'
 import { AdminLayout } from './layouts/AdminLayout'
 import { PortalLayout } from './layouts/PortalLayout'
 import { RootLayout } from './layouts/RootLayout'
@@ -56,6 +57,8 @@ export const appRoutes: RouteObject[] = [
   {
     path: '/',
     element: <RootLayout />,
+    // Lỗi render ở bất kỳ route con nào cũng dồn về đây thay vì màn hình trắng (C6).
+    errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: <HomePage /> },
       { path: 'about', element: <AboutPage /> },

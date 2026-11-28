@@ -13,6 +13,7 @@ export class ApiError extends Error {
   readonly code: string
   readonly issues: unknown[]
   readonly data?: Record<string, unknown>
+  readonly requestId?: string
 
   constructor(status: number, code: string, message: string, issues: unknown[] = [], data?: Record<string, unknown>) {
     super(message)
@@ -20,6 +21,8 @@ export class ApiError extends Error {
     this.code = code
     this.issues = issues
     this.data = data
+    // Chỉ lỗi 500 mới có mã tham chiếu (requestId) từ API (C6); lỗi < 500 giữ nguyên định dạng cũ.
+    this.requestId = status === 500 && typeof data?.requestId === 'string' ? data.requestId : undefined
   }
 }
 
