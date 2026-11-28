@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Bảo trì — APC Portal</title>
+    <style>
+      /* Trang bảo trì tĩnh (C6): tự chứa hoàn toàn — không gọi API, không JS, không font ngoài.
+         Màu theo DESIGN.md: ink #081F3D, blue #1568C9, gold #F0A202, paper #FFFFFF, muted #4B5B73. */
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+      }
+      body {
+        min-height: 100vh;
+        background: #081F3D;
+        color: #FFFFFF;
+        font-family: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        overflow-x: hidden;
+        text-align: center;
+      }
+      .main {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .card {
+        width: 100%;
+        max-width: 560px;
+        background: #1568C9;
+        border-radius: 20px;
+        padding: 40px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+      }
+      /* Nền paper quanh logo để mark đỏ nổi trên card xanh. */
+      .logo {
+        width: 84px;
+        height: auto;
+        background: #FFFFFF;
+        padding: 12px;
+        border-radius: 16px;
+      }
+      h1 {
+        margin: 0;
+        font-family: 'Baloo 2', 'Nunito', system-ui, sans-serif;
+        font-size: clamp(28px, 5vw, 48px);
+        font-weight: 800;
+        color: #F0A202;
+        line-height: 1.1;
+      }
+      .card p {
+        margin: 0;
+        font-size: 17px;
+        line-height: 1.6;
+        max-width: 40ch;
+      }
+      .retry {
+        display: inline-block;
+        background: #F0A202;
+        color: #081F3D;
+        /* Mép dưới đậm 5px tạo cảm giác phím bấm kiểu nút primary; dùng border-bottom thay vì box-shadow. */
+        border-bottom: 5px solid #B87A00;
+        border-radius: 12px;
+        padding: 12px 24px;
+        font-weight: 700;
+        font-size: 17px;
+        text-decoration: none;
+      }
+      footer {
+        margin-top: 24px;
+        font-size: 12px;
+        color: #4B5B73;
+      }
+      @media (max-width: 480px) {
+        body {
+          padding: 16px;
+        }
+        .card {
+          padding: 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="main">
+      <section class="card">
+        <img class="logo" src="/assets/home/mark/mark-red.png" alt="APC">
+        <h1>Đang bảo trì</h1>
+        <p>APC Portal đang được bảo trì để nâng cấp. Vui lòng quay lại sau ít phút. Xin lỗi vì sự bất tiện này.</p>
+        <a class="retry" href="/">Thử lại</a>
+      </section>
+      <footer>© 2026 APC — Applied Programming Club</footer>
+    </main>
+  </body>
+</html>
