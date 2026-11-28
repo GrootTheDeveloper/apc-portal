@@ -53,8 +53,13 @@ export function registerErrorHandler(app: FastifyInstance) {
       return reply.code(error.statusCode).send({ error: 'bad_request', message: 'Yêu cầu không hợp lệ.' })
     }
 
-    // ERR-500: ghi log đầy đủ, trả mã tham chiếu, không lộ stack trace.
+    // ERR-500: ghi log đầy đủ, không lộ stack trace; trả mã tham chiếu (requestId) để người dùng gửi cho
+    // Ban Chủ nhiệm tra trong log (C6). Mã này trùng header x-request-id của cùng phản hồi.
     request.log.error(error)
-    return reply.code(500).send({ error: 'internal', message: `Lỗi hệ thống. Mã tham chiếu: ${request.id}` })
+    return reply.code(500).send({
+      error: 'internal',
+      message: 'Đã xảy ra lỗi hệ thống. Vui lòng gửi mã tham chiếu cho Ban Chủ nhiệm.',
+      requestId: request.id,
+    })
   })
 }

@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import cookie from '@fastify/cookie'
 import cors from '@fastify/cors'
 import rateLimit from '@fastify/rate-limit'
@@ -25,14 +27,43 @@ import { documentsRoutes } from './modules/documents/routes.js'
 import { memberRoutes } from './modules/members/routes.js'
 import { portalRoutes } from './modules/portal/routes.js'
 import { recruitmentRoutes } from './modules/recruitment/routes.js'
+import { seoRoutes } from './modules/seo/routes.js'
 
 /** Phụ thuộc thay được khi test (vd kho tệp trong bộ nhớ: `createMemoryStorage()`). */
 export type AppDeps = { storage?: FileStorage }
 
+// Đúng dạng UUID phiên bản 4; x-request-id sai dạng thì tự sinh mã mới (OPS-11, C6).
+const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
 export function buildApp(config: AppConfig, deps: AppDeps = {}) {
-  const app = Fastify({ logger: config.NODE_ENV !== 'test' })
+  const app = Fastify({
+    // Mã tham chiếu (C6, OPS-11): genReqId chạy trước khi Fastify bind child logger theo reqId, nên id
+    // trong log khớp với header trả về. Dùng tự viết thay vì mặc định (req-1, req-2...) để nhận
+    // x-request-id của Nginx nếu đúng dạng UUID v4, không thì tự sinh UUID.
+    genReqId: (req) => {
+      const headerValue = req.headers['x-request-id']
+      const headerStr = Array.isArray(headerValue) ? headerValue[0] : headerValue
+      return headerStr && UUID_V4_REGEX.test(headerStr) ? headerStr : randomUUID()
+    },
+    logger:
+      config.NODE_ENV === 'test'
+        ? false
+        : {
+            redact: {
+              // Bỏ header nhạy cảm khỏi log (OPS-11); giữ x-request-id để grep log theo mã tham chiếu.
+              paths: ['req.headers.cookie', 'req.headers.authorization'],
+              censor: '[REDACTED]',
+            },
+          },
+  })
   const storage = deps.storage ?? createS3Storage(config)
   const scanner = createScanner(config)
+
+  // Trả lại mã tham chiếu trong header của mọi phản hồi để người dùng báo mã khi gặp lỗi hệ thống.
+  app.addHook('onSend', async (request, reply, payload) => {
+    reply.header('x-request-id', request.id)
+    return payload
+  })
 
   app.register(cors, { origin: config.WEB_URL, credentials: true })
   app.register(cookie)
@@ -60,6 +91,14 @@ export function buildApp(config: AppConfig, deps: AppDeps = {}) {
   app.register(documentsRoutes({ storage, scanner }))
 
   app.register(recruitmentRoutes(config, { storage }))
+  app.register(seoRoutes)
+
+  // Route chỉ để kiểm tra mã tham chiếu lỗi 500 ở bản phát triển (C6); không tồn tại ở production.
+  if (config.NODE_ENV !== 'production') {
+    app.get('/public/_test/500', async () => {
+      throw new Error('C6 test error — trigger 500')
+    })
+  }
 
   return app
 }

@@ -8,11 +8,15 @@
 
 export type Page<T> = { items: T[]; total: number; page: number; pageSize: number }
 
+/** Dòng 500 chung của API (apps/api/src/lib/errors.ts); web dùng để phân biệt 500 chung với 500 có thông báo riêng. */
+export const INTERNAL_ERROR_MESSAGE = 'Đã xảy ra lỗi hệ thống. Vui lòng gửi mã tham chiếu cho Ban Chủ nhiệm.'
+
 export class ApiError extends Error {
   readonly status: number
   readonly code: string
   readonly issues: unknown[]
   readonly data?: Record<string, unknown>
+  readonly requestId?: string
 
   constructor(status: number, code: string, message: string, issues: unknown[] = [], data?: Record<string, unknown>) {
     super(message)
@@ -20,6 +24,8 @@ export class ApiError extends Error {
     this.code = code
     this.issues = issues
     this.data = data
+    // Chỉ lỗi 500 mới có mã tham chiếu (requestId) từ API (C6); lỗi < 500 giữ nguyên định dạng cũ.
+    this.requestId = status === 500 && typeof data?.requestId === 'string' ? data.requestId : undefined
   }
 }
 

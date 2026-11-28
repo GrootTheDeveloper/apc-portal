@@ -9,6 +9,16 @@ export default defineConfig({
     // Dùng 127.0.0.1 thay localhost: Node mới phân giải localhost sang IPv6 (::1) trong khi API nghe IPv4.
     proxy: {
       '/api': { target: 'http://127.0.0.1:3000', rewrite: (path) => path.replace(/^\/api/, '') },
+      '/sitemap.xml': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true,
+        rewrite: () => '/public/sitemap.xml',
+      },
+      '/robots.txt': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true,
+        rewrite: () => '/public/robots.txt',
+      },
     },
   },
 })
