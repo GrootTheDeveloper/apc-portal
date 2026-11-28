@@ -27,6 +27,7 @@ import { documentsRoutes } from './modules/documents/routes.js'
 import { memberRoutes } from './modules/members/routes.js'
 import { portalRoutes } from './modules/portal/routes.js'
 import { recruitmentRoutes } from './modules/recruitment/routes.js'
+import { seoRoutes } from './modules/seo/routes.js'
 
 /** Phụ thuộc thay được khi test (vd kho tệp trong bộ nhớ: `createMemoryStorage()`). */
 export type AppDeps = { storage?: FileStorage }
@@ -90,6 +91,7 @@ export function buildApp(config: AppConfig, deps: AppDeps = {}) {
   app.register(documentsRoutes({ storage, scanner }))
 
   app.register(recruitmentRoutes(config, { storage }))
+  app.register(seoRoutes)
 
   // Route chỉ để kiểm tra mã tham chiếu lỗi 500 ở bản phát triển (C6); không tồn tại ở production.
   if (config.NODE_ENV !== 'production') {
