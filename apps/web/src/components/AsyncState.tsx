@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
+import { INTERNAL_ERROR_MESSAGE } from '../lib/api'
 import type { ApiError } from '../lib/api'
 import { Button } from './Button'
 import { buttonClass } from './buttonClass'
@@ -63,6 +64,8 @@ export function AsyncState({
       <div role="alert" className="flex flex-col items-center gap-5 rounded-xl bg-apc-red-pale px-6 py-16 text-center">
         <p className="font-code text-[14px] font-bold text-apc-red">{'// lỗi hệ thống'}</p>
         <p className="max-w-[48ch] font-display text-[clamp(22px,2.4vw,30px)] font-bold leading-tight">Đã xảy ra lỗi hệ thống</p>
+        {/* Thông báo riêng của API (vd "Không thể tải kết quả tìm kiếm."); ẩn khi là dòng 500 chung để tránh lặp. */}
+        {error.message !== INTERNAL_ERROR_MESSAGE && <p className="max-w-[48ch]">{error.message}</p>}
         <p className="max-w-[48ch]">Vui lòng gửi mã tham chiếu sau cho Ban Chủ nhiệm để được hỗ trợ:</p>
         {error.requestId && (
           <code className="mb-4 inline-block rounded bg-ink px-4 py-2 font-code text-[14px] text-paper">

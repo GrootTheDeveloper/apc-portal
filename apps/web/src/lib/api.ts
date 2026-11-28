@@ -8,6 +8,9 @@
 
 export type Page<T> = { items: T[]; total: number; page: number; pageSize: number }
 
+/** Dòng 500 chung của API (apps/api/src/lib/errors.ts); web dùng để phân biệt 500 chung với 500 có thông báo riêng. */
+export const INTERNAL_ERROR_MESSAGE = 'Đã xảy ra lỗi hệ thống. Vui lòng gửi mã tham chiếu cho Ban Chủ nhiệm.'
+
 export class ApiError extends Error {
   readonly status: number
   readonly code: string
